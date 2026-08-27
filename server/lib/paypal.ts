@@ -23,18 +23,24 @@ async function accessToken(): Promise<string> {
 
 export async function createOrder(usd: number, referenceId: string): Promise<{ id: string; status: string }> {
   const token = await accessToken();
+
+  // Cuenta que recibe el dinero. Si PAYPAL_PAYEE_EMAIL está definido se fuerza
+  // ese destinatario; si no, los fondos van a la cuenta dueña de las credenciales API.
+  const payeeEmail = process.env.PAYPAL_PAYEE_EMAIL?.trim();
+
+  const purchaseUnit: Record<string, unknown> = {
+    reference_id: referenceId,
+    description: 'Puja de visibilidad - Top.com.do',
+    amount: { currency_code: 'USD', value: usd.toFixed(2) },
+  };
+  if (payeeEmail) purchaseUnit.payee = { email_address: payeeEmail };
+
   const res = await fetch(`${apiBase()}/v2/checkout/orders`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       intent: 'CAPTURE',
-      purchase_units: [
-        {
-          reference_id: referenceId,
-          description: 'Puja de visibilidad - Top.com.do',
-          amount: { currency_code: 'USD', value: usd.toFixed(2) },
-        },
-      ],
+      purchase_units: [purchaseUnit],
     }),
   });
   const json = await res.json();
