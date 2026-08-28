@@ -1,14 +1,20 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 /**
- * Entrada serverless de Vercel para todas las rutas /api/* (ver rewrites en vercel.json).
- * Carga el app de Express de forma perezosa y captura cualquier error de
- * inicialización para devolver JSON legible en vez de la página de error de Vercel.
+ * Entrada serverless de Vercel para /api/* (ver rewrites en vercel.json).
+ *
+ * `./_server.mjs` lo genera `npm run build:api` (esbuild) empaquetando
+ * `server/app.ts`. Se hace así porque Vercel solo empaqueta el contenido de
+ * `api/`; importar `../server/app` directamente fallaba con
+ * "Cannot find module '/var/task/server/app'".
  */
-let appPromise: Promise<(req: IncomingMessage, res: ServerResponse) => void> | null = null;
+type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 
-function loadApp() {
-  appPromise ??= import('../server/app').then((m) => m.default as never);
+let appPromise: Promise<Handler> | null = null;
+
+function loadApp(): Promise<Handler> {
+  // @ts-ignore  — archivo generado en build; no existe en el árbol de fuentes
+  appPromise ??= import('./_server.mjs').then((m) => m.default as Handler);
   return appPromise;
 }
 
@@ -17,7 +23,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const app = await loadApp();
     return app(req, res);
   } catch (err) {
-    appPromise = null; // permite reintentar en la próxima invocación
+    appPromise = null;
     console.error('[api] fallo al inicializar la aplicación:', err);
     res.statusCode = 500;
     res.setHeader('content-type', 'application/json; charset=utf-8');
