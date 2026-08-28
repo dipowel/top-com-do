@@ -331,17 +331,27 @@ export default function BidWizard({
       {/* PASO 3 — pago */}
       {step === 3 && bidId && (
         <div className="space-y-4">
+          <div className="rounded-xl border border-emerald/30 bg-emerald/10 p-3">
+            <div className="text-sm font-bold text-emerald-soft">
+              ✅ Puja creada · {formatDOP(amountDop)}
+            </div>
+            <div className="mt-0.5 text-xs text-white/60">
+              Estado: <b>En revisión</b>. Puedes seguir su estado en “Mis Pujas”.
+            </div>
+          </div>
+
           {method === 'bank_transfer' ? (
             <>
               <p className="text-sm text-white/70">
                 Transfiere <b>{formatDOP(amountDop)}</b> a una de estas cuentas. Luego sube el
-                comprobante <b>o</b> pega el número de confirmación. Un administrador lo verifica.
+                comprobante <b>o</b> pega el número de confirmación. Un administrador lo verifica y tu
+                perfil sube al ranking.
               </p>
               <BankTransferPanel />
               <ConfirmationNumber bidId={bidId} />
               <ReceiptUpload bidId={bidId} />
-              <button onClick={onClose} className="btn-ghost w-full">
-                Listo
+              <button onClick={onClose} className="btn-gold w-full">
+                Listo, ya transferí
               </button>
             </>
           ) : (

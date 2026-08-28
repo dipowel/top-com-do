@@ -10,7 +10,7 @@ import AuditLog from './AuditLog';
 
 const tabs = [
   { to: '', label: 'Resumen', end: true },
-  { to: 'comprobantes', label: 'Comprobantes' },
+  { to: 'comprobantes', label: 'Pagos por revisar' },
   { to: 'pujas', label: 'Auditoría de pujas' },
   { to: 'cuentas', label: 'Cuentas bancarias' },
   { to: 'rondas', label: 'Rondas' },

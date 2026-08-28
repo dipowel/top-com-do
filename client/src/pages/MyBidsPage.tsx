@@ -49,10 +49,28 @@ export default function MyBidsPage() {
               {b.currency === 'USD' ? formatUSD(b.amountOriginal) : formatDOP(b.amountDop)}
             </span>
           </div>
-          {b.status === 'pending' && b.method === 'bank_transfer' && !b.receiptUrl && !b.reference && (
-            <p className="mt-2 text-[11px] text-amber-300/80">
-              Falta el comprobante o el número de confirmación para verificarla.
-            </p>
+          {b.status === 'pending' && b.method === 'bank_transfer' && (
+            <div className="mt-2 space-y-1.5 rounded-lg bg-white/5 p-2 text-[11px]">
+              {b.reference && (
+                <div>
+                  <span className="text-white/40">N.º de confirmación: </span>
+                  <span className="font-semibold">{b.reference}</span>
+                </div>
+              )}
+              {b.receiptUrl && !b.receiptUrl.startsWith('data:application/pdf') && (
+                <img src={b.receiptUrl} className="h-16 rounded object-cover" alt="comprobante" />
+              )}
+              {b.receiptUrl?.startsWith('data:application/pdf') && (
+                <span className="text-white/50">Comprobante PDF adjunto ✓</span>
+              )}
+              {!b.receiptUrl && !b.reference ? (
+                <p className="text-amber-300/80">
+                  Falta el comprobante o el número de confirmación para poder verificarla.
+                </p>
+              ) : (
+                <p className="text-white/50">En revisión por un administrador.</p>
+              )}
+            </div>
           )}
         </div>
       ))}

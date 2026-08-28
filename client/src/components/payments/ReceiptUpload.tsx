@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import imageCompression from 'browser-image-compression';
 import { api } from '../../lib/api';
+import { fileToReceiptDataUrl } from '../../lib/image';
 
 export default function ReceiptUpload({ bidId, onDone }: { bidId: string; onDone?: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -12,27 +12,12 @@ export default function ReceiptUpload({ bidId, onDone }: { bidId: string; onDone
     setError(null);
     setBusy(true);
     try {
-      let toSend: File = file;
-      const looksLikeImage =
-        /^image\//.test(file.type) || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(file.name);
-
-      if (looksLikeImage && file.size > 1_200_000) {
-        try {
-          toSend = await imageCompression(file, {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1800,
-            useWebWorker: true,
-          });
-        } catch {
-          toSend = file;
-        }
-      }
-
-      const fd = new FormData();
-      fd.append('bidId', bidId);
-      fd.append('file', toSend, toSend.name || `comprobante.jpg`);
-      await api('/uploads/receipt', { method: 'POST', body: fd, auth: true });
-
+      const dataUrl = await fileToReceiptDataUrl(file);
+      await api('/uploads/receipt', {
+        method: 'POST',
+        body: JSON.stringify({ bidId, dataUrl, filename: file.name }),
+        auth: true,
+      });
       setOk(true);
       onDone?.();
     } catch (e) {
@@ -60,11 +45,11 @@ export default function ReceiptUpload({ bidId, onDone }: { bidId: string; onDone
         disabled={busy}
         className={ok ? 'btn-emerald w-full' : 'btn-ghost w-full'}
       >
-        {busy ? 'Subiendo…' : ok ? '✓ Comprobante enviado' : '📎 Subir comprobante'}
+        {busy ? 'Subiendo…' : ok ? '✓ Comprobante enviado' : '📎 Subir comprobante (foto o PDF)'}
       </button>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       <p className="mt-2 text-[11px] text-white/40">
-        Foto (JPG/PNG) o PDF. Se comprime en tu teléfono antes de enviarse. Compatible con Safari y Chrome móvil.
+        Se comprime en tu teléfono antes de enviarse. Compatible con Safari y Chrome móvil.
       </p>
     </div>
   );

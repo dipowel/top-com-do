@@ -6,10 +6,13 @@ interface Row {
   bidId: string;
   amountDop: number;
   method: string;
+  status: string;
   reference: string | null;
+  notes: string | null;
   createdAt: string;
   profileName: string;
   bidderEmail: string;
+  bidderName: string | null;
   receiptUrl: string | null;
   receiptMime: string | null;
 }
@@ -17,6 +20,7 @@ interface Row {
 export default function ReceiptsQueue() {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<string | null>(null);
 
   const load = useCallback(() => {
     api<Row[]>('/admin/receipts?status=pending', { auth: true })
@@ -44,47 +48,93 @@ export default function ReceiptsQueue() {
 
   return (
     <div className="space-y-3">
-      {!rows.length && <p className="text-sm text-white/50">No hay comprobantes pendientes. 🎉</p>}
-      {rows.map((r) => (
-        <div key={r.bidId} className="glass p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="font-semibold">{r.profileName}</div>
-              <div className="truncate text-xs text-white/40">
-                {r.bidderEmail} · {new Date(r.createdAt).toLocaleString('es-DO')}
+      <p className="text-xs text-white/45">
+        Pagos por transferencia pendientes. Aprueba cuando confirmes el dinero en la cuenta; el
+        perfil sube al ranking al instante.
+      </p>
+
+      {!rows.length && <p className="text-sm text-white/50">No hay pagos pendientes. 🎉</p>}
+
+      {rows.map((r) => {
+        const isPdf = r.receiptMime === 'application/pdf';
+        return (
+          <div key={r.bidId} className="glass p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-semibold">{r.profileName}</div>
+                <div className="truncate text-xs text-white/40">
+                  {r.bidderName ? `${r.bidderName} · ` : ''}
+                  {r.bidderEmail}
+                </div>
+                <div className="truncate text-xs text-white/40">
+                  {new Date(r.createdAt).toLocaleString('es-DO')}
+                </div>
+                <div className="mt-1 text-lg font-extrabold text-gold">{formatDOP(r.amountDop)}</div>
               </div>
-              <div className="mt-1 text-sm font-bold text-gold">{formatDOP(r.amountDop)}</div>
-              {r.reference && <div className="text-xs text-white/40">Ref: {r.reference}</div>}
-            </div>
-            {r.receiptUrl &&
-              (r.receiptMime === 'application/pdf' ? (
-                <a href={r.receiptUrl} target="_blank" rel="noreferrer" className="btn-ghost !py-1.5 text-xs">
-                  Ver PDF
-                </a>
+
+              {r.receiptUrl ? (
+                isPdf ? (
+                  <a
+                    href={r.receiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-ghost shrink-0 !py-1.5 text-xs"
+                  >
+                    Ver PDF
+                  </a>
+                ) : (
+                  <button onClick={() => setZoom(r.receiptUrl)} className="shrink-0">
+                    <img
+                      src={r.receiptUrl}
+                      className="h-24 w-24 rounded-lg object-cover ring-1 ring-white/10"
+                      alt="comprobante"
+                    />
+                  </button>
+                )
               ) : (
-                <a href={r.receiptUrl} target="_blank" rel="noreferrer">
-                  <img src={r.receiptUrl} className="h-24 w-24 rounded-lg object-cover" alt="comprobante" />
-                </a>
-              ))}
+                <span className="shrink-0 rounded-lg bg-white/5 px-2 py-1 text-[10px] text-white/40">
+                  sin comprobante
+                </span>
+              )}
+            </div>
+
+            <div className="mt-2 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs">
+              <span className="text-white/40">N.º de confirmación: </span>
+              {r.reference ? (
+                <span className="font-semibold tracking-wide">{r.reference}</span>
+              ) : (
+                <span className="text-white/40">no ingresado</span>
+              )}
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                disabled={busy === r.bidId}
+                onClick={() => decide(r.bidId, 'verified')}
+                className="btn-emerald flex-1 !py-2 text-xs"
+              >
+                Aprobar y publicar
+              </button>
+              <button
+                disabled={busy === r.bidId}
+                onClick={() => decide(r.bidId, 'rejected')}
+                className="btn-ghost flex-1 !py-2 text-xs"
+              >
+                Rechazar
+              </button>
+            </div>
           </div>
-          <div className="mt-3 flex gap-2">
-            <button
-              disabled={busy === r.bidId}
-              onClick={() => decide(r.bidId, 'verified')}
-              className="btn-emerald flex-1 !py-2 text-xs"
-            >
-              Aprobar
-            </button>
-            <button
-              disabled={busy === r.bidId}
-              onClick={() => decide(r.bidId, 'rejected')}
-              className="btn-ghost flex-1 !py-2 text-xs"
-            >
-              Rechazar
-            </button>
-          </div>
+        );
+      })}
+
+      {zoom && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setZoom(null)}
+        >
+          <img src={zoom} className="max-h-[90vh] max-w-full rounded-xl" alt="comprobante" />
         </div>
-      ))}
+      )}
     </div>
   );
 }

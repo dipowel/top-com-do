@@ -76,6 +76,11 @@ r.get(
   }),
 );
 
+/**
+ * Cola de pagos por revisar: TODAS las pujas por transferencia en un estado
+ * (por defecto `pending`), tengan o no comprobante subido. El admin ve el
+ * número de confirmación y/o el comprobante y aprueba o rechaza.
+ */
 r.get(
   '/receipts',
   ah(async (req, res) => {
@@ -90,19 +95,21 @@ r.get(
         method: bids.method,
         status: bids.status,
         reference: bids.reference,
+        notes: bids.notes,
         createdAt: bids.createdAt,
         profileName: profiles.name,
         bidderEmail: users.email,
+        bidderName: users.displayName,
         receiptUrl: paymentReceipts.fileUrl,
         receiptMime: paymentReceipts.fileMime,
         uploadedAt: paymentReceipts.uploadedAt,
       })
-      .from(paymentReceipts)
-      .innerJoin(bids, eq(bids.id, paymentReceipts.bidId))
+      .from(bids)
       .innerJoin(profiles, eq(profiles.id, bids.profileId))
       .innerJoin(users, eq(users.id, bids.userId))
-      .where(eq(bids.status, status))
-      .orderBy(desc(paymentReceipts.uploadedAt));
+      .leftJoin(paymentReceipts, eq(paymentReceipts.bidId, bids.id))
+      .where(and(eq(bids.status, status), eq(bids.method, 'bank_transfer')))
+      .orderBy(desc(bids.createdAt));
     res.json(rows.map((x) => ({ ...x, amountDop: Number(x.amountDop) })));
   }),
 );
