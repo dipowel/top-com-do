@@ -43,11 +43,12 @@ export default function AdminLayout() {
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-extrabold">
-          Panel · Top<span className="text-gold">.com.do</span>
-        </h1>
-        <Link to="/" className="btn-ghost !py-1.5 text-xs">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="Top.com.do" className="h-7 w-auto" />
+          <span className="text-sm font-semibold text-white/50">· Panel</span>
+        </div>
+        <Link to="/" className="btn-ghost shrink-0 !py-1.5 text-xs">
           Ver sitio
         </Link>
       </div>

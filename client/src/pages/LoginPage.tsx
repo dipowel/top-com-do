@@ -41,9 +41,8 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm space-y-4 py-6">
-      <h1 className="text-center text-2xl font-extrabold">
-        Top<span className="text-gold">.com.do</span>
-      </h1>
+      <img src="/logo.png" alt="Top.com.do" className="mx-auto h-12 w-auto" />
+      <p className="text-center text-xs text-white/45">El directorio #1 de RD</p>
       <button
         onClick={() =>
           loginGoogle()
