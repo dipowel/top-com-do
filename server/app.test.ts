@@ -35,7 +35,7 @@ describe('API base', () => {
   it('GET /api/health/config reporta el estado de configuración', async () => {
     const res = await request(app).get('/api/health/config');
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('firebaseServiceAccountSet');
+    expect(res.body).toHaveProperty('firebaseProjectId');
     expect(res.body).toHaveProperty('database');
   });
 });

@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { users } from '../../shared/schema';
-import { adminAuth } from '../lib/firebaseAdmin';
+import { verifyIdToken } from '../lib/firebaseAuth';
 import { HttpError } from './errorHandler';
 
 export interface AuthUser {
@@ -40,7 +40,7 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
   if (!token) return null;
 
-  const decoded = await adminAuth().verifyIdToken(token);
+  const decoded = await verifyIdToken(token);
   const email = (decoded.email || '').toLowerCase();
   if (!email) throw new HttpError(401, 'El token no incluye un correo');
 
@@ -95,11 +95,8 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
       if (e instanceof HttpError) return next(e);
       console.error('[auth] loadUser falló:', e);
       const msg = String((e as Error)?.message || e);
-      if (msg.includes('FIREBASE_SERVICE_ACCOUNT_BASE64')) {
-        return next(new HttpError(503, 'Firebase Admin no está configurado en el servidor (FIREBASE_SERVICE_ACCOUNT_BASE64)'));
-      }
-      if (/aud|audience|project|token|expired|Firebase ID token/i.test(msg)) {
-        return next(new HttpError(401, `Token rechazado por Firebase Admin: ${msg}`));
+      if (/jwt|jwk|signature|aud|audience|iss|issuer|token|expired|exp/i.test(msg)) {
+        return next(new HttpError(401, `Token rechazado: ${msg}`));
       }
       return next(new HttpError(500, 'Error verificando la sesión'));
     });

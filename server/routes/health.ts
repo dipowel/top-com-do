@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import { ah } from '../lib/asyncHandler';
-import { adminAuth } from '../lib/firebaseAdmin';
+import { verifyIdToken, firebaseProjectId } from '../lib/firebaseAuth';
 
 const r = Router();
 
@@ -12,8 +12,8 @@ r.get('/health', (_req, res) => {
 
 /**
  * Diagnóstico de configuración (sin exponer secretos).
- * Útil para verificar el despliegue en Vercel: abre /api/health/config
- * o manda el token con Authorization: Bearer <idToken> para probar la verificación.
+ * Abre /api/health/config, o manda Authorization: Bearer <idToken>
+ * para probar la verificación del token.
  */
 r.get(
   '/health/config',
@@ -21,7 +21,7 @@ r.get(
     const out: Record<string, unknown> = {
       env: process.env.NODE_ENV || 'unknown',
       databaseUrlSet: Boolean(process.env.DATABASE_URL),
-      firebaseServiceAccountSet: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64),
+      firebaseProjectId: firebaseProjectId(),
       superadminEmailsSet: Boolean(process.env.SUPERADMIN_EMAILS),
       paypalConfigured: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET),
       blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
@@ -38,7 +38,7 @@ r.get(
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
     if (token) {
       try {
-        const decoded = await adminAuth().verifyIdToken(token);
+        const decoded = await verifyIdToken(token);
         out.tokenCheck = { ok: true, email: decoded.email, uid: decoded.uid, aud: decoded.aud };
       } catch (e) {
         out.tokenCheck = { ok: false, error: (e as Error).message };

@@ -20,8 +20,7 @@ Opcionales (cada función se auto-desactiva con aviso si falta):
 
 | Variable | Para |
 |---|---|
-| `FIREBASE_SERVICE_ACCOUNT_BASE64` | login / verificación de token en el servidor |
-| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | login en el frontend (build-time) |
+| `FIREBASE_PROJECT_ID` + `VITE_FIREBASE_*` | login (Google/Email). El server valida tokens con solo el projectId; la config web ya viene como fallback en el código. |
 | `PAYPAL_ENV` (`sandbox`/`live`), `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `VITE_PAYPAL_CLIENT_ID` | pagos PayPal |
 | `BLOB_READ_WRITE_TOKEN` | subida de comprobantes |
 

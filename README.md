@@ -7,7 +7,8 @@ Plataforma de subastas de visibilidad, ego y marcas para la República Dominican
 - **Backend:** Express (`server/`) + Drizzle ORM sobre **PostgreSQL**. `server/db.ts` autodetecta:
   sin `DATABASE_URL` usa **PGlite** (Postgres embebido, cero servicios externos, ideal para desarrollo);
   con una URL real usa el driver `pg` con SSL (**Supabase**, Neon, RDS, etc.).
-- **Auth:** Firebase Authentication (Google + Email/Password), verificada en el servidor con `firebase-admin`.
+- **Auth:** Firebase Authentication (Google + Email/Password). El servidor verifica los ID tokens
+  contra las claves públicas de Google con `jose` — solo necesita `FIREBASE_PROJECT_ID`, sin service account.
 - **Pagos:** Transferencias locales (Banreservas, Banco Popular, BHD, Qik) con comprobante +
   PayPal REST v2 (USD, tasa fija `1 USD = 59.50 DOP`).
 - **Deploy:** Vercel (SPA estática + función serverless para `/api/*`).
@@ -48,7 +49,7 @@ top-com-do/
 | Servicio | Qué necesitas |
 |---|---|
 | **PostgreSQL** | Opcional en desarrollo (sin `DATABASE_URL` corre PGlite embebido). Para datos reales/compartidos: `DATABASE_URL` de Supabase o Neon. Con Supabase usa el *transaction pooler* (`:6543`); `db:push` cambia solo a `:5432` para migrar. |
-| **Firebase** | Proyecto web + proveedores Google y Email/Password habilitados. Config web (`apiKey`, `authDomain`, `projectId`, `appId`) y un **service account JSON** en base64. |
+| **Firebase** | Proyecto web + proveedores Google y Email/Password habilitados. Solo la config web (`VITE_FIREBASE_*`) y `FIREBASE_PROJECT_ID`. **No hace falta service account.** |
 | **PayPal** | App REST (sandbox y live): `client id` y `secret`. |
 | **Vercel Blob** | `BLOB_READ_WRITE_TOKEN` (Storage → Blob en el dashboard de Vercel). |
 
@@ -68,19 +69,9 @@ npm run seed:demo             # opcional: + 8 perfiles de demostración con puja
 npm run dev                   # API en :3000, web en :5173 (proxy /api)
 ```
 
-Para el service account de Firebase en `.env`:
-
-```powershell
-# Windows PowerShell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("serviceAccount.json")) | Set-Clipboard
-```
-
-```bash
-# Linux / macOS
-base64 -w0 serviceAccount.json
-```
-
-Pega el resultado en `FIREBASE_SERVICE_ACCOUNT_BASE64`.
+Firebase: copia la config web (Consola → Configuración del proyecto → Tus apps) a las
+variables `VITE_FIREBASE_*` y pon `FIREBASE_PROJECT_ID` con el mismo `projectId`.
+El servidor valida los tokens contra las claves públicas de Google; no necesita clave privada.
 
 ## 4. Pruebas
 
