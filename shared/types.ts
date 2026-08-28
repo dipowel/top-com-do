@@ -5,19 +5,16 @@ export interface RankingProfile {
   avatarUrl: string | null;
   bio: string | null;
   tagline: string | null;
+  subcategory: string | null;
   whatsapp: string | null;
   instagramUrl: string | null;
   websiteUrl: string | null;
   city: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   categorySlug: string;
   categoryName: string;
-}
-
-export interface SuggestedBid {
-  minimum: number;
-  current: number;
-  next: number;
-  scope: 'profile' | 'category' | 'global';
 }
 
 export interface RankingEntry {
@@ -34,6 +31,15 @@ export interface MeResponse {
   displayName: string | null;
   photoUrl: string | null;
   role: 'user' | 'admin' | 'superadmin';
+  referralCode: string | null;
+  creditBalanceDop: number;
+}
+
+export interface SuggestedBid {
+  minimum: number;
+  current: number;
+  next: number;
+  scope: 'profile' | 'category' | 'global';
 }
 
 export interface CategoryDTO {
@@ -54,4 +60,14 @@ export interface BankAccountDTO {
   instructions: string | null;
   isActive: boolean;
   sortOrder: number;
+}
+
+export interface MyReferral {
+  id: string;
+  status: 'pending' | 'eligible' | 'approved' | 'rejected';
+  bonusDop: number;
+  referredEmail: string | null;
+  referredName: string | null;
+  createdAt: string;
+  approvedAt: string | null;
 }

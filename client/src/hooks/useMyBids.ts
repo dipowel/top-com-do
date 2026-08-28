@@ -7,7 +7,7 @@ export interface MyBid {
   amountDop: number;
   currency: 'DOP' | 'USD';
   amountOriginal: number;
-  method: 'bank_transfer' | 'paypal';
+  method: 'bank_transfer' | 'paypal' | 'credit';
   status: 'pending' | 'verified' | 'rejected';
   reference: string | null;
   createdAt: string;

@@ -31,7 +31,7 @@ export default function BidWizard({
   presetCategory?: string;
   onClose: () => void;
 }) {
-  const { user, ready } = useAuth();
+  const { user, me, ready, refreshMe } = useAuth();
   const [mode, setMode] = useState<Mode>(presetProfileId ? 'existing' : 'pick');
   const [step, setStep] = useState<1 | 2 | 3 | 4>(presetProfileId ? 2 : 1);
 
@@ -42,7 +42,10 @@ export default function BidWizard({
 
   const [suggested, setSuggested] = useState<SuggestedBid | null>(null);
   const [amountDop, setAmountDop] = useState(200);
-  const [method, setMethod] = useState<'bank_transfer' | 'paypal'>('bank_transfer');
+  const [method, setMethod] = useState<'bank_transfer' | 'paypal' | 'credit'>('bank_transfer');
+
+  const credit = me?.creditBalanceDop ?? 0;
+  const canUseCredit = credit >= amountDop && amountDop > 0;
 
   const [bidId, setBidId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +130,12 @@ export default function BidWizard({
         auth: true,
       });
       setBidId(bid.id);
-      setStep(3);
+      if (method === 'credit') {
+        await refreshMe();
+        setStep(4); // pago con saldo → puja ya verificada
+      } else {
+        setStep(3);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -291,6 +299,19 @@ export default function BidWizard({
                 🌎 PayPal
                 <span className="mt-0.5 block text-[11px] text-white/40">Se cobra {formatUSD(usd)}</span>
               </button>
+              {credit > 0 && (
+                <button
+                  onClick={() => canUseCredit && setMethod('credit')}
+                  disabled={!canUseCredit}
+                  className={`col-span-2 rounded-xl border p-3 text-left text-sm disabled:opacity-50 ${method === 'credit' ? 'border-gold/50 bg-gold/10' : 'border-white/10'}`}
+                >
+                  💳 Saldo por referidos
+                  <span className="mt-0.5 block text-[11px] text-white/40">
+                    Disponible: {formatDOP(credit)}
+                    {!canUseCredit && amountDop > 0 ? ' · no cubre este monto' : ' · anúnciate gratis'}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -319,10 +340,15 @@ export default function BidWizard({
             </button>
             <button
               onClick={createBid}
-              disabled={creating || amountDop < (suggested?.minimum ?? 100) || !profileId}
+              disabled={
+                creating ||
+                amountDop < (suggested?.minimum ?? 100) ||
+                !profileId ||
+                (method === 'credit' && !canUseCredit)
+              }
               className="btn-gold flex-1"
             >
-              {creating ? 'Creando…' : 'Continuar'}
+              {creating ? 'Creando…' : method === 'credit' ? 'Pagar con saldo' : 'Continuar'}
             </button>
           </div>
         </div>

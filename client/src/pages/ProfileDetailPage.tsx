@@ -1,24 +1,30 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import Spinner from '../components/common/Spinner';
 import { formatDOP } from '../lib/format';
 import { whatsappLink, avatarFallback } from '../lib/share';
+import { googleDirectionsUrl, wazeUrl } from '../lib/geo';
 import { useShell } from '../hooks/useShell';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
 
 interface Detail {
   id: string;
+  ownerUserId: string | null;
   name: string;
   handle: string;
   avatarUrl: string | null;
   bio: string | null;
   tagline: string | null;
+  subcategory: string | null;
   whatsapp: string | null;
   instagramUrl: string | null;
   websiteUrl: string | null;
   city: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   categoryName: string;
 }
 
@@ -35,7 +41,7 @@ export default function ProfileDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const { openBid } = useShell();
   const { ids, toggle } = useFavorites();
-  const { user } = useAuth();
+  const { user, me } = useAuth();
 
   useEffect(() => {
     api<Detail>(`/profiles/${id}`)
@@ -50,6 +56,7 @@ export default function ProfileDetailPage() {
   if (!profile) return <Spinner />;
 
   const total = bids.reduce((s, b) => s + Number(b.amountDop), 0);
+  const isOwner = Boolean(me && profile.ownerUserId === me.id);
 
   return (
     <div className="space-y-4">
@@ -64,13 +71,23 @@ export default function ProfileDetailPage() {
             <h1 className="truncate text-lg font-extrabold">{profile.name}</h1>
             {profile.tagline && <p className="text-sm text-white/70">{profile.tagline}</p>}
             <p className="truncate text-xs text-white/40">
-              @{profile.handle} · {profile.categoryName}
+              {profile.subcategory ? `${profile.subcategory} · ` : ''}
+              {profile.categoryName}
               {profile.city ? ` · ${profile.city}` : ''}
             </p>
           </div>
         </div>
+
+        {profile.address && (
+          <p className="mt-2 text-xs text-white/50">📍 {profile.address}</p>
+        )}
         {profile.bio && profile.bio !== profile.tagline && (
           <p className="mt-3 text-sm text-white/60">{profile.bio}</p>
+        )}
+        {isOwner && (
+          <Link to="/perfil" className="mt-3 block text-center text-xs text-gold underline">
+            ✎ Editar mi negocio (nombre, enlaces, ubicación)
+          </Link>
         )}
         <div className="mt-3 space-y-2">
           <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
@@ -116,6 +133,26 @@ export default function ProfileDetailPage() {
               </button>
             )}
           </div>
+          {profile.latitude != null && profile.longitude != null && (
+            <div className="flex gap-1.5">
+              <a
+                href={googleDirectionsUrl(profile.latitude, profile.longitude)}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-ghost flex-1 !py-2 text-xs"
+              >
+                📍 Google Maps
+              </a>
+              <a
+                href={wazeUrl(profile.latitude, profile.longitude)}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-ghost flex-1 !py-2 text-xs"
+              >
+                Waze
+              </a>
+            </div>
+          )}
         </div>
       </div>
 

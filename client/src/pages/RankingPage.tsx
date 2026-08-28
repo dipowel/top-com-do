@@ -13,9 +13,10 @@ export default function RankingPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-extrabold">Ranking de visibilidad</h1>
+        <h1 className="text-xl font-extrabold">El directorio #1 de RD</h1>
         <p className="text-xs text-white/45">
-          Datos en vivo desde la base de datos · se actualiza solo
+          El negocio en el puesto #1 de cada categoría es el líder verificado y más cercano ·
+          datos en vivo
         </p>
       </div>
 

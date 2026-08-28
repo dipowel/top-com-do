@@ -14,9 +14,10 @@ import {
 
 // ---------------- Enums ----------------
 export const userRole = pgEnum('user_role', ['user', 'admin', 'superadmin']);
-export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal']);
+export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal', 'credit']);
 export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected']);
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
+export const referralStatus = pgEnum('referral_status', ['pending', 'eligible', 'approved', 'rejected']);
 
 // ---------------- Tablas ----------------
 export const users = pgTable('users', {
@@ -27,6 +28,9 @@ export const users = pgTable('users', {
   photoUrl: text('photo_url'),
   whatsapp: text('whatsapp'),
   role: userRole('role').notNull().default('user'),
+  referralCode: text('referral_code').unique(),
+  referredByCode: text('referred_by_code'),
+  creditBalanceDop: numeric('credit_balance_dop', { precision: 12, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -50,11 +54,15 @@ export const profiles = pgTable(
     handle: text('handle').notNull().unique(),
     avatarUrl: text('avatar_url'),
     bio: text('bio'),
-    tagline: text('tagline'), // mensaje corto destacable (<= 60 chars)
+    tagline: text('tagline'),
+    subcategory: text('subcategory'),
     whatsapp: text('whatsapp'),
     instagramUrl: text('instagram_url'),
     websiteUrl: text('website_url'),
     city: text('city'),
+    address: text('address'),
+    latitude: numeric('latitude', { precision: 10, scale: 7 }),
+    longitude: numeric('longitude', { precision: 10, scale: 7 }),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -101,6 +109,7 @@ export const bids = pgTable(
     byProfile: index('bids_profile_idx').on(t.profileId),
     byRound: index('bids_round_idx').on(t.roundId),
     byStatus: index('bids_status_idx').on(t.status),
+    byUser: index('bids_user_idx').on(t.userId),
   }),
 );
 
@@ -157,6 +166,42 @@ export const favorites = pgTable(
   }),
 );
 
+// ---------------- Referidos ----------------
+export const referrals = pgTable(
+  'referrals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    referrerUserId: uuid('referrer_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    referredUserId: uuid('referred_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: referralStatus('status').notNull().default('pending'),
+    bonusDop: numeric('bonus_dop', { precision: 12, scale: 2 }).notNull().default('100'),
+    triggeringBidId: uuid('triggering_bid_id').references(() => bids.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+  },
+  (t) => ({
+    uniqReferred: uniqueIndex('referrals_referred_uniq').on(t.referredUserId),
+    byReferrer: index('referrals_referrer_idx').on(t.referrerUserId),
+  }),
+);
+
+export const creditTransactions = pgTable('credit_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  amountDop: numeric('amount_dop', { precision: 12, scale: 2 }).notNull(), // + suma, - resta
+  type: text('type').notNull(), // referral_bonus | bid_payment | admin_adjust
+  refId: text('ref_id'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const auditLog = pgTable('audit_log', {
   id: uuid('id').primaryKey().defaultRandom(),
   actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -172,3 +217,4 @@ export type Profile = typeof profiles.$inferSelect;
 export type Bid = typeof bids.$inferSelect;
 export type Round = typeof rounds.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
+export type Referral = typeof referrals.$inferSelect;

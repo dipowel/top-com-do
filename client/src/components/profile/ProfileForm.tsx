@@ -2,26 +2,36 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useCategories } from '../../hooks/useCategories';
 import { fileToLogoDataUrl } from '../../lib/image';
 import { avatarFallback } from '../../lib/share';
+import { getCurrentPosition } from '../../lib/geo';
+import { subcategoriesFor } from '@shared/categories';
 
 export interface ProfileFormValue {
   name: string;
   categorySlug: string;
+  subcategory: string;
   tagline: string;
   whatsapp: string;
   instagramUrl: string;
   websiteUrl: string;
   city: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
   avatarUrl: string;
 }
 
 export const emptyProfileForm: ProfileFormValue = {
   name: '',
   categorySlug: '',
+  subcategory: '',
   tagline: '',
   whatsapp: '',
   instagramUrl: '',
   websiteUrl: '',
   city: '',
+  address: '',
+  latitude: null,
+  longitude: null,
   avatarUrl: '',
 };
 
@@ -45,7 +55,11 @@ export default function ProfileForm({
   const cats = useCategories();
   const fileRef = useRef<HTMLInputElement>(null);
   const [imgBusy, setImgBusy] = useState(false);
+  const [gpsBusy, setGpsBusy] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const set = (patch: Partial<ProfileFormValue>) => onChange({ ...value, ...patch });
+
+  const subs = subcategoriesFor(value.categorySlug);
 
   async function pickLogo(file: File) {
     setImgBusy(true);
@@ -55,6 +69,19 @@ export default function ProfileForm({
       /* ignore */
     } finally {
       setImgBusy(false);
+    }
+  }
+
+  async function captureGps() {
+    setGpsBusy(true);
+    setGpsError(null);
+    try {
+      const c = await getCurrentPosition();
+      set({ latitude: c.latitude, longitude: c.longitude });
+    } catch (e) {
+      setGpsError((e as Error).message);
+    } finally {
+      setGpsBusy(false);
     }
   }
 
@@ -102,23 +129,41 @@ export default function ProfileForm({
         />
       </div>
 
-      <div>
-        <label className="text-xs text-white/50">Categoría</label>
-        <select
-          required
-          className="input mt-1"
-          value={value.categorySlug}
-          onChange={(e) => set({ categorySlug: e.target.value })}
-        >
-          <option value="">Selecciona…</option>
-          {cats
-            .filter((c) => c.slug !== 'todo-rd')
-            .map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="text-xs text-white/50">Categoría</label>
+          <select
+            required
+            className="input mt-1"
+            value={value.categorySlug}
+            onChange={(e) => set({ categorySlug: e.target.value, subcategory: '' })}
+          >
+            <option value="">Selecciona…</option>
+            {cats
+              .filter((c) => c.slug !== 'todo-rd')
+              .map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-white/50">Rubro específico</label>
+          <select
+            className="input mt-1"
+            value={value.subcategory}
+            disabled={!subs.length}
+            onChange={(e) => set({ subcategory: e.target.value })}
+          >
+            <option value="">{subs.length ? 'Selecciona…' : '—'}</option>
+            {subs.map((s) => (
+              <option key={s} value={s}>
+                {s}
               </option>
             ))}
-        </select>
+          </select>
+        </div>
       </div>
 
       <div>
@@ -167,11 +212,47 @@ export default function ProfileForm({
         </div>
       </div>
 
-      <div>
-        <label className="text-xs text-white/50">Ciudad (opcional)</label>
+      {/* Ubicación */}
+      <div className="glass p-3">
+        <label className="text-xs text-white/50">Ubicación del local (para “Cómo llegar”)</label>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={captureGps}
+            disabled={gpsBusy}
+            className={value.latitude != null ? 'btn-emerald !py-1.5 text-xs' : 'btn-ghost !py-1.5 text-xs'}
+          >
+            {gpsBusy
+              ? 'Ubicando…'
+              : value.latitude != null
+                ? '✓ Ubicación capturada'
+                : '📍 Capturar mi ubicación GPS'}
+          </button>
+          {value.latitude != null && (
+            <>
+              <span className="text-[11px] text-white/40">
+                {value.latitude.toFixed(5)}, {value.longitude?.toFixed(5)}
+              </span>
+              <button
+                type="button"
+                onClick={() => set({ latitude: null, longitude: null })}
+                className="text-[11px] text-white/40 underline"
+              >
+                quitar
+              </button>
+            </>
+          )}
+        </div>
+        {gpsError && <p className="mt-1 text-[11px] text-red-400">{gpsError}</p>}
         <input
-          className="input mt-1"
-          placeholder="Santo Domingo"
+          className="input mt-2"
+          placeholder="Dirección / referencia (ej. Av. 27 de Febrero #100, Santo Domingo)"
+          value={value.address}
+          onChange={(e) => set({ address: e.target.value })}
+        />
+        <input
+          className="input mt-2"
+          placeholder="Ciudad"
           value={value.city}
           onChange={(e) => set({ city: e.target.value })}
         />
@@ -199,17 +280,52 @@ function normalizeWebsite(raw: string): string | undefined {
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 }
 
+/** Carga un perfil existente (DTO de la API) en el formulario para editarlo. */
+export function profileToFormValue(p: {
+  name?: string;
+  categorySlug?: string | null;
+  subcategory?: string | null;
+  tagline?: string | null;
+  whatsapp?: string | null;
+  instagramUrl?: string | null;
+  websiteUrl?: string | null;
+  city?: string | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  avatarUrl?: string | null;
+}): ProfileFormValue {
+  return {
+    name: p.name ?? '',
+    categorySlug: p.categorySlug ?? '',
+    subcategory: p.subcategory ?? '',
+    tagline: p.tagline ?? '',
+    whatsapp: p.whatsapp ?? '',
+    instagramUrl: p.instagramUrl ?? '',
+    websiteUrl: p.websiteUrl ?? '',
+    city: p.city ?? '',
+    address: p.address ?? '',
+    latitude: p.latitude ?? null,
+    longitude: p.longitude ?? null,
+    avatarUrl: p.avatarUrl ?? '',
+  };
+}
+
 /** Convierte el formulario al payload de POST /api/profiles (omite vacíos). */
 export function profileFormToPayload(v: ProfileFormValue) {
   const clean = (s: string) => (s.trim() ? s.trim() : undefined);
   return {
     name: v.name.trim(),
     categorySlug: v.categorySlug,
+    subcategory: clean(v.subcategory),
     tagline: clean(v.tagline),
     whatsapp: clean(v.whatsapp),
     instagramUrl: normalizeInstagram(v.instagramUrl),
     websiteUrl: normalizeWebsite(v.websiteUrl),
     city: clean(v.city),
+    address: clean(v.address),
+    latitude: v.latitude ?? undefined,
+    longitude: v.longitude ?? undefined,
     avatarUrl: clean(v.avatarUrl),
   };
 }

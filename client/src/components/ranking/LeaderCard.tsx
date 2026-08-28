@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { RankingEntry } from '@shared/types';
 import { formatDOP } from '../../lib/format';
 import { whatsappLink, avatarFallback } from '../../lib/share';
+import { googleDirectionsUrl } from '../../lib/geo';
 import { PositionBadge, CrownBadge } from './PositionBadge';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useAuth } from '../../hooks/useAuth';
@@ -43,7 +44,9 @@ export default function LeaderCard({
             <div className="truncate text-xs text-white/60">{p.tagline}</div>
           ) : null}
           <div className="truncate text-[11px] text-white/40">
-            @{p.handle} · {p.categoryName}
+            {p.subcategory ? `${p.subcategory} · ` : ''}
+            {p.categoryName}
+            {p.city ? ` · ${p.city}` : ''}
           </div>
         </div>
         <div className="text-right">
@@ -89,6 +92,16 @@ export default function LeaderCard({
               className="btn-ghost min-w-[64px] flex-1 !px-2 !py-1.5 text-[11px]"
             >
               Web
+            </a>
+          )}
+          {p.latitude != null && p.longitude != null && (
+            <a
+              href={googleDirectionsUrl(p.latitude, p.longitude)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-ghost min-w-[92px] flex-1 !px-2 !py-1.5 text-[11px]"
+            >
+              📍 Cómo llegar
             </a>
           )}
           {user && (

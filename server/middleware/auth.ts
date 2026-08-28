@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { users } from '../../shared/schema';
 import { verifyIdToken } from '../lib/firebaseAuth';
+import { generateReferralCode } from '../lib/rewards';
 import { HttpError } from './errorHandler';
 
 export interface AuthUser {
@@ -11,6 +12,8 @@ export interface AuthUser {
   displayName: string | null;
   photoUrl: string | null;
   role: 'user' | 'admin' | 'superadmin';
+  referralCode: string | null;
+  creditBalanceDop: number;
 }
 
 declare global {
@@ -58,6 +61,7 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
         displayName: decoded.name ?? null,
         photoUrl: decoded.picture ?? null,
         role: isSuper ? 'superadmin' : 'user',
+        referralCode: generateReferralCode(email),
       })
       .onConflictDoUpdate({
         target: users.email,
@@ -75,12 +79,24 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
     row = updated[0]!;
   }
 
+  // Usuarios antiguos sin código de referido
+  if (!row.referralCode) {
+    const updated = await db
+      .update(users)
+      .set({ referralCode: generateReferralCode(row.email) })
+      .where(eq(users.id, row.id))
+      .returning();
+    row = updated[0]!;
+  }
+
   return {
     id: row.id,
     email: row.email,
     displayName: row.displayName,
     photoUrl: row.photoUrl,
     role: row.role,
+    referralCode: row.referralCode,
+    creditBalanceDop: Number(row.creditBalanceDop),
   };
 }
 

@@ -9,13 +9,16 @@ import {
   paymentReceipts,
   bankAccounts,
   auditLog,
+  referrals,
 } from '../../shared/schema';
+import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { resetRound, getActiveRound } from '../lib/rounds';
 import { getRankings } from '../lib/rankings';
 import { audit } from '../lib/audit';
+import { onBidVerified, approveReferral, rejectReferral, moveCredit } from '../lib/rewards';
 
 const r = Router();
 r.use(requireAdmin);
@@ -32,10 +35,15 @@ r.get(
       .select({ s: sql<string>`coalesce(sum(${bids.amountDop}),0)` })
       .from(bids)
       .where(and(eq(bids.status, 'verified'), eq(bids.roundId, round.id)));
+    const refs = await db
+      .select({ n: sql<string>`count(*)` })
+      .from(referrals)
+      .where(eq(referrals.status, 'eligible'));
     res.json({
       round,
       pendingCount: Number(pending[0]?.n ?? 0),
       verifiedTotal: Number(verified[0]?.s ?? 0),
+      eligibleReferrals: Number(refs[0]?.n ?? 0),
     });
   }),
 );
@@ -135,8 +143,81 @@ r.post(
       .where(eq(bids.id, req.params.id))
       .returning();
 
+    // Si se verifica y el que puja fue referido, marca el referido como "elegible"
+    // (NO acredita nada: el admin debe aprobarlo aparte en la pestaña Referidos).
+    if (status === 'verified') {
+      await onBidVerified(req.params.id);
+    }
+
     await audit(req.user!.id, `bid.${status}`, 'bid', req.params.id, { notes });
     res.json({ bid: { ...updated[0], amountDop: Number(updated[0]!.amountDop) } });
+  }),
+);
+
+// ---------------- Referidos ----------------
+r.get(
+  '/referrals',
+  ah(async (_req, res) => {
+    const referrer = alias(users, 'referrer');
+    const referred = alias(users, 'referred');
+    const rows = await db
+      .select({
+        id: referrals.id,
+        status: referrals.status,
+        bonusDop: referrals.bonusDop,
+        createdAt: referrals.createdAt,
+        approvedAt: referrals.approvedAt,
+        referrerEmail: referrer.email,
+        referrerName: referrer.displayName,
+        referredEmail: referred.email,
+        referredName: referred.displayName,
+        verifiedBids: sql<string>`(
+          select count(*) from ${bids}
+          where ${bids.userId} = ${referrals.referredUserId}
+          and ${bids.status} = 'verified'
+          and ${bids.amountDop} >= 100
+        )`,
+      })
+      .from(referrals)
+      .leftJoin(referrer, eq(referrer.id, referrals.referrerUserId))
+      .leftJoin(referred, eq(referred.id, referrals.referredUserId))
+      .orderBy(desc(referrals.createdAt));
+    res.json(
+      rows.map((x) => ({ ...x, bonusDop: Number(x.bonusDop), verifiedBids: Number(x.verifiedBids) })),
+    );
+  }),
+);
+
+r.post(
+  '/referrals/:id/approve',
+  ah(async (req, res) => {
+    await approveReferral(req.params.id, req.user!.id).catch((e) => {
+      throw new HttpError(400, (e as Error).message);
+    });
+    res.json({ ok: true });
+  }),
+);
+
+r.post(
+  '/referrals/:id/reject',
+  ah(async (req, res) => {
+    await rejectReferral(req.params.id, req.user!.id);
+    res.json({ ok: true });
+  }),
+);
+
+/** Ajuste manual de saldo de un usuario (por email). */
+r.post(
+  '/credit-adjust',
+  ah(async (req, res) => {
+    const { email, amountDop, note } = z
+      .object({ email: z.string().email(), amountDop: z.number(), note: z.string().max(200).optional() })
+      .parse(req.body);
+    const u = (await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1))[0];
+    if (!u) throw new HttpError(404, 'Usuario no encontrado');
+    await moveCredit(u.id, amountDop, 'admin_adjust', null, note || 'Ajuste manual del admin');
+    await audit(req.user!.id, 'credit.adjust', 'user', u.id, { amountDop, note });
+    res.json({ ok: true });
   }),
 );
 

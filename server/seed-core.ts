@@ -2,17 +2,7 @@ import { eq, inArray, notInArray } from 'drizzle-orm';
 import { db } from './db';
 import { bankAccounts, bids, categories, profiles, users } from '../shared/schema';
 import { getActiveRound } from './lib/rounds';
-
-/** Pestañas oficiales del ranking. `todo-rd` es el ranking general. */
-const CATEGORIES: Array<{ slug: string; name: string; sortOrder: number }> = [
-  { slug: 'todo-rd', name: '🔥 Todo RD', sortOrder: 0 },
-  { slug: 'politicos-2028', name: '🏛️ Políticos 2028', sortOrder: 1 },
-  { slug: 'comida', name: '🍗 Comida y Gastronomía', sortOrder: 2 },
-  { slug: 'influencers', name: '🎙️ Influencers y Medios', sortOrder: 3 },
-  { slug: 'negocios', name: '🏪 Negocios y Servicios', sortOrder: 4 },
-];
-const CANONICAL_SLUGS = CATEGORIES.map((c) => c.slug);
-const CATCH_ALL = 'negocios';
+import { CATEGORY_DEFS, CATEGORY_SLUGS, CATCH_ALL_SLUG } from '../shared/categories';
 
 const BANKS = [
   {
@@ -57,44 +47,74 @@ const DEMO_PROFILES: Array<{
   name: string;
   handle: string;
   category: string;
+  subcategory: string;
   city: string;
   tagline: string;
   bidsDop: number[];
 }> = [
-  { name: 'Dipowel Rent Car', handle: 'dipowelrentcar', category: 'negocios', city: 'Santo Domingo', tagline: 'La mejor Rent Car de República Dominicana', bidsDop: [300, 225] },
-  { name: 'Punto Parrillada', handle: 'puntoparrillada', category: 'comida', city: 'Santo Domingo Este', tagline: 'Reserva u ordena en línea y acumula puntos', bidsDop: [250, 150] },
-  { name: 'La Cuevita del Sabor', handle: 'lacuevita', category: 'comida', city: 'Santo Domingo', tagline: 'El mejor mofongo de la capital', bidsDop: [5000, 3500] },
-  { name: 'Kelvin Influencer', handle: 'kelvinrd', category: 'influencers', city: 'Santo Domingo', tagline: 'Comedia y lifestyle · 1.2M seguidores', bidsDop: [12000, 8000] },
-  { name: 'Dra. Peña 2028', handle: 'drapena2028', category: 'politicos-2028', city: 'Nacional', tagline: 'Propuesta joven para el país', bidsDop: [20000, 10000] },
-  { name: 'Barbería El Corte Fino', handle: 'cortefino', category: 'negocios', city: 'Santo Domingo Este', tagline: 'Fades y diseños · reserva por WhatsApp', bidsDop: [3000] },
+  { name: 'Dipowel Rent Car', handle: 'dipowelrentcar', category: 'automotriz', subcategory: 'Rent a Car', city: 'Santo Domingo', tagline: 'La mejor Rent Car de República Dominicana', bidsDop: [300, 225] },
+  { name: 'Pollo Rey del Sabor', handle: 'polloreysabor', category: 'gastronomia', subcategory: 'Pica Pollos', city: 'Santiago', tagline: 'El pica pollo #1 del Cibao', bidsDop: [500, 300] },
+  { name: 'iStore RD', handle: 'istorerd', category: 'tecnologia', subcategory: 'Tiendas de Celulares / iPhones', city: 'Santo Domingo', tagline: 'iPhones sellados con garantía', bidsDop: [800, 400] },
+  { name: 'Barbería El Corte Fino', handle: 'cortefino', category: 'moda-belleza', subcategory: 'Salones de Belleza y Barbershops', city: 'Santo Domingo Este', tagline: 'Fades y diseños · reserva por WhatsApp', bidsDop: [300] },
+  { name: 'Dra. Peña 2028', handle: 'drapena2028', category: 'politica', subcategory: 'Figuras y Candidatos', city: 'Nacional', tagline: 'Propuesta joven para el país', bidsDop: [2000, 1000] },
 ];
 
-/**
- * Sincroniza categorías (autoritativo), cuentas bancarias y la ronda activa.
- * Idempotente: se puede correr cuantas veces se quiera.
- */
+/** Adivina la categoría de un perfil por palabras clave en su nombre. */
+function guessCategorySlug(name: string): string {
+  const n = name.toLowerCase();
+  const has = (...w: string[]) => w.some((x) => n.includes(x));
+  if (has('rent car', 'rentcar', 'rent a car', 'taller', 'gomera', 'auto', 'motor', 'dealer', 'repuesto'))
+    return 'automotriz';
+  if (has('pollo', 'pica pollo', 'comida', 'restaurant', 'reposter', 'panader', 'parrillada', 'pizza', 'delivery'))
+    return 'gastronomia';
+  if (has('barber', 'salon', 'salón', 'belleza', 'boutique', 'joyer', 'calzado', 'ropa', 'estilista'))
+    return 'moda-belleza';
+  if (has('celular', 'iphone', 'tech', 'tecnolog', 'informat', 'gadget', 'computad', 'electron'))
+    return 'tecnologia';
+  if (has('ferreter', 'muebler', 'hogar', 'plomer', 'electric', 'construc'))
+    return 'hogar';
+  if (has('farmacia', 'clinica', 'clínica', 'medico', 'médico', 'salud', 'dental', 'estetica', 'estética'))
+    return 'salud';
+  if (has('inmobiliar', 'abogad', 'notari', 'contab', 'gestor', 'alquiler', 'villa'))
+    return 'servicios';
+  if (has('2028', 'alcald', 'diputad', 'senador', 'candidat', 'movimiento', 'partido', 'político', 'politico'))
+    return 'politica';
+  return 'servicios';
+}
+
+/** Sincroniza categorías (autoritativo), cuentas bancarias y la ronda activa. */
 export async function seedBase(): Promise<void> {
-  for (const c of CATEGORIES) {
+  for (const c of CATEGORY_DEFS) {
     await db
       .insert(categories)
-      .values(c)
+      .values({ slug: c.slug, name: c.name, sortOrder: c.sortOrder })
       .onConflictDoUpdate({
         target: categories.slug,
         set: { name: c.name, sortOrder: c.sortOrder, isActive: true },
       });
   }
 
-  // Reasigna perfiles de categorías viejas a la catch-all y desactiva las viejas.
-  const canon = await db.select().from(categories).where(inArray(categories.slug, CANONICAL_SLUGS));
-  const catchAllId = canon.find((c) => c.slug === CATCH_ALL)?.id;
+  const canon = await db.select().from(categories).where(inArray(categories.slug, CATEGORY_SLUGS));
+  const bySlug = new Map(canon.map((c) => [c.slug, c.id]));
+  const catchAllId = bySlug.get(CATCH_ALL_SLUG);
+
   if (catchAllId) {
+    // Reasigna cada perfil de una categoría vieja: primero por nombre/rubro, luego comodín.
     const orphanCats = await db
       .select({ id: categories.id })
       .from(categories)
-      .where(notInArray(categories.slug, CANONICAL_SLUGS));
+      .where(notInArray(categories.slug, CATEGORY_SLUGS));
     if (orphanCats.length) {
       const orphanIds = orphanCats.map((c) => c.id);
-      await db.update(profiles).set({ categoryId: catchAllId }).where(inArray(profiles.categoryId, orphanIds));
+      const stranded = await db
+        .select({ id: profiles.id, name: profiles.name })
+        .from(profiles)
+        .where(inArray(profiles.categoryId, orphanIds));
+      for (const p of stranded) {
+        const slug = guessCategorySlug(p.name);
+        const target = bySlug.get(slug) ?? catchAllId;
+        await db.update(profiles).set({ categoryId: target }).where(eq(profiles.id, p.id));
+      }
       await db.update(categories).set({ isActive: false }).where(inArray(categories.id, orphanIds));
     }
   }
@@ -105,13 +125,11 @@ export async function seedBase(): Promise<void> {
   await getActiveRound();
 }
 
-/** Datos de demostración para ver el ranking en vivo (solo si no hay perfiles). */
 export async function seedDemo(): Promise<void> {
   const anyProfile = await db.select({ id: profiles.id }).from(profiles).limit(1);
   if (anyProfile.length) return;
 
   const round = await getActiveRound();
-
   const demoUser = await db
     .insert(users)
     .values({ firebaseUid: 'demo-seed-user', email: 'demo@top.com.do', displayName: 'Usuario Demo', role: 'user' })
@@ -130,6 +148,7 @@ export async function seedDemo(): Promise<void> {
         name: p.name,
         handle: p.handle,
         categoryId: cat[0].id,
+        subcategory: p.subcategory,
         city: p.city,
         tagline: p.tagline,
         bio: p.tagline,

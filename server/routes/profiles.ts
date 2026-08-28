@@ -12,18 +12,28 @@ const r = Router();
 
 const profileColumns = {
   id: profiles.id,
+  ownerUserId: profiles.ownerUserId,
   name: profiles.name,
   handle: profiles.handle,
   avatarUrl: profiles.avatarUrl,
   bio: profiles.bio,
   tagline: profiles.tagline,
+  subcategory: profiles.subcategory,
   whatsapp: profiles.whatsapp,
   instagramUrl: profiles.instagramUrl,
   websiteUrl: profiles.websiteUrl,
   city: profiles.city,
+  address: profiles.address,
+  latitude: profiles.latitude,
+  longitude: profiles.longitude,
   categorySlug: categories.slug,
   categoryName: categories.name,
 };
+
+function numOrNull(v: unknown): number | null {
+  if (v === null || v === undefined) return v as null;
+  return Number(v);
+}
 
 r.get(
   '/',
@@ -40,7 +50,7 @@ r.get(
         ),
       )
       .orderBy(desc(profiles.createdAt));
-    res.json(rows);
+    res.json(rows.map((x) => ({ ...x, latitude: numOrNull(x.latitude), longitude: numOrNull(x.longitude) })));
   }),
 );
 
@@ -63,12 +73,16 @@ const createSchema = z.object({
     .regex(/^[a-z0-9_.-]+$/i, 'Solo letras, números, punto, guion y guion bajo')
     .optional(),
   categorySlug: z.string().min(1),
+  subcategory: z.string().max(60).optional(),
   tagline: z.string().max(60).optional(),
   bio: z.string().max(400).optional(),
   whatsapp: z.string().max(30).optional(),
   instagramUrl: linkValue.optional(),
   websiteUrl: linkValue.optional(),
   city: z.string().max(60).optional(),
+  address: z.string().max(200).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   avatarUrl: imageValue.optional(),
 });
 
@@ -107,12 +121,16 @@ r.post(
         name: body.name,
         handle,
         categoryId: cat[0].id,
+        subcategory: body.subcategory,
         tagline: body.tagline,
         bio: body.bio ?? body.tagline,
         whatsapp: body.whatsapp,
         instagramUrl: body.instagramUrl,
         websiteUrl: body.websiteUrl,
         city: body.city,
+        address: body.address,
+        latitude: body.latitude?.toFixed(7),
+        longitude: body.longitude?.toFixed(7),
         avatarUrl: body.avatarUrl,
         ownerUserId: req.user!.id,
       })
@@ -133,7 +151,49 @@ r.get(
       .where(eq(profiles.id, req.params.id))
       .limit(1);
     if (!rows[0]) throw new HttpError(404, 'Perfil no encontrado');
-    res.json(rows[0]);
+    res.json({ ...rows[0], latitude: numOrNull(rows[0].latitude), longitude: numOrNull(rows[0].longitude) });
+  }),
+);
+
+const updateSchema = createSchema.partial().omit({ handle: true });
+
+r.patch(
+  '/:id',
+  requireAuth,
+  ah(async (req, res) => {
+    const body = updateSchema.parse(req.body);
+    const existing = await db.select().from(profiles).where(eq(profiles.id, req.params.id)).limit(1);
+    if (!existing[0]) throw new HttpError(404, 'Perfil no encontrado');
+    const isOwner = existing[0].ownerUserId === req.user!.id;
+    const isAdmin = req.user!.role !== 'user';
+    if (!isOwner && !isAdmin) throw new HttpError(403, 'Solo el dueño puede editar este perfil');
+
+    const patch: Record<string, unknown> = {};
+    if (body.name !== undefined) patch.name = body.name;
+    if (body.subcategory !== undefined) patch.subcategory = body.subcategory || null;
+    if (body.tagline !== undefined) patch.tagline = body.tagline || null;
+    if (body.bio !== undefined) patch.bio = body.bio || null;
+    if (body.whatsapp !== undefined) patch.whatsapp = body.whatsapp || null;
+    if (body.instagramUrl !== undefined) patch.instagramUrl = body.instagramUrl || null;
+    if (body.websiteUrl !== undefined) patch.websiteUrl = body.websiteUrl || null;
+    if (body.city !== undefined) patch.city = body.city || null;
+    if (body.address !== undefined) patch.address = body.address || null;
+    if (body.latitude !== undefined) patch.latitude = body.latitude != null ? body.latitude.toFixed(7) : null;
+    if (body.longitude !== undefined) patch.longitude = body.longitude != null ? body.longitude.toFixed(7) : null;
+    if (body.avatarUrl !== undefined) patch.avatarUrl = body.avatarUrl || null;
+    if (body.categorySlug) {
+      const cat = await db.select().from(categories).where(eq(categories.slug, body.categorySlug)).limit(1);
+      if (!cat[0]) throw new HttpError(400, 'Categoría inválida');
+      patch.categoryId = cat[0].id;
+    }
+
+    const updated = await db.update(profiles).set(patch).where(eq(profiles.id, req.params.id)).returning();
+    await audit(req.user!.id, 'profile.update', 'profile', req.params.id, Object.keys(patch));
+    res.json({
+      ...updated[0],
+      latitude: numOrNull(updated[0]!.latitude),
+      longitude: numOrNull(updated[0]!.longitude),
+    });
   }),
 );
 

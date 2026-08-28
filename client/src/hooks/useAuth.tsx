@@ -56,6 +56,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Captura ?ref=CODIGO de la URL y lo guarda hasta que el usuario inicie sesión.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('ref');
+    if (code) {
+      try {
+        localStorage.setItem('pendingRef', code.trim().toUpperCase());
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!auth) {
       setLoading(false);
@@ -66,8 +78,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
-      if (u) await refreshMe();
-      else {
+      if (u) {
+        // Registra al referente si venía un ?ref pendiente
+        let pendingRef: string | null = null;
+        try {
+          pendingRef = localStorage.getItem('pendingRef');
+        } catch {
+          /* ignore */
+        }
+        if (pendingRef) {
+          try {
+            await api('/me/referral', { method: 'POST', body: JSON.stringify({ code: pendingRef }), auth: true });
+          } catch {
+            /* código inválido / ya registrado */
+          }
+          try {
+            localStorage.removeItem('pendingRef');
+          } catch {
+            /* ignore */
+          }
+        }
+        await refreshMe();
+      } else {
         setMe(null);
         setMeError(null);
       }

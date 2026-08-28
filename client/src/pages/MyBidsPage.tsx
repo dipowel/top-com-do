@@ -42,7 +42,7 @@ export default function MyBidsPage() {
           </div>
           <div className="mt-1 flex justify-between text-xs text-white/50">
             <span>
-              {b.method === 'paypal' ? 'PayPal' : 'Transferencia'} ·{' '}
+              {b.method === 'paypal' ? 'PayPal' : b.method === 'credit' ? 'Saldo' : 'Transferencia'} ·{' '}
               {new Date(b.createdAt).toLocaleDateString('es-DO')}
             </span>
             <span className="font-bold text-white">
