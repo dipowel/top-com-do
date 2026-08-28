@@ -4,11 +4,17 @@ import LeaderCard from '../components/ranking/LeaderCard';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
 import { useShell } from '../hooks/useShell';
+import { formatDOP } from '../lib/format';
+
+const MIN_BID = 100;
 
 export default function RankingPage() {
   const [cat, setCat] = useState('todo-rd');
   const { data, loading, error } = useRankings(cat);
   const { openBid } = useShell();
+
+  const leader = data[0];
+  const toLead = leader ? Number(leader.totalDop) + MIN_BID : MIN_BID;
 
   return (
     <div className="space-y-4">
@@ -22,23 +28,39 @@ export default function RankingPage() {
 
       <CategoryTabs value={cat} onChange={setCat} />
 
+      {/* Precio para tomar el puesto #1 — se calcula solo */}
+      {!loading && !error && (
+        <div className="glass overflow-hidden border border-gold/30 shadow-glow">
+          <div className="flex items-center justify-between gap-3 p-3.5">
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-gold/80">
+                Para tomar el puesto #1
+              </div>
+              <div className="text-2xl font-black leading-tight text-gold">{formatDOP(toLead)}</div>
+              <div className="mt-0.5 truncate text-[11px] text-white/45">
+                {leader
+                  ? `El #1 hoy es ${leader.profile.name} con ${formatDOP(Number(leader.totalDop))} · debes pujar por encima`
+                  : `Nadie ha pujado aún · el primero en poner ${formatDOP(MIN_BID)} se lleva el #1`}
+              </div>
+            </div>
+            <button
+              onClick={() => openBid(leader?.profile.id, cat)}
+              className="btn-gold shrink-0 !px-4 !py-2.5 text-xs"
+            >
+              Pujar para liderar
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading && !data.length && <Spinner />}
       {error && (
         <div className="glass p-3 text-xs text-red-300">No se pudo cargar el ranking: {error}</div>
       )}
       {!loading && !data.length && !error && (
-        <div className="glass space-y-3 p-6 text-center text-sm text-white/50">
-          <p>Aún no hay pujas activas en esta categoría.</p>
-          <button onClick={() => openBid(undefined, cat)} className="btn-gold">
-            Sé el #1 — Pujar Ahora
-          </button>
+        <div className="glass p-6 text-center text-sm text-white/50">
+          Aún no hay pujas activas en esta categoría. ¡La posición #1 está libre!
         </div>
-      )}
-
-      {data.length > 0 && (
-        <p className="text-center text-[11px] text-white/40">
-          Para liderar hay que superar la puja del #1 por al menos RD$ 100.
-        </p>
       )}
 
       <div className="space-y-2.5">
