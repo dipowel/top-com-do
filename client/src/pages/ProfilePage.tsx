@@ -25,6 +25,7 @@ interface MyProfile {
   whatsapp: string | null;
   instagramUrl: string | null;
   websiteUrl: string | null;
+  province: string | null;
   city: string | null;
   address: string | null;
   latitude: number | null;

@@ -8,8 +8,9 @@ r.get(
   '/',
   ah(async (req, res) => {
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const province = typeof req.query.province === 'string' ? req.query.province : undefined;
     const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 250);
-    const data = await getRankings(category, limit);
+    const data = await getRankings(category, province, limit);
     res.json(data);
   }),
 );

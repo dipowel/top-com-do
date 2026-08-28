@@ -10,6 +10,7 @@ import {
 import { auth, googleProvider, firebaseReady } from '../lib/firebase';
 import { api } from '../lib/api';
 import { isAdminEmail } from '../lib/admin';
+import { extractRefCode } from '@shared/referral';
 import type { MeResponse } from '@shared/types';
 
 interface AuthContextValue {
@@ -56,12 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Captura ?ref=CODIGO de la URL y lo guarda hasta que el usuario inicie sesión.
+  // Captura ?ref=CODIGO de la URL (validado) y lo guarda hasta que inicie sesión.
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('ref');
+    const code = extractRefCode(window.location.search);
     if (code) {
       try {
-        localStorage.setItem('pendingRef', code.trim().toUpperCase());
+        localStorage.setItem('pendingRef', code);
       } catch {
         /* ignore */
       }

@@ -7,6 +7,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import ProfilePage from './pages/ProfilePage';
 import ProfileDetailPage from './pages/ProfileDetailPage';
 import LoginPage from './pages/LoginPage';
+import NotificationsPage from './pages/NotificationsPage';
 import AdminLayout from './admin/AdminLayout';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/mis-pujas" element={<MyBidsPage />} />
         <Route path="/favoritos" element={<FavoritesPage />} />
         <Route path="/perfil" element={<ProfilePage />} />
+        <Route path="/notificaciones" element={<NotificationsPage />} />
         <Route path="/p/:id" element={<ProfileDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
       </Route>

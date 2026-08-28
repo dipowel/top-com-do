@@ -25,10 +25,12 @@ type Mode = 'pick' | 'existing' | 'new';
 export default function BidWizard({
   presetProfileId,
   presetCategory,
+  presetProvince,
   onClose,
 }: {
   presetProfileId?: string;
   presetCategory?: string;
+  presetProvince?: string;
   onClose: () => void;
 }) {
   const { user, me, ready, refreshMe } = useAuth();
@@ -38,7 +40,11 @@ export default function BidWizard({
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profileId, setProfileId] = useState(presetProfileId ?? '');
   const [query, setQuery] = useState('');
-  const [form, setForm] = useState<ProfileFormValue>({ ...emptyProfileForm, categorySlug: presetCategory && presetCategory !== 'todo-rd' ? presetCategory : '' });
+  const [form, setForm] = useState<ProfileFormValue>({
+    ...emptyProfileForm,
+    categorySlug: presetCategory && presetCategory !== 'todo-rd' ? presetCategory : '',
+    province: presetProvince && presetProvince !== 'todo-rd' ? presetProvince : '',
+  });
 
   const [suggested, setSuggested] = useState<SuggestedBid | null>(null);
   const [amountDop, setAmountDop] = useState(200);
@@ -72,19 +78,21 @@ export default function BidWizard({
   const loadSuggested = useCallback(
     async (pid?: string) => {
       try {
-        const q = pid
-          ? `?profileId=${pid}`
-          : presetCategory
-            ? `?category=${encodeURIComponent(presetCategory)}`
-            : '';
-        const s = await api<SuggestedBid>(`/bids/suggested${q}`);
+        const params = new URLSearchParams();
+        if (pid) params.set('profileId', pid);
+        else {
+          if (presetCategory) params.set('category', presetCategory);
+          if (presetProvince && presetProvince !== 'todo-rd') params.set('province', presetProvince);
+        }
+        const q = params.toString();
+        const s = await api<SuggestedBid>(`/bids/suggested${q ? `?${q}` : ''}`);
         setSuggested(s);
         setAmountDop(s.next);
       } catch {
         setSuggested(null);
       }
     },
-    [presetCategory],
+    [presetCategory, presetProvince],
   );
 
   // Paso 1 (existente): elegir perfil

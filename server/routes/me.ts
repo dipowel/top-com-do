@@ -11,11 +11,14 @@ import {
   users,
   referrals,
   creditTransactions,
+  notifications,
 } from '../../shared/schema';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
+import { markRead } from '../lib/notify';
+import { normalizeRefCode } from '../../shared/referral';
 
 const r = Router();
 r.use(requireAuth);
@@ -24,16 +27,43 @@ r.get('/', (req, res) => {
   res.json(req.user);
 });
 
+/** Mis notificaciones (las últimas 40). */
+r.get(
+  '/notifications',
+  ah(async (req, res) => {
+    const rows = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, req.user!.id))
+      .orderBy(desc(notifications.createdAt))
+      .limit(40);
+    res.json(rows);
+  }),
+);
+
+/** Marca como leídas (todas, o las de `ids`). */
+r.post(
+  '/notifications/read',
+  ah(async (req, res) => {
+    const ids = Array.isArray(req.body?.ids) ? (req.body.ids as string[]) : undefined;
+    await markRead(req.user!.id, ids);
+    res.json({ ok: true });
+  }),
+);
+
 /** Registra quién invitó a este usuario (una sola vez). */
 r.post(
   '/referral',
   ah(async (req, res) => {
-    const { code } = z.object({ code: z.string().min(3).max(20) }).parse(req.body);
+    const raw = z.object({ code: z.string().min(1).max(30) }).parse(req.body).code;
+    const code = normalizeRefCode(raw);
+    if (!code) throw new HttpError(400, 'Código de invitación inválido');
+
     const me = (await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1))[0]!;
     if (me.referredByCode) return res.json({ ok: true, already: true });
 
     const referrer = (
-      await db.select().from(users).where(eq(users.referralCode, code.trim().toUpperCase())).limit(1)
+      await db.select().from(users).where(eq(users.referralCode, code)).limit(1)
     )[0];
     if (!referrer) throw new HttpError(404, 'Código de invitación inválido');
     if (referrer.id === me.id) throw new HttpError(400, 'No puedes usar tu propio código');
@@ -85,6 +115,7 @@ r.get(
         whatsapp: profiles.whatsapp,
         instagramUrl: profiles.instagramUrl,
         websiteUrl: profiles.websiteUrl,
+        province: profiles.province,
         city: profiles.city,
         address: profiles.address,
         latitude: profiles.latitude,

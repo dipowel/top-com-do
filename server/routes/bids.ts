@@ -10,7 +10,8 @@ import { getActiveRound } from '../lib/rounds';
 import { getRankings } from '../lib/rankings';
 import { audit } from '../lib/audit';
 import { moveCredit } from '../lib/rewards';
-import { FX_USD_DOP, usdToDop } from '../../shared/fx';
+import { checkDethronements, notifyAdmins } from '../lib/notify';
+import { FX_USD_DOP, usdToDop, formatDOP } from '../../shared/fx';
 import type { SuggestedBid } from '../../shared/types';
 
 const r = Router();
@@ -29,6 +30,7 @@ r.get(
   ah(async (req, res) => {
     const profileId = typeof req.query.profileId === 'string' ? req.query.profileId : undefined;
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const province = typeof req.query.province === 'string' ? req.query.province : undefined;
 
     let current = 0;
     let scope: SuggestedBid['scope'] = 'global';
@@ -44,9 +46,14 @@ r.get(
       current = Number(rows[0]?.total ?? 0);
       scope = 'profile';
     } else {
-      const ranking = await getRankings(category, 1);
+      const ranking = await getRankings(category, province, 1);
       current = ranking[0]?.totalDop ?? 0;
-      scope = category && category !== 'todo-rd' ? 'category' : 'global';
+      scope =
+        province && province !== 'todo-rd'
+          ? 'province'
+          : category && category !== 'todo-rd'
+            ? 'category'
+            : 'global';
     }
 
     const next = Math.max(current + STEP_DOP, MIN_BID_DOP);
@@ -115,6 +122,17 @@ r.post(
         inserted[0]!.id,
         `Puja pagada con saldo — ${profile[0].name}`,
       );
+      // Puja ya verificada → recalcula #1 y avisa a quien haya sido destronado.
+      await checkDethronements(body.profileId);
+    } else {
+      // Puja pendiente → avisa a los administradores para que la revisen rápido.
+      await notifyAdmins({
+        type: 'admin.new_bid',
+        title: `🔔 Nueva puja: ${formatDOP(amountDop)}`,
+        body: `${profile[0].name} · ${req.user!.email} · ${body.method === 'paypal' ? 'PayPal' : 'transferencia'}. Revísala en Pagos por revisar.`,
+        url: '/admin/comprobantes',
+        meta: { bidId: inserted[0]!.id, profileId: body.profileId },
+      });
     }
 
     await audit(req.user!.id, 'bid.create', 'bid', inserted[0]!.id, {

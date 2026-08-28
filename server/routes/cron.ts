@@ -18,7 +18,7 @@ r.get(
     if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
       throw new HttpError(401, 'No autorizado');
     }
-    const previous = await getRankings('todo-rd', 1);
+    const previous = await getRankings('todo-rd', undefined, 1);
     const round = await resetRound(null);
     await audit(null, 'round.reset.cron', 'round', round.id, {
       previousChampion: previous[0]?.profile.handle ?? null,

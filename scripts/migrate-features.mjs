@@ -25,8 +25,30 @@ const statements = [
   `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS address text`,
   `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS latitude numeric(10,7)`,
   `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS longitude numeric(10,7)`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS province text`,
+  `CREATE INDEX IF NOT EXISTS profiles_province_idx ON profiles (province)`,
 
   `CREATE INDEX IF NOT EXISTS bids_user_idx ON bids (user_id)`,
+
+  `CREATE TABLE IF NOT EXISTS notifications (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     type text NOT NULL,
+     title text NOT NULL,
+     body text NOT NULL,
+     url text,
+     meta jsonb,
+     read_at timestamptz,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, read_at)`,
+
+  `CREATE TABLE IF NOT EXISTS rank_leaders (
+     scope_key text PRIMARY KEY,
+     leader_profile_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+     leader_total_dop numeric(12,2) NOT NULL DEFAULT '0',
+     updated_at timestamptz NOT NULL DEFAULT now()
+   )`,
 
   `CREATE TABLE IF NOT EXISTS referrals (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

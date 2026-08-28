@@ -9,6 +9,8 @@ import { HttpError } from '../middleware/errorHandler';
 import { createOrder, captureOrder } from '../lib/paypal';
 import { dopToUsd } from '../../shared/fx';
 import { audit } from '../lib/audit';
+import { checkDethronements } from '../lib/notify';
+import { onBidVerified } from '../lib/rewards';
 
 const r = Router();
 
@@ -58,15 +60,18 @@ r.post(
       .where(eq(paypalOrders.id, rec[0].id));
 
     if (completed) {
-      await db
+      const updated = await db
         .update(bids)
         .set({
           status: 'verified',
           verifiedAt: new Date(),
           reference: `PayPal ${captureId ?? orderId}`,
         })
-        .where(eq(bids.id, rec[0].bidId));
+        .where(eq(bids.id, rec[0].bidId))
+        .returning();
       await audit(req.user!.id, 'bid.verified.paypal', 'bid', rec[0].bidId, { orderId, captureId });
+      await onBidVerified(rec[0].bidId);
+      if (updated[0]) await checkDethronements(updated[0].profileId);
     }
 
     res.json({ status: capture.status, verified: completed });

@@ -10,10 +10,12 @@ export default function AppShell() {
   const [bidOpen, setBidOpen] = useState(false);
   const [presetProfileId, setPresetProfileId] = useState<string | undefined>(undefined);
   const [presetCategory, setPresetCategory] = useState<string | undefined>(undefined);
+  const [presetProvince, setPresetProvince] = useState<string | undefined>(undefined);
 
-  const openBid = (profileId?: string, category?: string) => {
+  const openBid = (profileId?: string, category?: string, province?: string) => {
     setPresetProfileId(profileId);
     setPresetCategory(category);
+    setPresetProvince(province);
     setBidOpen(true);
   };
 
@@ -29,9 +31,10 @@ export default function AppShell() {
       <BottomNav />
       {bidOpen && (
         <BidWizard
-          key={`${presetProfileId ?? ''}-${presetCategory ?? ''}`}
+          key={`${presetProfileId ?? ''}-${presetCategory ?? ''}-${presetProvince ?? ''}`}
           presetProfileId={presetProfileId}
           presetCategory={presetCategory}
+          presetProvince={presetProvince}
           onClose={() => setBidOpen(false)}
         />
       )}

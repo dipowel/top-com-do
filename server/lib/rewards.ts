@@ -2,6 +2,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { creditTransactions, referrals, users, bids } from '../../shared/schema';
 import { audit } from './audit';
+import { notifyUser } from './notify';
+import { formatDOP } from '../../shared/fx';
 
 export const REFERRAL_BONUS_DOP = 100;
 export const MIN_VALID_BID_DOP = 100;
@@ -81,6 +83,12 @@ export async function approveReferral(referralId: string, adminUserId: string): 
     .set({ status: 'approved', approvedAt: new Date(), approvedByUserId: adminUserId })
     .where(eq(referrals.id, referralId));
   await audit(adminUserId, 'referral.approved', 'referral', referralId, { bonus });
+  await notifyUser(ref[0].referrerUserId, {
+    type: 'referral.credited',
+    title: `💰 Bono de referido acreditado: ${formatDOP(bonus)}`,
+    body: 'Tu invitado hizo una puja válida. Usa el saldo para anunciarte gratis.',
+    url: '/perfil',
+  });
 }
 
 export async function rejectReferral(referralId: string, adminUserId: string): Promise<void> {

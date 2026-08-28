@@ -8,6 +8,7 @@ import BankAccountsEditor from './BankAccountsEditor';
 import RoundsControl from './RoundsControl';
 import AuditLog from './AuditLog';
 import ReferralsQueue from './ReferralsQueue';
+import NotificationBell from '../components/layout/NotificationBell';
 
 const tabs = [
   { to: '', label: 'Resumen', end: true },
@@ -48,9 +49,12 @@ export default function AdminLayout() {
           <img src="/logo.png" alt="Top.com.do" className="h-7 w-auto" />
           <span className="text-sm font-semibold text-white/50">· Panel</span>
         </div>
-        <Link to="/" className="btn-ghost shrink-0 !py-1.5 text-xs">
-          Ver sitio
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <NotificationBell />
+          <Link to="/" className="btn-ghost !py-1.5 text-xs">
+            Ver sitio
+          </Link>
+        </div>
       </div>
 
       {meError && (

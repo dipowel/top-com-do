@@ -19,6 +19,8 @@ import { resetRound, getActiveRound } from '../lib/rounds';
 import { getRankings } from '../lib/rankings';
 import { audit } from '../lib/audit';
 import { onBidVerified, approveReferral, rejectReferral, moveCredit } from '../lib/rewards';
+import { checkDethronements, notifyUser } from '../lib/notify';
+import { formatDOP } from '../../shared/fx';
 
 const r = Router();
 r.use(requireAdmin);
@@ -143,10 +145,28 @@ r.post(
       .where(eq(bids.id, req.params.id))
       .returning();
 
-    // Si se verifica y el que puja fue referido, marca el referido como "elegible"
-    // (NO acredita nada: el admin debe aprobarlo aparte en la pestaña Referidos).
+    const prof = (
+      await db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, bid[0].profileId)).limit(1)
+    )[0];
+
     if (status === 'verified') {
+      // Referido → "elegible" (no acredita: el admin lo libera aparte).
       await onBidVerified(req.params.id);
+      // Recalcula el #1 de cada ámbito y avisa a quien haya sido destronado.
+      await checkDethronements(bid[0].profileId);
+      await notifyUser(bid[0].userId, {
+        type: 'bid.verified',
+        title: `✅ Puja verificada: ${formatDOP(Number(bid[0].amountDop))}`,
+        body: `Tu puja por ${prof?.name ?? 'el perfil'} ya cuenta en el ranking.`,
+        url: `/p/${bid[0].profileId}`,
+      });
+    } else {
+      await notifyUser(bid[0].userId, {
+        type: 'bid.rejected',
+        title: '❌ Puja rechazada',
+        body: `Tu puja por ${prof?.name ?? 'el perfil'} fue rechazada${notes ? `: ${notes}` : ''}.`,
+        url: '/mis-pujas',
+      });
     }
 
     await audit(req.user!.id, `bid.${status}`, 'bid', req.params.id, { notes });
@@ -276,7 +296,7 @@ r.delete(
 r.post(
   '/rounds/reset',
   ah(async (req, res) => {
-    const previous = await getRankings('todo-rd', 1);
+    const previous = await getRankings('todo-rd', undefined, 1);
     const round = await resetRound(req.user!.id);
     await audit(req.user!.id, 'round.reset', 'round', round.id, {
       previousChampion: previous[0]?.profile.handle ?? null,

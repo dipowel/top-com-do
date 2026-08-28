@@ -21,6 +21,8 @@ interface Detail {
   whatsapp: string | null;
   instagramUrl: string | null;
   websiteUrl: string | null;
+  province: string | null;
+  provinceName: string | null;
   city: string | null;
   address: string | null;
   latitude: number | null;
@@ -73,6 +75,7 @@ export default function ProfileDetailPage() {
             <p className="truncate text-xs text-white/40">
               {profile.subcategory ? `${profile.subcategory} · ` : ''}
               {profile.categoryName}
+              {profile.provinceName ? ` · 📍 ${profile.provinceName}` : ''}
               {profile.city ? ` · ${profile.city}` : ''}
             </p>
           </div>

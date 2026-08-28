@@ -30,6 +30,13 @@ export default function ReceiptsQueue() {
 
   useEffect(() => {
     load();
+    const id = window.setInterval(load, 20000); // refresca solo para ver pujas nuevas
+    const onVis = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [load]);
 
   async function decide(bidId: string, status: 'verified' | 'rejected') {

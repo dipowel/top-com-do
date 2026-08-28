@@ -9,6 +9,8 @@ export interface RankingProfile {
   whatsapp: string | null;
   instagramUrl: string | null;
   websiteUrl: string | null;
+  province: string | null;
+  provinceName: string | null;
   city: string | null;
   address: string | null;
   latitude: number | null;
@@ -39,7 +41,18 @@ export interface SuggestedBid {
   minimum: number;
   current: number;
   next: number;
-  scope: 'profile' | 'category' | 'global';
+  scope: 'profile' | 'category' | 'province' | 'global';
+}
+
+export interface NotificationDTO {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  url: string | null;
+  meta: Record<string, unknown> | null;
+  readAt: string | null;
+  createdAt: string;
 }
 
 export interface CategoryDTO {

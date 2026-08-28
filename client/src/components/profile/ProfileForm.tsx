@@ -4,6 +4,7 @@ import { fileToLogoDataUrl } from '../../lib/image';
 import { avatarFallback } from '../../lib/share';
 import { getCurrentPosition } from '../../lib/geo';
 import { subcategoriesFor } from '@shared/categories';
+import { PROVINCE_DEFS } from '@shared/provinces';
 
 export interface ProfileFormValue {
   name: string;
@@ -13,6 +14,7 @@ export interface ProfileFormValue {
   whatsapp: string;
   instagramUrl: string;
   websiteUrl: string;
+  province: string;
   city: string;
   address: string;
   latitude: number | null;
@@ -28,6 +30,7 @@ export const emptyProfileForm: ProfileFormValue = {
   whatsapp: '',
   instagramUrl: '',
   websiteUrl: '',
+  province: '',
   city: '',
   address: '',
   latitude: null,
@@ -244,15 +247,27 @@ export default function ProfileForm({
           )}
         </div>
         {gpsError && <p className="mt-1 text-[11px] text-red-400">{gpsError}</p>}
+        <select
+          className="input mt-2"
+          value={value.province}
+          onChange={(e) => set({ province: e.target.value })}
+        >
+          <option value="">Provincia / demarcación…</option>
+          {PROVINCE_DEFS.filter((p) => p.slug !== 'todo-rd').map((p) => (
+            <option key={p.slug} value={p.slug}>
+              {p.name}
+            </option>
+          ))}
+        </select>
         <input
           className="input mt-2"
-          placeholder="Dirección / referencia (ej. Av. 27 de Febrero #100, Santo Domingo)"
+          placeholder="Dirección / referencia (ej. Av. 27 de Febrero #100)"
           value={value.address}
           onChange={(e) => set({ address: e.target.value })}
         />
         <input
           className="input mt-2"
-          placeholder="Ciudad"
+          placeholder="Ciudad / sector"
           value={value.city}
           onChange={(e) => set({ city: e.target.value })}
         />
@@ -289,6 +304,7 @@ export function profileToFormValue(p: {
   whatsapp?: string | null;
   instagramUrl?: string | null;
   websiteUrl?: string | null;
+  province?: string | null;
   city?: string | null;
   address?: string | null;
   latitude?: number | null;
@@ -303,6 +319,7 @@ export function profileToFormValue(p: {
     whatsapp: p.whatsapp ?? '',
     instagramUrl: p.instagramUrl ?? '',
     websiteUrl: p.websiteUrl ?? '',
+    province: p.province ?? '',
     city: p.city ?? '',
     address: p.address ?? '',
     latitude: p.latitude ?? null,
@@ -322,6 +339,7 @@ export function profileFormToPayload(v: ProfileFormValue) {
     whatsapp: clean(v.whatsapp),
     instagramUrl: normalizeInstagram(v.instagramUrl),
     websiteUrl: normalizeWebsite(v.websiteUrl),
+    province: clean(v.province),
     city: clean(v.city),
     address: clean(v.address),
     latitude: v.latitude ?? undefined,

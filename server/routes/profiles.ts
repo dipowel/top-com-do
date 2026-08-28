@@ -7,6 +7,7 @@ import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
+import { PROVINCE_SLUGS, provinceName } from '../../shared/provinces';
 
 const r = Router();
 
@@ -22,6 +23,7 @@ const profileColumns = {
   whatsapp: profiles.whatsapp,
   instagramUrl: profiles.instagramUrl,
   websiteUrl: profiles.websiteUrl,
+  province: profiles.province,
   city: profiles.city,
   address: profiles.address,
   latitude: profiles.latitude,
@@ -50,7 +52,14 @@ r.get(
         ),
       )
       .orderBy(desc(profiles.createdAt));
-    res.json(rows.map((x) => ({ ...x, latitude: numOrNull(x.latitude), longitude: numOrNull(x.longitude) })));
+    res.json(
+      rows.map((x) => ({
+        ...x,
+        provinceName: x.province ? provinceName(x.province) : null,
+        latitude: numOrNull(x.latitude),
+        longitude: numOrNull(x.longitude),
+      })),
+    );
   }),
 );
 
@@ -79,6 +88,7 @@ const createSchema = z.object({
   whatsapp: z.string().max(30).optional(),
   instagramUrl: linkValue.optional(),
   websiteUrl: linkValue.optional(),
+  province: z.enum(PROVINCE_SLUGS as [string, ...string[]]).optional(),
   city: z.string().max(60).optional(),
   address: z.string().max(200).optional(),
   latitude: z.number().min(-90).max(90).optional(),
@@ -127,6 +137,7 @@ r.post(
         whatsapp: body.whatsapp,
         instagramUrl: body.instagramUrl,
         websiteUrl: body.websiteUrl,
+        province: body.province,
         city: body.city,
         address: body.address,
         latitude: body.latitude?.toFixed(7),
@@ -151,7 +162,12 @@ r.get(
       .where(eq(profiles.id, req.params.id))
       .limit(1);
     if (!rows[0]) throw new HttpError(404, 'Perfil no encontrado');
-    res.json({ ...rows[0], latitude: numOrNull(rows[0].latitude), longitude: numOrNull(rows[0].longitude) });
+    res.json({
+      ...rows[0],
+      provinceName: rows[0].province ? provinceName(rows[0].province) : null,
+      latitude: numOrNull(rows[0].latitude),
+      longitude: numOrNull(rows[0].longitude),
+    });
   }),
 );
 
@@ -176,6 +192,7 @@ r.patch(
     if (body.whatsapp !== undefined) patch.whatsapp = body.whatsapp || null;
     if (body.instagramUrl !== undefined) patch.instagramUrl = body.instagramUrl || null;
     if (body.websiteUrl !== undefined) patch.websiteUrl = body.websiteUrl || null;
+    if (body.province !== undefined) patch.province = body.province || null;
     if (body.city !== undefined) patch.city = body.city || null;
     if (body.address !== undefined) patch.address = body.address || null;
     if (body.latitude !== undefined) patch.latitude = body.latitude != null ? body.latitude.toFixed(7) : null;

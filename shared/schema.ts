@@ -59,6 +59,7 @@ export const profiles = pgTable(
     whatsapp: text('whatsapp'),
     instagramUrl: text('instagram_url'),
     websiteUrl: text('website_url'),
+    province: text('province'), // slug de shared/provinces.ts (demarcación de RD)
     city: text('city'),
     address: text('address'),
     latitude: numeric('latitude', { precision: 10, scale: 7 }),
@@ -68,6 +69,7 @@ export const profiles = pgTable(
   },
   (t) => ({
     byCategory: index('profiles_category_idx').on(t.categoryId),
+    byProvince: index('profiles_province_idx').on(t.province),
   }),
 );
 
@@ -202,6 +204,35 @@ export const creditTransactions = pgTable('credit_transactions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---------------- Notificaciones y estado del ranking ----------------
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(), // rank.dethroned | admin.new_bid | referral.credited | bid.verified | bid.rejected
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    url: text('url'),
+    meta: jsonb('meta'),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byUser: index('notifications_user_idx').on(t.userId, t.readAt),
+  }),
+);
+
+/** #1 actual por ámbito (categoría × provincia|nacional) para detectar destronamientos. */
+export const rankLeaders = pgTable('rank_leaders', {
+  scopeKey: text('scope_key').primaryKey(), // "<categorySlug>:<provinceSlug|national>"
+  leaderProfileId: uuid('leader_profile_id').references(() => profiles.id, { onDelete: 'set null' }),
+  leaderTotalDop: numeric('leader_total_dop', { precision: 12, scale: 2 }).notNull().default('0'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const auditLog = pgTable('audit_log', {
   id: uuid('id').primaryKey().defaultRandom(),
   actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -218,3 +249,4 @@ export type Bid = typeof bids.$inferSelect;
 export type Round = typeof rounds.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

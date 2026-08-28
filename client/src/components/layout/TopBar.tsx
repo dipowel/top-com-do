@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import NotificationBell from './NotificationBell';
 
 export default function TopBar() {
   const { user, me, isAdmin } = useAuth();
@@ -30,7 +31,8 @@ export default function TopBar() {
             </span>
           )}
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <NotificationBell />
           {isAdmin && (
             <Link to="/admin" className="btn-ghost !px-3 !py-1.5 text-xs">
               Admin

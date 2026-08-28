@@ -46,7 +46,7 @@ export default function LeaderCard({
           <div className="truncate text-[11px] text-white/40">
             {p.subcategory ? `${p.subcategory} · ` : ''}
             {p.categoryName}
-            {p.city ? ` · ${p.city}` : ''}
+            {p.provinceName ? ` · 📍 ${p.provinceName}` : p.city ? ` · ${p.city}` : ''}
           </div>
         </div>
         <div className="text-right">
