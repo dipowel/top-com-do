@@ -4,9 +4,8 @@ Plataforma de subastas de visibilidad, ego y marcas para la República Dominican
 
 - **Frontend:** React + Vite + TypeScript + Tailwind (SPA, estética de lujo: fondo `#070b14`,
   cristal esmerilado, acentos dorado / esmeralda, tipografía Plus Jakarta Sans).
-- **Backend:** Express (`server/`) + Drizzle ORM sobre **PostgreSQL**. `server/db.ts` autodetecta:
-  sin `DATABASE_URL` usa **PGlite** (Postgres embebido, cero servicios externos, ideal para desarrollo);
-  con una URL real usa el driver `pg` con SSL (**Supabase**, Neon, RDS, etc.).
+- **Backend:** Express (`server/`) + Drizzle ORM sobre **PostgreSQL** (driver `pg` con SSL —
+  **Supabase**, Neon, RDS, etc.).
 - **Auth:** Firebase Authentication (Google + Email/Password). El servidor verifica los ID tokens
   contra las claves públicas de Google con `jose` — solo necesita `FIREBASE_PROJECT_ID`, sin service account.
 - **Pagos:** Transferencias locales (Banreservas, Banco Popular, BHD, Qik) con comprobante +
@@ -23,7 +22,7 @@ top-com-do/
 ├─ server/               API Express
 │  ├─ server.ts          Entry local (app.listen)
 │  ├─ app.ts             App de Express (rutas + middlewares)
-│  ├─ db.ts              Drizzle + Neon
+│  ├─ db.ts              Drizzle + pg (Pool con SSL)
 │  ├─ seed.ts            Categorías, cuentas bancarias y ronda inicial
 │  ├─ middleware/        noStore · auth (Firebase) · errorHandler
 │  ├─ lib/               rankings · rounds · paypal · storage (Blob) · audit
@@ -48,7 +47,7 @@ top-com-do/
 
 | Servicio | Qué necesitas |
 |---|---|
-| **PostgreSQL** | Opcional en desarrollo (sin `DATABASE_URL` corre PGlite embebido). Para datos reales/compartidos: `DATABASE_URL` de Supabase o Neon. Con Supabase usa el *transaction pooler* (`:6543`); `db:push` cambia solo a `:5432` para migrar. |
+| **PostgreSQL** | `DATABASE_URL` de Supabase o Neon. Con Supabase usa el *transaction pooler* (`:6543`); `db:push` cambia solo a `:5432` para migrar. |
 | **Firebase** | Proyecto web + proveedores Google y Email/Password habilitados. Solo la config web (`VITE_FIREBASE_*`) y `FIREBASE_PROJECT_ID`. **No hace falta service account.** |
 | **PayPal** | App REST (sandbox y live): `client id` y `secret`. |
 | **Vercel Blob** | `BLOB_READ_WRITE_TOKEN` (Storage → Blob en el dashboard de Vercel). |
@@ -57,12 +56,8 @@ top-com-do/
 
 ```bash
 npm install
-cp .env.example .env          # Windows: copy .env.example .env
+cp .env.example .env          # Windows: copy .env.example .env  — completa DATABASE_URL y VITE_FIREBASE_*
 
-# Opción A — sin base de datos externa (PGlite): deja DATABASE_URL vacío o pglite://local
-npm run dev                   # migra + siembra datos demo automáticamente al arrancar
-
-# Opción B — base real (Supabase / Neon): pon la DATABASE_URL en .env, luego
 npm run db:push               # crea las tablas
 npm run seed                  # categorías + cuentas bancarias + ronda activa (solo base)
 npm run seed:demo             # opcional: + 8 perfiles de demostración con pujas

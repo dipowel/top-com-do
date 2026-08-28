@@ -1,12 +1,8 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-
 /**
  * Verificación de ID tokens de Firebase Auth SIN service account.
  * Solo necesita el projectId: valida la firma contra las claves públicas de
- * Google y comprueba issuer/audience. Ideal para serverless (Vercel).
- *
- * Si algún día se necesita el Admin SDK completo (FCM, gestión de usuarios),
- * se puede añadir FIREBASE_SERVICE_ACCOUNT_BASE64, pero para autenticar no hace falta.
+ * Google y comprueba issuer/audience. `jose` se carga de forma perezosa para
+ * no pesar en el arranque de la función serverless.
  */
 export function firebaseProjectId(): string {
   return (
@@ -16,9 +12,11 @@ export function firebaseProjectId(): string {
   );
 }
 
-const JWKS = createRemoteJWKSet(
-  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
-);
+const JWKS_URL =
+  'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let jwks: any;
 
 export interface DecodedIdToken {
   uid: string;
@@ -29,18 +27,24 @@ export interface DecodedIdToken {
 }
 
 export async function verifyIdToken(token: string): Promise<DecodedIdToken> {
+  const { createRemoteJWKSet, jwtVerify } = await import('jose');
+  jwks ??= createRemoteJWKSet(new URL(JWKS_URL));
+
   const projectId = firebaseProjectId();
-  const { payload } = await jwtVerify(token, JWKS, {
+  const { payload } = await jwtVerify(token, jwks, {
     issuer: `https://securetoken.google.com/${projectId}`,
     audience: projectId,
   });
-  const uid = (payload.sub || (payload as Record<string, unknown>).user_id) as string;
+
+  const p = payload as Record<string, unknown>;
+  const uid = (p.sub || p.user_id) as string;
   if (!uid) throw new Error('El token no incluye sub/user_id');
+
   return {
     uid,
-    email: payload.email as string | undefined,
-    name: (payload as Record<string, unknown>).name as string | undefined,
-    picture: (payload as Record<string, unknown>).picture as string | undefined,
+    email: p.email as string | undefined,
+    name: p.name as string | undefined,
+    picture: p.picture as string | undefined,
     aud: String(payload.aud),
   };
 }
