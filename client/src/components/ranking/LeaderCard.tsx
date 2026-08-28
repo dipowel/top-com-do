@@ -54,38 +54,59 @@ export default function LeaderCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button onClick={() => onBid(p.id)} className="btn-gold flex-1 !py-2 text-xs">
+      <div className="mt-3 space-y-2">
+        <button onClick={() => onBid(p.id)} className="btn-gold w-full !py-2.5 text-xs">
           Pujar por {p.name.split(' ')[0]}
         </button>
-        {p.whatsapp && (
-          <a
-            href={whatsappLink(p.whatsapp, `Hola ${p.name}, te vi en Top.com.do`)}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-emerald !py-2 text-xs"
+
+        {/* Acciones secundarias: se reparten y envuelven (2+ por fila en móvil, 1 fila en PC) */}
+        <div className="flex flex-wrap gap-1.5">
+          {p.whatsapp && (
+            <a
+              href={whatsappLink(p.whatsapp, `Hola ${p.name}, te vi en Top.com.do`)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-emerald min-w-[88px] flex-1 !px-2 !py-1.5 text-[11px]"
+            >
+              WhatsApp
+            </a>
+          )}
+          {p.instagramUrl && (
+            <a
+              href={p.instagramUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-ghost min-w-[88px] flex-1 !px-2 !py-1.5 text-[11px]"
+            >
+              Instagram
+            </a>
+          )}
+          {p.websiteUrl && (
+            <a
+              href={p.websiteUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-ghost min-w-[64px] flex-1 !px-2 !py-1.5 text-[11px]"
+            >
+              Web
+            </a>
+          )}
+          {user && (
+            <button
+              onClick={() => toggle(p.id)}
+              className="btn-ghost min-w-[44px] flex-1 !px-2 !py-1.5 text-[11px]"
+              aria-label="Favorito"
+            >
+              {fav ? '★' : '☆'}
+            </button>
+          )}
+          <button
+            onClick={() => setShare(true)}
+            className="btn-ghost min-w-[84px] flex-1 !px-2 !py-1.5 text-[11px]"
           >
-            WhatsApp
-          </a>
-        )}
-        {p.instagramUrl && (
-          <a href={p.instagramUrl} target="_blank" rel="noreferrer" className="btn-ghost !py-2 text-xs">
-            Instagram
-          </a>
-        )}
-        {p.websiteUrl && (
-          <a href={p.websiteUrl} target="_blank" rel="noreferrer" className="btn-ghost !py-2 text-xs">
-            Web
-          </a>
-        )}
-        {user && (
-          <button onClick={() => toggle(p.id)} className="btn-ghost !py-2 text-xs" aria-label="Favorito">
-            {fav ? '★' : '☆'}
+            Compartir
           </button>
-        )}
-        <button onClick={() => setShare(true)} className="btn-ghost !py-2 text-xs">
-          Compartir
-        </button>
+        </div>
       </div>
 
       {share && <ViralCard entry={entry} onClose={() => setShare(false)} />}

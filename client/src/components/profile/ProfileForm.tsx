@@ -142,7 +142,7 @@ export default function ProfileForm({
           <label className="text-xs text-white/50">Instagram</label>
           <input
             className="input mt-1"
-            placeholder="https://instagram.com/…"
+            placeholder="@tumarca  o  instagram.com/tumarca"
             value={value.instagramUrl}
             onChange={(e) => set({ instagramUrl: e.target.value })}
           />
@@ -186,6 +186,19 @@ export default function ProfileForm({
   );
 }
 
+function normalizeInstagram(raw: string): string | undefined {
+  const s = raw.trim();
+  if (!s) return undefined;
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://instagram.com/${s.replace(/^@/, '').replace(/\/+$/, '')}`;
+}
+
+function normalizeWebsite(raw: string): string | undefined {
+  const s = raw.trim();
+  if (!s) return undefined;
+  return /^https?:\/\//i.test(s) ? s : `https://${s}`;
+}
+
 /** Convierte el formulario al payload de POST /api/profiles (omite vacíos). */
 export function profileFormToPayload(v: ProfileFormValue) {
   const clean = (s: string) => (s.trim() ? s.trim() : undefined);
@@ -194,8 +207,8 @@ export function profileFormToPayload(v: ProfileFormValue) {
     categorySlug: v.categorySlug,
     tagline: clean(v.tagline),
     whatsapp: clean(v.whatsapp),
-    instagramUrl: clean(v.instagramUrl),
-    websiteUrl: clean(v.websiteUrl),
+    instagramUrl: normalizeInstagram(v.instagramUrl),
+    websiteUrl: normalizeWebsite(v.websiteUrl),
     city: clean(v.city),
     avatarUrl: clean(v.avatarUrl),
   };

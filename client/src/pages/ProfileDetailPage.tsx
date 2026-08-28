@@ -72,35 +72,50 @@ export default function ProfileDetailPage() {
         {profile.bio && profile.bio !== profile.tagline && (
           <p className="mt-3 text-sm text-white/60">{profile.bio}</p>
         )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={() => openBid(profile.id)} className="btn-gold flex-1">
+        <div className="mt-3 space-y-2">
+          <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
             Pujar por este perfil
           </button>
-          {profile.whatsapp && (
-            <a
-              href={whatsappLink(profile.whatsapp, `Hola ${profile.name}, te vi en Top.com.do`)}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-emerald"
-            >
-              WhatsApp
-            </a>
-          )}
-          {profile.instagramUrl && (
-            <a href={profile.instagramUrl} target="_blank" rel="noreferrer" className="btn-ghost">
-              Instagram
-            </a>
-          )}
-          {profile.websiteUrl && (
-            <a href={profile.websiteUrl} target="_blank" rel="noreferrer" className="btn-ghost">
-              Web
-            </a>
-          )}
-          {user && (
-            <button onClick={() => toggle(profile.id)} className="btn-ghost">
-              {ids.has(profile.id) ? '★' : '☆'}
-            </button>
-          )}
+          <div className="flex flex-wrap gap-1.5">
+            {profile.whatsapp && (
+              <a
+                href={whatsappLink(profile.whatsapp, `Hola ${profile.name}, te vi en Top.com.do`)}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-emerald min-w-[88px] flex-1 !py-2 text-xs"
+              >
+                WhatsApp
+              </a>
+            )}
+            {profile.instagramUrl && (
+              <a
+                href={profile.instagramUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-ghost min-w-[88px] flex-1 !py-2 text-xs"
+              >
+                Instagram
+              </a>
+            )}
+            {profile.websiteUrl && (
+              <a
+                href={profile.websiteUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-ghost min-w-[64px] flex-1 !py-2 text-xs"
+              >
+                Web
+              </a>
+            )}
+            {user && (
+              <button
+                onClick={() => toggle(profile.id)}
+                className="btn-ghost min-w-[44px] flex-1 !py-2 text-xs"
+              >
+                {ids.has(profile.id) ? '★' : '☆'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
