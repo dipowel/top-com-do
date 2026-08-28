@@ -22,11 +22,16 @@ declare global {
   }
 }
 
-function superadminEmails(): string[] {
-  return (process.env.SUPERADMIN_EMAILS || '')
+// Fallback: estos correos son superadmin aunque SUPERADMIN_EMAILS no esté bien
+// configurada en el entorno. SUPERADMIN_EMAILS (coma-separado) los amplía.
+const HARDCODED_SUPERADMINS = ['dpowelsantana15@gmail.com', 'dipowelsantana15@gmail.com'];
+
+function superadminEmails(): Set<string> {
+  const fromEnv = (process.env.SUPERADMIN_EMAILS || '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
+  return new Set([...HARDCODED_SUPERADMINS, ...fromEnv]);
 }
 
 /** Verifica el token de Firebase (si existe) y sincroniza el usuario en Postgres. */
@@ -39,7 +44,7 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
   const email = (decoded.email || '').toLowerCase();
   if (!email) throw new HttpError(401, 'El token no incluye un correo');
 
-  const isSuper = superadminEmails().includes(email);
+  const isSuper = superadminEmails().has(email);
 
   const found = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid)).limit(1);
   let row = found[0];
@@ -56,11 +61,16 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
       })
       .onConflictDoUpdate({
         target: users.email,
-        set: { firebaseUid: decoded.uid, displayName: decoded.name ?? null, photoUrl: decoded.picture ?? null },
+        set: {
+          firebaseUid: decoded.uid,
+          displayName: decoded.name ?? null,
+          photoUrl: decoded.picture ?? null,
+          ...(isSuper ? { role: 'superadmin' as const } : {}),
+        },
       })
       .returning();
     row = inserted[0]!;
-  } else if (isSuper && row.role === 'user') {
+  } else if (isSuper && row.role !== 'superadmin') {
     const updated = await db.update(users).set({ role: 'superadmin' }).where(eq(users.id, row.id)).returning();
     row = updated[0]!;
   }
@@ -77,13 +87,21 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
   loadUser(req)
     .then((user) => {
-      if (!user) throw new HttpError(401, 'Autenticación requerida');
+      if (!user) return next(new HttpError(401, 'Autenticación requerida'));
       req.user = user;
       next();
     })
     .catch((e) => {
       if (e instanceof HttpError) return next(e);
-      next(new HttpError(401, 'Token inválido o expirado'));
+      console.error('[auth] loadUser falló:', e);
+      const msg = String((e as Error)?.message || e);
+      if (msg.includes('FIREBASE_SERVICE_ACCOUNT_BASE64')) {
+        return next(new HttpError(503, 'Firebase Admin no está configurado en el servidor (FIREBASE_SERVICE_ACCOUNT_BASE64)'));
+      }
+      if (/aud|audience|project|token|expired|Firebase ID token/i.test(msg)) {
+        return next(new HttpError(401, `Token rechazado por Firebase Admin: ${msg}`));
+      }
+      return next(new HttpError(500, 'Error verificando la sesión'));
     });
 }
 

@@ -8,7 +8,7 @@ import { avatarFallback } from '../lib/share';
 const emptyForm = { name: '', handle: '', categorySlug: '', whatsapp: '', bio: '', city: '' };
 
 export default function ProfilePage() {
-  const { user, me, logout, refreshMe } = useAuth();
+  const { user, me, isAdmin, meError, logout, refreshMe } = useAuth();
   const cats = useCategories();
   const [form, setForm] = useState(emptyForm);
   const [msg, setMsg] = useState<string | null>(null);
@@ -44,22 +44,23 @@ export default function ProfilePage() {
     }
   }
 
-  const isAdmin = me?.role === 'admin' || me?.role === 'superadmin';
+  const displayName =
+    user.displayName || me?.displayName || user.email?.split('@')[0] || 'Usuario';
 
   return (
     <div className="space-y-5">
       <div className="glass flex items-center gap-3 p-4">
         <img
-          src={me?.photoUrl || avatarFallback(me?.displayName || user.email || 'U')}
+          src={me?.photoUrl || user.photoURL || avatarFallback(displayName)}
           className="h-14 w-14 rounded-xl"
           alt=""
         />
         <div className="min-w-0 flex-1">
-          <div className="truncate font-bold">{me?.displayName || 'Usuario'}</div>
-          <div className="truncate text-xs text-white/40">{me?.email}</div>
+          <div className="truncate font-bold">{displayName}</div>
+          <div className="truncate text-xs text-white/40">{me?.email || user.email}</div>
           {isAdmin && (
             <span className="mt-1 inline-block rounded-full bg-gold/20 px-2 py-0.5 text-[10px] text-gold">
-              {me?.role}
+              {me?.role ?? 'administrador'}
             </span>
           )}
         </div>
@@ -67,6 +68,14 @@ export default function ProfilePage() {
           Salir
         </button>
       </div>
+
+      {meError && (
+        <div className="glass p-3 text-xs text-amber-300">
+          Sesión iniciada, pero el servidor no la confirmó: <b>{meError}</b>. En Vercel revisa{' '}
+          <code>FIREBASE_SERVICE_ACCOUNT_BASE64</code> (obligatoria para el login) y{' '}
+          <code>SUPERADMIN_EMAILS</code>.
+        </div>
+      )}
 
       {isAdmin && (
         <Link to="/admin" className="btn-gold w-full">

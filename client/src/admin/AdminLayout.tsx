@@ -18,7 +18,7 @@ const tabs = [
 ];
 
 export default function AdminLayout() {
-  const { loading, me, user } = useAuth();
+  const { loading, user, isAdmin, meError } = useAuth();
 
   if (loading) {
     return (
@@ -28,7 +28,7 @@ export default function AdminLayout() {
     );
   }
 
-  if (!user || !me || (me.role !== 'admin' && me.role !== 'superadmin')) {
+  if (!user || !isAdmin) {
     return (
       <div className="mx-auto max-w-md p-10 text-center">
         <p className="text-sm text-white/60">Acceso restringido al superadministrador.</p>
@@ -49,6 +49,14 @@ export default function AdminLayout() {
           Ver sitio
         </Link>
       </div>
+
+      {meError && (
+        <div className="glass mb-4 p-3 text-xs text-amber-300">
+          El servidor no confirmó tu sesión: <b>{meError}</b>. Revisa{' '}
+          <code>FIREBASE_SERVICE_ACCOUNT_BASE64</code> y <code>SUPERADMIN_EMAILS</code> en Vercel.
+          Las acciones de administración fallarán hasta resolverlo.
+        </div>
+      )}
 
       <div className="no-scrollbar mb-5 flex gap-2 overflow-x-auto">
         {tabs.map((t) => (

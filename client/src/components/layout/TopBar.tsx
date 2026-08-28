@@ -2,8 +2,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function TopBar() {
-  const { me } = useAuth();
-  const isAdmin = me?.role === 'admin' || me?.role === 'superadmin';
+  const { user, me, isAdmin } = useAuth();
+
+  const shortName =
+    user?.displayName?.split(' ')[0] ||
+    me?.displayName?.split(' ')[0] ||
+    user?.email?.split('@')[0];
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/5 bg-base/70 backdrop-blur-xl">
@@ -18,7 +22,7 @@ export default function TopBar() {
             </Link>
           )}
           <Link to="/perfil" className="btn-ghost !px-3 !py-1.5 text-xs">
-            {me ? me.displayName?.split(' ')[0] || 'Mi perfil' : 'Entrar'}
+            {user ? shortName || 'Mi perfil' : 'Entrar'}
           </Link>
         </div>
       </div>

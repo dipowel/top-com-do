@@ -9,11 +9,16 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider, firebaseReady } from '../lib/firebase';
 import { api } from '../lib/api';
+import { isAdminEmail } from '../lib/admin';
 import type { MeResponse } from '@shared/types';
 
 interface AuthContextValue {
   user: User | null;
   me: MeResponse | null;
+  /** true si el backend devolvió rol admin/superadmin, o si el correo está en la lista local. */
+  isAdmin: boolean;
+  /** mensaje si `GET /api/me` falló (útil para diagnóstico en Vercel). */
+  meError: string | null;
   loading: boolean;
   ready: boolean;
   loginGoogle: () => Promise<void>;
@@ -34,13 +39,20 @@ export function useAuth(): AuthContextValue {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [meError, setMeError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function refreshMe() {
+    if (!auth?.currentUser) {
+      setMe(null);
+      return;
+    }
     try {
       setMe(await api<MeResponse>('/me', { auth: true }));
-    } catch {
+      setMeError(null);
+    } catch (e) {
       setMe(null);
+      setMeError((e as Error).message);
     }
   }
 
@@ -49,17 +61,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+    // El navbar y las rutas protegidas dependen de ESTE listener de Firebase,
+    // no de /api/me: la sesión se refleja aunque el backend tarde o falle.
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u) await refreshMe();
-      else setMe(null);
       setLoading(false);
+      if (u) await refreshMe();
+      else {
+        setMe(null);
+        setMeError(null);
+      }
     });
   }, []);
+
+  const isAdmin =
+    me?.role === 'admin' || me?.role === 'superadmin' || isAdminEmail(user?.email);
 
   const value: AuthContextValue = {
     user,
     me,
+    isAdmin,
+    meError,
     loading,
     ready: firebaseReady,
     loginGoogle: async () => {
@@ -73,6 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     logout: async () => {
       await signOut(auth!);
+      setMe(null);
+      setMeError(null);
     },
     refreshMe,
   };
