@@ -1,16 +1,17 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useCategories } from '../hooks/useCategories';
 import { api } from '../lib/api';
 import { avatarFallback } from '../lib/share';
-
-const emptyForm = { name: '', handle: '', categorySlug: '', whatsapp: '', bio: '', city: '' };
+import ProfileForm, {
+  emptyProfileForm,
+  profileFormToPayload,
+  type ProfileFormValue,
+} from '../components/profile/ProfileForm';
 
 export default function ProfilePage() {
   const { user, me, isAdmin, meError, logout, refreshMe } = useAuth();
-  const cats = useCategories();
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<ProfileFormValue>(emptyProfileForm);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -19,7 +20,7 @@ export default function ProfilePage() {
       <div className="space-y-3">
         <h1 className="text-xl font-extrabold">Tu perfil</h1>
         <p className="text-sm text-white/50">
-          Inicia sesión para pujar, guardar favoritos y crear tu perfil de marca o persona.
+          Inicia sesión para pujar, guardar favoritos y registrar tu perfil de marca o persona.
         </p>
         <Link to="/login" className="btn-gold w-full">
           Iniciar sesión / Registrarse
@@ -28,14 +29,13 @@ export default function ProfilePage() {
     );
   }
 
-  async function createProfile(e: FormEvent) {
-    e.preventDefault();
+  async function createProfile() {
     setMsg(null);
     setBusy(true);
     try {
-      await api('/profiles', { method: 'POST', body: JSON.stringify(form), auth: true });
-      setMsg('✓ Perfil creado. Ya puede recibir pujas.');
-      setForm(emptyForm);
+      await api('/profiles', { method: 'POST', body: JSON.stringify(profileFormToPayload(form)), auth: true });
+      setMsg('✓ Perfil registrado. Ya puede recibir pujas.');
+      setForm(emptyProfileForm);
       void refreshMe();
     } catch (err) {
       setMsg((err as Error).message);
@@ -71,9 +71,7 @@ export default function ProfilePage() {
 
       {meError && (
         <div className="glass p-3 text-xs text-amber-300">
-          Sesión iniciada, pero el servidor no la confirmó: <b>{meError}</b>. En Vercel revisa{' '}
-          <code>FIREBASE_SERVICE_ACCOUNT_BASE64</code> (obligatoria para el login) y{' '}
-          <code>SUPERADMIN_EMAILS</code>.
+          Sesión iniciada, pero el servidor no la confirmó: <b>{meError}</b>.
         </div>
       )}
 
@@ -83,61 +81,17 @@ export default function ProfilePage() {
         </Link>
       )}
 
-      <form onSubmit={createProfile} className="glass space-y-3 p-4">
-        <h2 className="font-bold">Crear perfil de marca / persona</h2>
-        <input
-          required
-          className="input"
-          placeholder="Nombre"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
+      <div className="glass space-y-3 p-4">
+        <h2 className="font-bold">Registrar perfil de marca / persona</h2>
+        <ProfileForm
+          value={form}
+          onChange={setForm}
+          onSubmit={createProfile}
+          submitLabel="Registrar perfil"
+          busy={busy}
         />
-        <input
-          required
-          className="input"
-          placeholder="handle (ej. mi-marca)"
-          value={form.handle}
-          onChange={(e) => setForm({ ...form, handle: e.target.value })}
-        />
-        <select
-          required
-          className="input"
-          value={form.categorySlug}
-          onChange={(e) => setForm({ ...form, categorySlug: e.target.value })}
-        >
-          <option value="">Categoría…</option>
-          {cats
-            .filter((c) => c.slug !== 'todo-rd')
-            .map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-        </select>
-        <input
-          className="input"
-          placeholder="WhatsApp (ej. 18091234567)"
-          value={form.whatsapp}
-          onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
-        />
-        <input
-          className="input"
-          placeholder="Ciudad"
-          value={form.city}
-          onChange={(e) => setForm({ ...form, city: e.target.value })}
-        />
-        <textarea
-          className="input"
-          placeholder="Bio"
-          rows={3}
-          value={form.bio}
-          onChange={(e) => setForm({ ...form, bio: e.target.value })}
-        />
-        <button disabled={busy} className="btn-gold w-full">
-          {busy ? 'Creando…' : 'Crear perfil'}
-        </button>
         {msg && <p className="text-xs text-white/60">{msg}</p>}
-      </form>
+      </div>
     </div>
   );
 }

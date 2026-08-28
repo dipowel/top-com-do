@@ -50,7 +50,10 @@ export const profiles = pgTable(
     handle: text('handle').notNull().unique(),
     avatarUrl: text('avatar_url'),
     bio: text('bio'),
+    tagline: text('tagline'), // mensaje corto destacable (<= 60 chars)
     whatsapp: text('whatsapp'),
+    instagramUrl: text('instagram_url'),
+    websiteUrl: text('website_url'),
     city: text('city'),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

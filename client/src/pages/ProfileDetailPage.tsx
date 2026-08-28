@@ -14,7 +14,10 @@ interface Detail {
   handle: string;
   avatarUrl: string | null;
   bio: string | null;
+  tagline: string | null;
   whatsapp: string | null;
+  instagramUrl: string | null;
+  websiteUrl: string | null;
   city: string | null;
   categoryName: string;
 }
@@ -59,14 +62,17 @@ export default function ProfileDetailPage() {
           />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-extrabold">{profile.name}</h1>
+            {profile.tagline && <p className="text-sm text-white/70">{profile.tagline}</p>}
             <p className="truncate text-xs text-white/40">
               @{profile.handle} · {profile.categoryName}
               {profile.city ? ` · ${profile.city}` : ''}
             </p>
           </div>
         </div>
-        {profile.bio && <p className="mt-3 text-sm text-white/60">{profile.bio}</p>}
-        <div className="mt-3 flex gap-2">
+        {profile.bio && profile.bio !== profile.tagline && (
+          <p className="mt-3 text-sm text-white/60">{profile.bio}</p>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
           <button onClick={() => openBid(profile.id)} className="btn-gold flex-1">
             Pujar por este perfil
           </button>
@@ -78,6 +84,16 @@ export default function ProfileDetailPage() {
               className="btn-emerald"
             >
               WhatsApp
+            </a>
+          )}
+          {profile.instagramUrl && (
+            <a href={profile.instagramUrl} target="_blank" rel="noreferrer" className="btn-ghost">
+              Instagram
+            </a>
+          )}
+          {profile.websiteUrl && (
+            <a href={profile.websiteUrl} target="_blank" rel="noreferrer" className="btn-ghost">
+              Web
             </a>
           )}
           {user && (

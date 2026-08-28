@@ -26,14 +26,23 @@ export default function RankingPage() {
         <div className="glass p-3 text-xs text-red-300">No se pudo cargar el ranking: {error}</div>
       )}
       {!loading && !data.length && !error && (
-        <div className="glass p-6 text-center text-sm text-white/50">
-          Aún no hay pujas activas en esta categoría. ¡Sé el primero en subir!
+        <div className="glass space-y-3 p-6 text-center text-sm text-white/50">
+          <p>Aún no hay pujas activas en esta categoría.</p>
+          <button onClick={() => openBid(undefined, cat)} className="btn-gold">
+            Sé el #1 — Pujar Ahora
+          </button>
         </div>
+      )}
+
+      {data.length > 0 && (
+        <p className="text-center text-[11px] text-white/40">
+          Para liderar hay que superar la puja del #1 por al menos RD$ 100.
+        </p>
       )}
 
       <div className="space-y-2.5">
         {data.map((e) => (
-          <LeaderCard key={e.profile.id} entry={e} onBid={openBid} />
+          <LeaderCard key={e.profile.id} entry={e} onBid={(pid) => openBid(pid, cat)} />
         ))}
       </div>
     </div>

@@ -4,10 +4,20 @@ export interface RankingProfile {
   handle: string;
   avatarUrl: string | null;
   bio: string | null;
+  tagline: string | null;
   whatsapp: string | null;
+  instagramUrl: string | null;
+  websiteUrl: string | null;
   city: string | null;
   categorySlug: string;
   categoryName: string;
+}
+
+export interface SuggestedBid {
+  minimum: number;
+  current: number;
+  next: number;
+  scope: 'profile' | 'category' | 'global';
 }
 
 export interface RankingEntry {

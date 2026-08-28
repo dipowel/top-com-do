@@ -9,9 +9,11 @@ import type { ShellContext } from '../../hooks/useShell';
 export default function AppShell() {
   const [bidOpen, setBidOpen] = useState(false);
   const [presetProfileId, setPresetProfileId] = useState<string | undefined>(undefined);
+  const [presetCategory, setPresetCategory] = useState<string | undefined>(undefined);
 
-  const openBid = (profileId?: string) => {
+  const openBid = (profileId?: string, category?: string) => {
     setPresetProfileId(profileId);
+    setPresetCategory(category);
     setBidOpen(true);
   };
 
@@ -25,7 +27,14 @@ export default function AppShell() {
       </main>
       <PujarAhoraButton onClick={() => openBid(undefined)} />
       <BottomNav />
-      {bidOpen && <BidWizard presetProfileId={presetProfileId} onClose={() => setBidOpen(false)} />}
+      {bidOpen && (
+        <BidWizard
+          key={`${presetProfileId ?? ''}-${presetCategory ?? ''}`}
+          presetProfileId={presetProfileId}
+          presetCategory={presetCategory}
+          onClose={() => setBidOpen(false)}
+        />
+      )}
     </div>
   );
 }

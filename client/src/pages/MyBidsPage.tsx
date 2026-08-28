@@ -49,9 +49,9 @@ export default function MyBidsPage() {
               {b.currency === 'USD' ? formatUSD(b.amountOriginal) : formatDOP(b.amountDop)}
             </span>
           </div>
-          {b.status === 'pending' && b.method === 'bank_transfer' && !b.receiptUrl && (
+          {b.status === 'pending' && b.method === 'bank_transfer' && !b.receiptUrl && !b.reference && (
             <p className="mt-2 text-[11px] text-amber-300/80">
-              Falta subir el comprobante para que sea verificada.
+              Falta el comprobante o el número de confirmación para verificarla.
             </p>
           )}
         </div>

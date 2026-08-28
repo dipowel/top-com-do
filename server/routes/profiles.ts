@@ -10,22 +10,27 @@ import { audit } from '../lib/audit';
 
 const r = Router();
 
+const profileColumns = {
+  id: profiles.id,
+  name: profiles.name,
+  handle: profiles.handle,
+  avatarUrl: profiles.avatarUrl,
+  bio: profiles.bio,
+  tagline: profiles.tagline,
+  whatsapp: profiles.whatsapp,
+  instagramUrl: profiles.instagramUrl,
+  websiteUrl: profiles.websiteUrl,
+  city: profiles.city,
+  categorySlug: categories.slug,
+  categoryName: categories.name,
+};
+
 r.get(
   '/',
   ah(async (req, res) => {
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
     const rows = await db
-      .select({
-        id: profiles.id,
-        name: profiles.name,
-        handle: profiles.handle,
-        avatarUrl: profiles.avatarUrl,
-        bio: profiles.bio,
-        whatsapp: profiles.whatsapp,
-        city: profiles.city,
-        categorySlug: categories.slug,
-        categoryName: categories.name,
-      })
+      .select(profileColumns)
       .from(profiles)
       .innerJoin(categories, eq(categories.id, profiles.categoryId))
       .where(
@@ -39,46 +44,81 @@ r.get(
   }),
 );
 
+const imageValue = z
+  .string()
+  .max(220_000)
+  .refine((v) => /^https?:\/\//.test(v) || /^data:image\//.test(v), 'Imagen inválida');
+
+const linkValue = z
+  .string()
+  .max(300)
+  .refine((v) => /^https?:\/\//.test(v) || /^\+?[\d\s()-]{6,}$/.test(v), 'Enlace inválido');
+
 const createSchema = z.object({
   name: z.string().min(2).max(80),
   handle: z
     .string()
     .min(2)
     .max(40)
-    .regex(/^[a-z0-9_.-]+$/i, 'Solo letras, números, punto, guion y guion bajo'),
+    .regex(/^[a-z0-9_.-]+$/i, 'Solo letras, números, punto, guion y guion bajo')
+    .optional(),
   categorySlug: z.string().min(1),
+  tagline: z.string().max(60).optional(),
   bio: z.string().max(400).optional(),
   whatsapp: z.string().max(30).optional(),
+  instagramUrl: linkValue.optional(),
+  websiteUrl: linkValue.optional(),
   city: z.string().max(60).optional(),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: imageValue.optional(),
 });
+
+function slugify(input: string): string {
+  const base = input
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 34);
+  return base || 'perfil';
+}
 
 r.post(
   '/',
   requireAuth,
   ah(async (req, res) => {
     const body = createSchema.parse(req.body);
+
     const cat = await db.select().from(categories).where(eq(categories.slug, body.categorySlug)).limit(1);
     if (!cat[0]) throw new HttpError(400, 'Categoría inválida');
 
-    const exists = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.handle, body.handle.toLowerCase())).limit(1);
-    if (exists[0]) throw new HttpError(409, 'Ese handle ya está en uso');
+    // handle: usa el dado, o genera uno único a partir del nombre
+    let handle = (body.handle || slugify(body.name)).toLowerCase();
+    for (let i = 0; i < 50; i++) {
+      const taken = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.handle, handle)).limit(1);
+      if (!taken[0]) break;
+      if (body.handle) throw new HttpError(409, 'Ese handle ya está en uso');
+      handle = `${slugify(body.name)}-${Math.random().toString(36).slice(2, 5)}`;
+    }
 
     const inserted = await db
       .insert(profiles)
       .values({
         name: body.name,
-        handle: body.handle.toLowerCase(),
+        handle,
         categoryId: cat[0].id,
-        bio: body.bio,
+        tagline: body.tagline,
+        bio: body.bio ?? body.tagline,
         whatsapp: body.whatsapp,
+        instagramUrl: body.instagramUrl,
+        websiteUrl: body.websiteUrl,
         city: body.city,
         avatarUrl: body.avatarUrl,
         ownerUserId: req.user!.id,
       })
       .returning();
 
-    await audit(req.user!.id, 'profile.create', 'profile', inserted[0]!.id, { handle: body.handle });
+    await audit(req.user!.id, 'profile.create', 'profile', inserted[0]!.id, { handle, name: body.name });
     res.status(201).json(inserted[0]);
   }),
 );
@@ -87,17 +127,7 @@ r.get(
   '/:id',
   ah(async (req, res) => {
     const rows = await db
-      .select({
-        id: profiles.id,
-        name: profiles.name,
-        handle: profiles.handle,
-        avatarUrl: profiles.avatarUrl,
-        bio: profiles.bio,
-        whatsapp: profiles.whatsapp,
-        city: profiles.city,
-        categorySlug: categories.slug,
-        categoryName: categories.name,
-      })
+      .select(profileColumns)
       .from(profiles)
       .innerJoin(categories, eq(categories.id, profiles.categoryId))
       .where(eq(profiles.id, req.params.id))

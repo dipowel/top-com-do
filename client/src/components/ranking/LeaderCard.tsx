@@ -39,7 +39,10 @@ export default function LeaderCard({
               {p.name}
             </Link>
           </div>
-          <div className="truncate text-xs text-white/45">
+          {p.tagline ? (
+            <div className="truncate text-xs text-white/60">{p.tagline}</div>
+          ) : null}
+          <div className="truncate text-[11px] text-white/40">
             @{p.handle} · {p.categoryName}
           </div>
         </div>
@@ -63,6 +66,16 @@ export default function LeaderCard({
             className="btn-emerald !py-2 text-xs"
           >
             WhatsApp
+          </a>
+        )}
+        {p.instagramUrl && (
+          <a href={p.instagramUrl} target="_blank" rel="noreferrer" className="btn-ghost !py-2 text-xs">
+            Instagram
+          </a>
+        )}
+        {p.websiteUrl && (
+          <a href={p.websiteUrl} target="_blank" rel="noreferrer" className="btn-ghost !py-2 text-xs">
+            Web
           </a>
         )}
         {user && (
