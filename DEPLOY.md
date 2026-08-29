@@ -22,7 +22,7 @@ Opcionales (cada función se auto-desactiva con aviso si falta):
 |---|---|
 | `FIREBASE_PROJECT_ID` + `VITE_FIREBASE_*` | login (Google/Email). El server valida tokens con solo el projectId; la config web ya viene como fallback en el código. |
 | `DODO_ENV` (`test`/`live`), `DODO_API_KEY`, `DODO_WEBHOOK_SECRET` | pagos con Dodo Payments |
-| `DODO_PRODUCT_500`, `DODO_PRODUCT_1000`, `DODO_PRODUCT_2500`, `DODO_PRODUCT_5000` | `product_id` de cada nivel de puja (Dodo) |
+| `DODO_PRODUCT_ID` | producto base *pay-what-you-want* en Dodo (mínimo RD$100, DOP). Por defecto `pdt_0NmSUGwTYDHQKdpmPVTI` |
 
 Registrar el webhook `https://www.top.com.do/api/webhooks/dodo` en el panel de Dodo (evento `payment.succeeded`).
 

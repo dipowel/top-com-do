@@ -5,9 +5,12 @@
  */
 import crypto from 'node:crypto';
 import { SITE_URL } from '../../shared/site';
-import type { BidTier } from '../../shared/bidding';
+import { toLowestDenomination } from '../../shared/bidding';
 
 const TOLERANCE_SEC = 5 * 60;
+
+/** Producto base "pay what you want" en Dodo. Un product_id no es secreto. */
+const DEFAULT_PRODUCT_ID = 'pdt_0NmSUGwTYDHQKdpmPVTI';
 
 export function dodoConfigured(): boolean {
   return Boolean(process.env.DODO_API_KEY && process.env.DODO_WEBHOOK_SECRET);
@@ -19,14 +22,12 @@ export function dodoBaseUrl(): string {
     : 'https://test.dodopayments.com';
 }
 
-export function productIdForTier(tier: BidTier): string {
-  const id = process.env[`DODO_PRODUCT_${tier}`];
-  if (!id) throw new Error(`Falta la variable de entorno DODO_PRODUCT_${tier}`);
-  return id;
+export function dodoProductId(): string {
+  return process.env.DODO_PRODUCT_ID || DEFAULT_PRODUCT_ID;
 }
 
 interface CreateCheckoutInput {
-  tier: BidTier;
+  amountDop: number;
   bidId: string;
   profileId: string;
   roundId: string;
@@ -40,7 +41,9 @@ export async function createCheckout(
   if (!apiKey) throw new Error('Falta DODO_API_KEY');
 
   const body = {
-    product_cart: [{ product_id: productIdForTier(input.tier), quantity: 1 }],
+    product_cart: [
+      { product_id: dodoProductId(), quantity: 1, amount: toLowestDenomination(input.amountDop) },
+    ],
     billing_currency: 'DOP',
     customer: { email: input.customerEmail },
     metadata: {

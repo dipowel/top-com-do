@@ -9,16 +9,17 @@ import { HttpError } from '../middleware/errorHandler';
 import { getActiveRound } from '../lib/rounds';
 import { audit } from '../lib/audit';
 import { createCheckout, dodoConfigured } from '../lib/dodo';
-import { BID_TIERS_DOP } from '../../shared/bidding';
+import { minNextBidForProfile } from '../lib/auction';
+import { formatDOP } from '../../shared/fx';
 
 const r = Router();
 
 const schema = z.object({
   profileId: z.string().uuid(),
-  tier: z.union([z.literal(500), z.literal(1000), z.literal(2500), z.literal(5000)]),
+  amountDop: z.number().positive().max(100_000_000),
 });
 
-/** Inicia una sesión de pago de Dodo Payments para una puja de nivel fijo. */
+/** Inicia una sesión de pago de Dodo Payments con el monto exacto de la oferta. */
 r.post(
   '/dodo',
   requireAuth,
@@ -27,9 +28,7 @@ r.post(
       throw new HttpError(503, 'Los pagos no están configurados. Contacta al administrador.');
     }
     const body = schema.parse(req.body);
-    if (!(BID_TIERS_DOP as readonly number[]).includes(body.tier)) {
-      throw new HttpError(400, 'Nivel de puja inválido');
-    }
+    const amountDop = Math.round(body.amountDop * 100) / 100;
 
     const profile = await db
       .select({ id: profiles.id, isActive: profiles.isActive, name: profiles.name })
@@ -37,6 +36,14 @@ r.post(
       .where(eq(profiles.id, body.profileId))
       .limit(1);
     if (!profile[0] || !profile[0].isActive) throw new HttpError(404, 'Perfil no encontrado');
+
+    const { minBidDop } = await minNextBidForProfile(body.profileId);
+    if (amountDop < minBidDop) {
+      throw new HttpError(
+        400,
+        `Tu oferta debe superar al #1. Ofrece al menos ${formatDOP(minBidDop)}.`,
+      );
+    }
 
     const round = await getActiveRound();
 
@@ -46,9 +53,9 @@ r.post(
         profileId: body.profileId,
         userId: req.user!.id,
         roundId: round.id,
-        amountDop: body.tier.toFixed(2),
+        amountDop: amountDop.toFixed(2),
         currency: 'DOP',
-        amountOriginal: body.tier.toFixed(2),
+        amountOriginal: amountDop.toFixed(2),
         fxRate: '1.0000',
         method: 'dodo',
         status: 'pending',
@@ -58,7 +65,7 @@ r.post(
 
     try {
       const checkout = await createCheckout({
-        tier: body.tier,
+        amountDop,
         bidId: bid.id,
         profileId: body.profileId,
         roundId: round.id,
@@ -69,19 +76,18 @@ r.post(
         bidId: bid.id,
         sessionId: checkout.sessionId || null,
         status: 'created',
-        tierDop: body.tier,
+        amountDop: amountDop.toFixed(2),
         raw: checkout.raw as object,
       });
 
       await audit(req.user!.id, 'bid.create', 'bid', bid.id, {
         method: 'dodo',
-        tier: body.tier,
+        amountDop,
         profileId: body.profileId,
       });
 
       res.status(201).json({ url: checkout.checkoutUrl, bidId: bid.id });
     } catch (err) {
-      // Limpia la puja pendiente que quedó huérfana si Dodo no respondió.
       await db.delete(bids).where(eq(bids.id, bid.id));
       console.error('[checkout] Dodo falló:', (err as Error).message);
       throw new HttpError(502, 'No se pudo iniciar el pago con Dodo Payments. Intenta de nuevo.');

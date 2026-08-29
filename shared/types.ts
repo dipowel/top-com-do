@@ -52,7 +52,11 @@ export interface MyReviewDTO {
 
 export interface SuggestedBid {
   minimum: number;
+  /** Total acumulado del #1 en el ámbito. */
   current: number;
+  /** Total acumulado del negocio consultado (solo en scope 'profile'). */
+  myTotal?: number;
+  /** Oferta mínima ahora mismo para superar al #1. */
   next: number;
   scope: 'profile' | 'category' | 'province' | 'global';
 }

@@ -11,8 +11,9 @@ compartir/referidos vive en `shared/site.ts` (`SITE_URL`, sobreescribible con `V
   **Supabase**, Neon, RDS, etc.).
 - **Auth:** Firebase Authentication (Google + Email/Password). El servidor verifica los ID tokens
   contra las claves públicas de Google con `jose` — solo necesita `FIREBASE_PROJECT_ID`, sin service account.
-- **Pagos:** Dodo Payments (checkout hospedado, RD$, niveles fijos 500/1.000/2.500/5.000) con
-  webhook `payment.succeeded`. Alternativa: saldo por referidos.
+- **Pagos:** Dodo Payments — subasta dinámica: el usuario oferta un monto libre en RD$ que debe
+  superar al #1 de su categoría × provincia; un único producto *pay-what-you-want* + webhook
+  `payment.succeeded`. Alternativa: saldo por referidos.
 - **Deploy:** Vercel (SPA estática + función serverless para `/api/*`).
 
 ---
@@ -52,7 +53,7 @@ top-com-do/
 |---|---|
 | **PostgreSQL** | `DATABASE_URL` de Supabase o Neon. Con Supabase usa el *transaction pooler* (`:6543`); `db:push` cambia solo a `:5432` para migrar. |
 | **Firebase** | Proyecto web + proveedores Google y Email/Password habilitados. Solo la config web (`VITE_FIREBASE_*`) y `FIREBASE_PROJECT_ID`. **No hace falta service account.** |
-| **Dodo Payments** | `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `DODO_ENV`, y un `DODO_PRODUCT_<nivel>` por cada nivel de puja. Webhook: `/api/webhooks/dodo`. |
+| **Dodo Payments** | `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `DODO_ENV`, `DODO_PRODUCT_ID` (producto *pay-what-you-want*, mínimo RD$100, DOP). Webhook: `/api/webhooks/dodo`. |
 
 ## 3. Puesta en marcha (local)
 
@@ -82,10 +83,11 @@ npm run typecheck # tsc --noEmit
 1. Un visitante (incluido incógnito) abre `/` → `GET /api/rankings` consulta PostgreSQL,
    suma las **pujas verificadas** de la ronda activa por perfil, filtra `> 0 DOP` y ordena.
    Respuesta siempre `Cache-Control: no-store`. Nada del ranking se guarda en `localStorage`.
-2. El usuario inicia sesión (Firebase) y pulsa **Pujar Ahora**: elige el negocio, un nivel fijo
-   (RD$ 500/1.000/2.500/5.000), acepta Términos/Privacidad/Normas y paga en el checkout de
-   **Dodo Payments**. El webhook `payment.succeeded` verifica la puja y recalcula el #1
-   automáticamente. Alternativa: pagar con el saldo por referidos.
+2. El usuario inicia sesión (Firebase) y pulsa **Pujar Ahora**: elige el negocio, oferta un monto
+   libre en RD$ que supere al #1 de su categoría × provincia (`(totalLíder − totalPropio) + 100`),
+   acepta Términos/Privacidad/Normas y paga en el checkout de **Dodo Payments** (producto
+   *pay-what-you-want* con el monto exacto). El webhook `payment.succeeded` verifica la puja con
+   el monto realmente cobrado y recalcula el #1. Alternativa: pagar con el saldo por referidos.
 3. `/admin` (solo `SUPERADMIN_EMAILS`): resumen, referidos, moderación de reseñas, auditoría de
    pujas, log y **reinicio de ronda semanal desde el #1**.
 

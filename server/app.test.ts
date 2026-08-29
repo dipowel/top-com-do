@@ -22,7 +22,7 @@ describe('API base', () => {
   });
 
   it('POST /api/checkout/dodo sin token → 401', async () => {
-    const res = await request(app).post('/api/checkout/dodo').send({ profileId: 'x', tier: 500 });
+    const res = await request(app).post('/api/checkout/dodo').send({ profileId: 'x', amountDop: 500 });
     expect(res.status).toBe(401);
   });
 

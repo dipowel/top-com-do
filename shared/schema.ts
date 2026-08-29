@@ -145,7 +145,7 @@ export const dodoPayments = pgTable(
     sessionId: text('session_id'),
     paymentId: text('payment_id'),
     status: text('status').notNull().default('created'), // created | succeeded | failed
-    tierDop: integer('tier_dop').notNull(),
+    amountDop: numeric('amount_dop', { precision: 12, scale: 2 }).notNull().default('0'),
     raw: jsonb('raw'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

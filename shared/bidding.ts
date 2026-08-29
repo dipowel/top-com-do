@@ -1,16 +1,20 @@
 /**
- * Niveles fijos de puja (RD$). Cada nivel es un producto de precio fijo en el
- * panel de Dodo Payments, mapeado por la variable de entorno DODO_PRODUCT_<nivel>.
+ * Subasta dinámica: el usuario oferta un monto libre en RD$ que debe hacer que
+ * el total acumulado de su negocio SUPERE al del #1 de su categoría × provincia.
  */
-export const BID_TIERS_DOP = [500, 1000, 2500, 5000] as const;
+export const MIN_BID_DOP = 100;
+export const BID_INCREMENT_DOP = 100;
 
-export type BidTier = (typeof BID_TIERS_DOP)[number];
-
-export function isBidTier(n: unknown): n is BidTier {
-  return typeof n === 'number' && (BID_TIERS_DOP as readonly number[]).includes(n);
+/** Oferta mínima para que un negocio supere al #1 de su ámbito. */
+export function minNextBid(opts: {
+  leaderTotalDop: number;
+  myTotalDop: number;
+  iAmLeader: boolean;
+}): number {
+  if (opts.iAmLeader) return MIN_BID_DOP;
+  const need = opts.leaderTotalDop - opts.myTotalDop + BID_INCREMENT_DOP;
+  return Math.max(need, MIN_BID_DOP);
 }
 
-/** El nivel más bajo que iguala o supera el monto necesario para liderar. */
-export function tierToLead(neededDop: number): BidTier {
-  return BID_TIERS_DOP.find((t) => t >= neededDop) ?? BID_TIERS_DOP[BID_TIERS_DOP.length - 1];
-}
+/** Convierte un monto en RD$ a la mínima denominación (centavos) que espera Dodo. */
+export const toLowestDenomination = (dop: number): number => Math.round(dop * 100);

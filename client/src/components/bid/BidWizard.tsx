@@ -148,7 +148,9 @@ export default function BidWizard({
         profileName={selected?.name || form.name}
         categoryName={selected?.categoryName || categoryLabel(form.categorySlug) || undefined}
         provinceName={provSlug ? provinceName(provSlug) : undefined}
-        suggestedDop={suggested?.next}
+        minBidDop={suggested?.next ?? 100}
+        leaderTotalDop={suggested?.current}
+        myTotalDop={suggested?.myTotal}
         onClose={onClose}
       />
     );

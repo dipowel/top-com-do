@@ -119,6 +119,9 @@ const statements = [
    )`,
   `CREATE INDEX IF NOT EXISTS dodo_payments_bid_idx ON dodo_payments (bid_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS dodo_payments_payment_uniq ON dodo_payments (payment_id)`,
+  // Subasta dinámica: el monto de la puja ya no es un "nivel" fijo.
+  `ALTER TABLE dodo_payments DROP COLUMN IF EXISTS tier_dop`,
+  `ALTER TABLE dodo_payments ADD COLUMN IF NOT EXISTS amount_dop numeric(12,2) NOT NULL DEFAULT 0`,
 ];
 
 for (const sql of statements) {

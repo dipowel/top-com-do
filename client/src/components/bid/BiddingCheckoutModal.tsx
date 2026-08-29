@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Modal from '../common/Modal';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDOP } from '../../lib/format';
-import { BID_TIERS_DOP, type BidTier } from '@shared/bidding';
 
 /**
- * Checkout de una puja: elige nivel fijo, acepta los términos y paga con
+ * Checkout de una puja (subasta dinámica): el usuario oferta un monto libre que
+ * debe superar al #1 de su categoría × provincia, acepta los términos y paga con
  * Dodo Payments (o con saldo por referidos si alcanza).
  */
 export default function BiddingCheckoutModal({
@@ -14,7 +14,9 @@ export default function BiddingCheckoutModal({
   profileName,
   categoryName,
   provinceName,
-  suggestedDop,
+  minBidDop,
+  leaderTotalDop,
+  myTotalDop,
   onClose,
   onPaidWithCredit,
 }: {
@@ -22,25 +24,25 @@ export default function BiddingCheckoutModal({
   profileName?: string;
   categoryName?: string;
   provinceName?: string;
-  suggestedDop?: number;
+  minBidDop: number;
+  leaderTotalDop?: number;
+  myTotalDop?: number;
   onClose: () => void;
   onPaidWithCredit?: () => void;
 }) {
   const { me } = useAuth();
   const credit = me?.creditBalanceDop ?? 0;
 
-  const defaultTier = useMemo<BidTier>(() => {
-    if (!suggestedDop) return BID_TIERS_DOP[0];
-    return BID_TIERS_DOP.find((t) => t >= suggestedDop) ?? BID_TIERS_DOP[BID_TIERS_DOP.length - 1];
-  }, [suggestedDop]);
-
-  const [tier, setTier] = useState<BidTier>(defaultTier);
+  const min = Math.max(Math.round(minBidDop), 100);
+  const [amount, setAmount] = useState(min);
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState<null | 'dodo' | 'credit'>(null);
   const [error, setError] = useState<string | null>(null);
   const [okCredit, setOkCredit] = useState(false);
 
-  const canUseCredit = credit >= tier;
+  const belowMin = amount < min;
+  const canUseCredit = credit >= amount && !belowMin;
+  const quick = [min, min + 500, min + 1000, min + 2500];
 
   async function payWithDodo() {
     setError(null);
@@ -48,7 +50,7 @@ export default function BiddingCheckoutModal({
     try {
       const { url } = await api<{ url: string }>('/checkout/dodo', {
         method: 'POST',
-        body: JSON.stringify({ profileId, tier }),
+        body: JSON.stringify({ profileId, amountDop: amount }),
         auth: true,
       });
       window.location.href = url;
@@ -64,7 +66,7 @@ export default function BiddingCheckoutModal({
     try {
       await api('/bids', {
         method: 'POST',
-        body: JSON.stringify({ profileId, method: 'credit', amount: tier, currency: 'DOP' }),
+        body: JSON.stringify({ profileId, method: 'credit', amount, currency: 'DOP' }),
         auth: true,
       });
       setOkCredit(true);
@@ -81,7 +83,7 @@ export default function BiddingCheckoutModal({
       <Modal onClose={onClose} title="¡Puja registrada!">
         <div className="space-y-3 py-4 text-center">
           <div className="text-4xl">🎉</div>
-          <p className="font-bold">Pagaste {formatDOP(tier)} con tu saldo</p>
+          <p className="font-bold">Pagaste {formatDOP(amount)} con tu saldo</p>
           <p className="text-sm text-white/60">Tu puja ya cuenta en el ranking.</p>
           <button onClick={onClose} className="btn-gold w-full">
             Ver ranking
@@ -101,43 +103,59 @@ export default function BiddingCheckoutModal({
           </div>
         </div>
 
-        {suggestedDop != null && (
-          <p className="text-[11px] text-white/45">
-            Para tomar el <b>#1</b> ahora mismo necesitas al menos{' '}
-            <b className="text-gold">{formatDOP(suggestedDop)}</b> acumulados.
-          </p>
-        )}
+        <div className="glass space-y-1 p-3 text-[11px] text-white/55">
+          {leaderTotalDop != null && (
+            <div className="flex justify-between">
+              <span>El #1 va en</span>
+              <b className="text-white/80">{formatDOP(leaderTotalDop)}</b>
+            </div>
+          )}
+          {myTotalDop != null && myTotalDop > 0 && (
+            <div className="flex justify-between">
+              <span>Tú llevas acumulado</span>
+              <b className="text-white/80">{formatDOP(myTotalDop)}</b>
+            </div>
+          )}
+          <div className="flex justify-between text-gold">
+            <span>Oferta mínima ahora</span>
+            <b>{formatDOP(min)}</b>
+          </div>
+        </div>
 
         <div>
-          <label className="text-xs text-white/50">Nivel de la puja</label>
-          <div className="mt-1 grid grid-cols-2 gap-2">
-            {BID_TIERS_DOP.map((t) => {
-              const leads = suggestedDop == null || t >= suggestedDop;
-              return (
-                <button
-                  key={t}
-                  onClick={() => setTier(t)}
-                  className={`rounded-xl border p-3 text-left text-sm ${
-                    tier === t ? 'border-gold/60 bg-gold/10' : 'border-white/10'
-                  }`}
-                >
-                  <span className="block font-bold">{formatDOP(t)}</span>
-                  <span
-                    className={`mt-0.5 block text-[11px] ${
-                      leads ? 'text-emerald-soft' : 'text-white/35'
-                    }`}
-                  >
-                    {leads ? '✓ toma el #1' : 'no alcanza el #1'}
-                  </span>
-                </button>
-              );
-            })}
+          <label className="text-xs text-white/50">Tu oferta (RD$)</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={min}
+            step={100}
+            value={amount}
+            onChange={(e) => setAmount(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+            className="input mt-1"
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {quick.map((v) => (
+              <button
+                key={v}
+                onClick={() => setAmount(v)}
+                className={`rounded-lg border px-2.5 py-1 text-xs ${
+                  amount === v ? 'border-gold/60 bg-gold/10 text-gold' : 'border-white/10 text-white/60'
+                }`}
+              >
+                {formatDOP(v)}
+              </button>
+            ))}
           </div>
+          {belowMin && (
+            <p className="mt-1 text-[11px] text-amber-300">
+              Debes superar al #1: ofrece al menos {formatDOP(min)}.
+            </p>
+          )}
         </div>
 
         <div className="glass flex items-center justify-between p-3 text-sm">
           <span className="text-white/50">Total a pagar</span>
-          <b className="text-lg text-gold">{formatDOP(tier)}</b>
+          <b className="text-lg text-gold">{formatDOP(amount)}</b>
         </div>
 
         <label className="flex items-start gap-2 text-[12px] leading-snug text-white/70">
@@ -168,7 +186,7 @@ export default function BiddingCheckoutModal({
 
         <button
           onClick={payWithDodo}
-          disabled={!accepted || loading !== null}
+          disabled={!accepted || belowMin || loading !== null}
           className="btn-gold w-full"
         >
           {loading === 'dodo' ? 'Redirigiendo…' : 'Pagar con Dodo Payments'}

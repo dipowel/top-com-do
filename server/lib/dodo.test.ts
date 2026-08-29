@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import crypto from 'node:crypto';
-import { verifyWebhook, dodoBaseUrl, productIdForTier } from './dodo';
+import { verifyWebhook, dodoBaseUrl, dodoProductId } from './dodo';
 
 function sign(rawSecretB64: string, id: string, ts: string, payload: string): string {
   return crypto
@@ -66,8 +66,10 @@ describe('dodo · configuración', () => {
     expect(dodoBaseUrl()).toBe('https://test.dodopayments.com');
   });
 
-  it('productIdForTier lanza si falta la variable de entorno', () => {
-    delete process.env.DODO_PRODUCT_500;
-    expect(() => productIdForTier(500)).toThrow(/DODO_PRODUCT_500/);
+  it('dodoProductId usa el default o el override por env', () => {
+    delete process.env.DODO_PRODUCT_ID;
+    expect(dodoProductId()).toBe('pdt_0NmSUGwTYDHQKdpmPVTI');
+    process.env.DODO_PRODUCT_ID = 'pdt_custom';
+    expect(dodoProductId()).toBe('pdt_custom');
   });
 });

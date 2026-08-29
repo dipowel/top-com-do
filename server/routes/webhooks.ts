@@ -33,8 +33,9 @@ interface DodoEvent {
   type?: string;
   data?: {
     payment_id?: string;
+    amount?: number;
     metadata?: Record<string, string>;
-    payment?: { payment_id?: string; metadata?: Record<string, string> };
+    payment?: { payment_id?: string; amount?: number; metadata?: Record<string, string> };
     checkout_session_id?: string;
   };
 }
@@ -59,6 +60,11 @@ r.post('/dodo', async (req, res) => {
       const d = event.data ?? {};
       const meta = d.metadata ?? d.payment?.metadata ?? {};
       const paymentId = d.payment_id ?? d.payment?.payment_id ?? null;
+      const centavos = d.amount ?? d.payment?.amount;
+      const paidDop =
+        typeof centavos === 'number' && Number.isFinite(centavos)
+          ? Math.round(centavos) / 100
+          : null;
 
       let bidId: string | null = meta.bid_id ?? null;
       if (!bidId && (paymentId || d.checkout_session_id)) {
@@ -77,20 +83,37 @@ r.post('/dodo', async (req, res) => {
       if (bidId) {
         await db
           .update(dodoPayments)
-          .set({ paymentId, status: 'succeeded', raw: event as object, updatedAt: new Date() })
+          .set({
+            paymentId,
+            status: 'succeeded',
+            raw: event as object,
+            updatedAt: new Date(),
+            ...(paidDop != null ? { amountDop: paidDop.toFixed(2) } : {}),
+          })
           .where(eq(dodoPayments.bidId, bidId));
 
         const bid = (await db.select().from(bids).where(eq(bids.id, bidId)).limit(1))[0];
 
         if (bid && bid.status !== 'verified') {
+          const expectedDop = Number(bid.amountDop);
+          // El ranking usa lo REALMENTE cobrado por Dodo (anti-manipulación / pago de más).
+          const finalDop = paidDop != null && paidDop > 0 ? paidDop : expectedDop;
+
           await db
             .update(bids)
             .set({
               status: 'verified',
               verifiedAt: new Date(),
+              amountDop: finalDop.toFixed(2),
+              amountOriginal: finalDop.toFixed(2),
               reference: `Dodo ${paymentId ?? ''}`.trim(),
             })
             .where(eq(bids.id, bid.id));
+          bid.amountDop = finalDop.toFixed(2);
+
+          if (paidDop != null && Math.abs(paidDop - expectedDop) > 0.009) {
+            await audit(null, 'bid.amount.adjusted', 'bid', bid.id, { expectedDop, paidDop });
+          }
 
           await onBidVerified(bid.id);
           await checkDethronements(bid.profileId);
