@@ -45,9 +45,9 @@ function zoneLabel(province?: string | null, city?: string | null): string {
 
 export function homeSeo(): SeoData {
   return {
-    title: 'Top.com.do — Directorio y ranking de negocios en República Dominicana',
+    title: 'Top.com.do — El directorio #1 de negocios de la República Dominicana',
     description:
-      'El directorio de autoridad de la República Dominicana. Descubre, compara y califica los mejores negocios por provincia y sector: gastronomía, automotriz, tecnología, hogar, moda y belleza, salud y servicios. El #1 verificado en Santo Domingo, Santiago y las 32 demarcaciones.',
+      'El directorio #1 de la República Dominicana: encuentra el mejor restaurante o negocio verificado de tu provincia, o puja para posicionar el tuyo en el puesto #1 y llevarte las llamadas y los clientes.',
     canonical: `${SITE_URL}/`,
     image: OG_IMAGE,
     jsonLd: [organizationLd(), websiteLd()],
@@ -148,6 +148,7 @@ export function organizationLd(): Record<string, unknown> {
     '@type': 'Organization',
     name: 'Top.com.do',
     alternateName: 'Top RD',
+    slogan: 'El directorio #1 de la República Dominicana',
     url: `${SITE_URL}/`,
     logo: LOGO_URL,
     image: OG_IMAGE,

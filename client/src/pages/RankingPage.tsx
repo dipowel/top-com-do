@@ -45,22 +45,55 @@ export default function RankingPage() {
         }),
   );
 
-  const h1 =
-    cat === 'todo-rd' && isNational
-      ? 'El directorio #1 de RD'
-      : `Los mejores ${catName} en ${isNational ? 'República Dominicana' : zona}`;
+  const isHome = cat === 'todo-rd' && isNational;
+  const h1 = `Los mejores ${catName} en ${isNational ? 'República Dominicana' : zona}`;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold">{h1}</h1>
-        <p className="text-xs text-white/45">
-          El negocio en el puesto #1 de cada categoría y provincia es el líder verificado y más
-          cercano · datos en vivo
-        </p>
-      </div>
+      {isHome ? (
+        <header aria-labelledby="hero-title" className="space-y-2 pt-1">
+          <h1
+            id="hero-title"
+            className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl"
+          >
+            El directorio <span className="text-gold">#1</span> de la{' '}
+            <span className="uppercase tracking-wide text-gold">República Dominicana</span>
+          </h1>
+          <h2 className="text-sm font-normal leading-relaxed text-white/70">
+            Encuentra el mejor restaurante o negocio verificado de tu zona — o{' '}
+            <button
+              type="button"
+              onClick={() => openBid()}
+              aria-label="Pujar para posicionar tu negocio en el #1"
+              className="font-semibold text-gold underline decoration-gold/50 underline-offset-2 hover:decoration-gold"
+            >
+              puja
+            </button>{' '}
+            para poner tu negocio alante y llevarte todas las llamadas y los clientes.
+          </h2>
+          <p className="text-xs text-white/50">
+            ¿Buscas lo mejor? Aquí solo rankea el{' '}
+            <strong className="font-semibold text-white/80">líder verificado</strong> de cada
+            provincia.
+          </p>
+          <p className="text-[11px] text-white/35">
+            <span className="text-emerald-soft">●</span> Datos en vivo · 32 provincias · negocios
+            verificados
+          </p>
+        </header>
+      ) : (
+        <div>
+          <h1 className="text-xl font-extrabold">{h1}</h1>
+          <p className="text-xs text-white/45">
+            El negocio en el puesto #1 de cada categoría y provincia es el líder verificado y más
+            cercano · datos en vivo
+          </p>
+        </div>
+      )}
 
-      <CategoryTabs value={cat} onChange={(slug) => go(slug, province)} />
+      <nav aria-label="Filtrar por categoría">
+        <CategoryTabs value={cat} onChange={(slug) => go(slug, province)} />
+      </nav>
 
       {/* Filtro de provincia (las 32 demarcaciones) */}
       <div className="flex items-center gap-2">
@@ -68,6 +101,7 @@ export default function RankingPage() {
         <select
           value={province}
           onChange={(e) => go(cat, e.target.value)}
+          aria-label="Filtrar por provincia"
           className="input !w-auto flex-1 !py-1.5 text-xs"
         >
           {PROVINCE_DEFS.map((p) => (
