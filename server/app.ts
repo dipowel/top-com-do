@@ -1,9 +1,14 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { eq } from 'drizzle-orm';
 
 import { noStore } from './middleware/noStore';
 import { errorHandler } from './middleware/errorHandler';
+import { ah } from './lib/asyncHandler';
+import { db } from './db';
+import { profiles as profilesTable } from '../shared/schema';
+import { sitemapUrls, renderSitemap } from '../shared/seo';
 
 import health from './routes/health';
 import categories from './routes/categories';
@@ -38,6 +43,20 @@ export function createApp() {
     if (req.body !== undefined && req.body !== null) return next();
     jsonParser(req, res, next);
   });
+
+  // SEO: sitemap dinámico (fuera de /api; `noStore` no aplica, así que se puede cachear).
+  app.get(
+    '/sitemap.xml',
+    ah(async (_req, res) => {
+      const rows = await db
+        .select({ id: profilesTable.id, createdAt: profilesTable.createdAt })
+        .from(profilesTable)
+        .where(eq(profilesTable.isActive, true));
+      res.type('application/xml');
+      res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+      res.send(renderSitemap(sitemapUrls(rows)));
+    }),
+  );
 
   app.use('/api', noStore);
 

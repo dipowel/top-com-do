@@ -8,7 +8,10 @@ import { googleDirectionsUrl, wazeUrl } from '../lib/geo';
 import { useShell } from '../hooks/useShell';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
+import { useSeo } from '../hooks/useSeo';
 import ProfileReviews from '../components/reviews/ProfileReviews';
+import { profileSeo } from '@shared/seo';
+import type { ReviewSummary } from '@shared/types';
 
 interface Detail {
   id: string;
@@ -28,7 +31,9 @@ interface Detail {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  categorySlug: string;
   categoryName: string;
+  reviewSummary: ReviewSummary | null;
 }
 
 interface VerifiedBid {
@@ -54,6 +59,8 @@ export default function ProfileDetailPage() {
       .then(setBids)
       .catch(() => setBids([]));
   }, [id]);
+
+  useSeo(profile ? profileSeo(profile, profile.reviewSummary) : null);
 
   if (notFound) return <p className="text-sm text-white/50">Perfil no encontrado.</p>;
   if (!profile) return <Spinner />;

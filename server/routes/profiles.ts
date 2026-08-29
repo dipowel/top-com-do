@@ -177,6 +177,7 @@ r.get(
       provinceName: rows[0].province ? provinceName(rows[0].province) : null,
       latitude: numOrNull(rows[0].latitude),
       longitude: numOrNull(rows[0].longitude),
+      reviewSummary: await reviewSummary(rows[0].id),
     });
   }),
 );

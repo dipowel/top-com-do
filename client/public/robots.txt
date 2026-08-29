@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /notificaciones
+Disallow: /mis-pujas
+Disallow: /perfil
+
+Sitemap: https://www.top.com.do/sitemap.xml

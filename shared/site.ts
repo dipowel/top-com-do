@@ -14,3 +14,20 @@ export const SITE_URL = resolveSiteUrl();
 
 export const refShareUrl = (code: string) => `${SITE_URL}/?ref=${encodeURIComponent(code)}`;
 export const profileShareUrl = (id: string) => `${SITE_URL}/p/${id}`;
+
+/** Redes sociales oficiales de la plataforma (para el footer y `sameAs` de los metadatos). */
+export const SOCIAL_LINKS = [
+  {
+    name: 'Instagram',
+    label: '@top.com.do',
+    url: 'https://www.instagram.com/top.com.do?igsi=d3lhZ3VycWx5eWph',
+  },
+  { name: 'X', label: '@topcomdo', url: 'https://x.com/topcomdo?s=11' },
+  {
+    name: 'TikTok',
+    label: '@top.com.do',
+    url: 'https://www.tiktok.com/@top.com.do?_r=1&_t=ZS-99I1BmVaM2m',
+  },
+] as const;
+
+export const SOCIAL_URLS: string[] = SOCIAL_LINKS.map((s) => s.url);

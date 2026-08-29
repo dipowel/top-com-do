@@ -16,6 +16,7 @@
   ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/sitemap.xml", "destination": "/api" },
     { "source": "/:path*", "destination": "/index.html" }
   ],
   "crons": [{ "path": "/api/cron/reset-round", "schedule": "0 5 * * 1" }]

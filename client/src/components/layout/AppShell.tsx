@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
+import Footer from './Footer';
 import PujarAhoraButton from './PujarAhoraButton';
 import BidWizard from '../bid/BidWizard';
 import type { ShellContext } from '../../hooks/useShell';
@@ -24,8 +25,9 @@ export default function AppShell() {
   return (
     <div className="min-h-full">
       <TopBar />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-40 pt-5">
+      <main className="mx-auto w-full max-w-3xl px-4 pb-44 pt-5">
         <Outlet context={ctx} />
+        <Footer />
       </main>
       <PujarAhoraButton onClick={() => openBid(undefined)} />
       <BottomNav />
