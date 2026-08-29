@@ -92,8 +92,9 @@ r.post(
       res.status(201).json({ url: checkout.checkoutUrl, bidId: bid.id });
     } catch (err) {
       await db.delete(bids).where(eq(bids.id, bid.id));
-      console.error('[checkout] Dodo falló:', (err as Error).message);
-      throw new HttpError(502, 'No se pudo iniciar el pago con Dodo Payments. Intenta de nuevo.');
+      const detail = (err as Error).message;
+      console.error('[checkout] Dodo falló:', detail);
+      throw new HttpError(502, `No se pudo iniciar el pago con Dodo Payments — ${detail}`);
     }
   }),
 );

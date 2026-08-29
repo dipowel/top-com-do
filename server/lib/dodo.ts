@@ -67,9 +67,19 @@ export async function createCheckout(
   });
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    /* respuesta no-JSON */
+  }
   if (!res.ok) {
-    throw new Error(`Dodo checkout ${res.status}: ${data?.message || text || 'error'}`);
+    const msg: string =
+      data.message || data.error || data.detail || data.code || text.slice(0, 300) || 'error';
+    throw new Error(
+      `Dodo ${res.status} (product ${dodoProductId()}, DOP): ${msg}`,
+    );
   }
   const checkoutUrl: string | undefined = data.checkout_url || data.payment_link || data.url;
   if (!checkoutUrl) throw new Error('Dodo no devolvió checkout_url');
@@ -78,6 +88,42 @@ export async function createCheckout(
     checkoutUrl,
     raw: data,
   };
+}
+
+/**
+ * Sonda de diagnóstico: consulta el producto base en Dodo (lectura pura, no crea nada).
+ *  - 401/403 → API key inválida o de otro entorno (test vs live)
+ *  - 404     → el product_id no existe (typo / entorno equivocado)
+ *  - 200     → el body muestra moneda y tipo de precio (debe ser DOP y pay-what-you-want)
+ */
+export async function probeProduct(): Promise<{
+  productId: string;
+  base: string;
+  status: number | null;
+  ok: boolean;
+  body: unknown;
+}> {
+  const productId = dodoProductId();
+  const base = dodoBaseUrl();
+  const apiKey = process.env.DODO_API_KEY?.trim();
+  if (!apiKey) {
+    return { productId, base, status: null, ok: false, body: 'Falta DODO_API_KEY' };
+  }
+  try {
+    const res = await fetch(`${base}/products/${productId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const text = await res.text();
+    let body: unknown = text;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      /* deja el texto crudo */
+    }
+    return { productId, base, status: res.status, ok: res.ok, body };
+  } catch (e) {
+    return { productId, base, status: null, ok: false, body: (e as Error).message };
+  }
 }
 
 // ---------------- Webhook (Standard Webhooks) ----------------

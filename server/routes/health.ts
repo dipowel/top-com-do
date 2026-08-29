@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import { ah } from '../lib/asyncHandler';
 import { verifyIdToken, firebaseProjectId } from '../lib/firebaseAuth';
+import { probeProduct } from '../lib/dodo';
 
 const r = Router();
 
@@ -51,6 +52,12 @@ r.get(
       out.database = 'ok';
     } catch (e) {
       out.database = `error: ${(e as Error).message}`;
+    }
+
+    // Sonda en vivo del producto de Dodo: /api/health/config?dodoProbe=<CRON_SECRET>
+    const probeKey = typeof req.query.dodoProbe === 'string' ? req.query.dodoProbe : '';
+    if (probeKey && process.env.CRON_SECRET && probeKey === process.env.CRON_SECRET) {
+      out.dodoProbe = await probeProduct();
     }
 
     const header = req.headers.authorization || '';
