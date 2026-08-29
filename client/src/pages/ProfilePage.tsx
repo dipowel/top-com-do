@@ -11,6 +11,7 @@ import ProfileForm, {
   profileToFormValue,
   type ProfileFormValue,
 } from '../components/profile/ProfileForm';
+import { refShareUrl } from '@shared/site';
 import type { MyReferral } from '@shared/types';
 
 interface MyProfile {
@@ -83,9 +84,7 @@ export default function ProfilePage() {
   }
 
   const displayName = user.displayName || me?.displayName || user.email?.split('@')[0] || 'Usuario';
-  const refLink = me?.referralCode
-    ? `${window.location.origin}/?ref=${me.referralCode}`
-    : '';
+  const refLink = me?.referralCode ? refShareUrl(me.referralCode) : '';
   const credit = me?.creditBalanceDop ?? 0;
 
   async function createProfile() {

@@ -73,6 +73,26 @@ const statements = [
      note text,
      created_at timestamptz NOT NULL DEFAULT now()
    )`,
+
+  `DO $$ BEGIN
+     CREATE TYPE review_status AS ENUM ('published','flagged','hidden');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `CREATE TABLE IF NOT EXISTS reviews (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     rating smallint NOT NULL CHECK (rating BETWEEN 1 AND 5),
+     comment text,
+     status review_status NOT NULL DEFAULT 'published',
+     owner_reply text,
+     owner_reply_at timestamptz,
+     ip_hash text,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     updated_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS reviews_profile_user_uniq ON reviews (profile_id, user_id)`,
+  `CREATE INDEX IF NOT EXISTS reviews_profile_idx ON reviews (profile_id, status)`,
+  `CREATE INDEX IF NOT EXISTS reviews_ip_idx ON reviews (ip_hash, created_at)`,
 ];
 
 for (const sql of statements) {

@@ -8,12 +8,14 @@ import BankAccountsEditor from './BankAccountsEditor';
 import RoundsControl from './RoundsControl';
 import AuditLog from './AuditLog';
 import ReferralsQueue from './ReferralsQueue';
+import ReviewsQueue from './ReviewsQueue';
 import NotificationBell from '../components/layout/NotificationBell';
 
 const tabs = [
   { to: '', label: 'Resumen', end: true },
   { to: 'comprobantes', label: 'Pagos por revisar' },
   { to: 'referidos', label: 'Referidos' },
+  { to: 'resenas', label: 'Reseñas' },
   { to: 'pujas', label: 'Auditoría de pujas' },
   { to: 'cuentas', label: 'Cuentas bancarias' },
   { to: 'rondas', label: 'Rondas' },
@@ -86,6 +88,7 @@ export default function AdminLayout() {
         <Route index element={<AdminOverview />} />
         <Route path="comprobantes" element={<ReceiptsQueue />} />
         <Route path="referidos" element={<ReferralsQueue />} />
+        <Route path="resenas" element={<ReviewsQueue />} />
         <Route path="pujas" element={<BidsAudit />} />
         <Route path="cuentas" element={<BankAccountsEditor />} />
         <Route path="rondas" element={<RoundsControl />} />

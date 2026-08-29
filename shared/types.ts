@@ -75,6 +75,31 @@ export interface BankAccountDTO {
   sortOrder: number;
 }
 
+export interface ReviewDTO {
+  id: string;
+  rating: number;
+  comment: string | null;
+  status: 'published' | 'flagged' | 'hidden';
+  ownerReply: string | null;
+  ownerReplyAt: string | null;
+  createdAt: string;
+  authorName: string;
+  isMine: boolean;
+}
+
+export interface ReviewSummary {
+  average: number;
+  count: number;
+  distribution: Record<'1' | '2' | '3' | '4' | '5', number>;
+}
+
+export interface ProfileReviewsResponse {
+  summary: ReviewSummary;
+  items: ReviewDTO[];
+  mine: ReviewDTO | null;
+  canReview: boolean;
+}
+
 export interface MyReferral {
   id: string;
   status: 'pending' | 'eligible' | 'approved' | 'rejected';

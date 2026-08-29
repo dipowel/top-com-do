@@ -8,6 +8,7 @@ import { googleDirectionsUrl, wazeUrl } from '../lib/geo';
 import { useShell } from '../hooks/useShell';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
+import ProfileReviews from '../components/reviews/ProfileReviews';
 
 interface Detail {
   id: string;
@@ -176,6 +177,9 @@ export default function ProfileDetailPage() {
           {!bids.length && <p className="text-xs text-white/40">Sin pujas verificadas todavía.</p>}
         </div>
       </div>
+
+      {/* Reseñas — debajo de las pujas, sin tocar la sección de competencia de arriba */}
+      <ProfileReviews profileId={profile.id} isOwner={isOwner} />
     </div>
   );
 }

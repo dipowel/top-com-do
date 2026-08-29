@@ -1,6 +1,9 @@
 # Top.com.do
 
-Plataforma de subastas de visibilidad, ego y marcas para la República Dominicana.
+Directorio de autoridad y subastas de visibilidad de la República Dominicana.
+**URL oficial: https://www.top.com.do** (el apex `top.com.do` redirige 301 a `www`).
+Define `www.top.com.do` como *Production Domain* en Vercel. La URL base para enlaces de
+compartir/referidos vive en `shared/site.ts` (`SITE_URL`, sobreescribible con `VITE_SITE_URL`).
 
 - **Frontend:** React + Vite + TypeScript + Tailwind (SPA, estética de lujo: fondo `#070b14`,
   cristal esmerilado, acentos dorado / esmeralda, tipografía Plus Jakarta Sans).

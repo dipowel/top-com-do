@@ -3,6 +3,7 @@ import { toPng } from 'html-to-image';
 import type { RankingEntry } from '@shared/types';
 import { formatDOP } from '../../lib/format';
 import { shareImage, avatarFallback } from '../../lib/share';
+import { profileShareUrl } from '@shared/site';
 import Modal from '../common/Modal';
 
 export default function ViralCard({ entry, onClose }: { entry: RankingEntry; onClose: () => void }) {
@@ -15,7 +16,11 @@ export default function ViralCard({ entry, onClose }: { entry: RankingEntry; onC
     setBusy(true);
     try {
       const dataUrl = await toPng(ref.current, { pixelRatio: 2, cacheBust: true });
-      await shareImage(dataUrl, `top-com-do-${p.handle}.png`, `${p.name} en Top.com.do`);
+      await shareImage(
+        dataUrl,
+        `top-com-do-${p.handle}.png`,
+        `${p.name} es #${entry.position} en Top.com.do — ${profileShareUrl(p.id)}`,
+      );
     } catch (e) {
       console.error(e);
     } finally {
@@ -56,8 +61,9 @@ export default function ViralCard({ entry, onClose }: { entry: RankingEntry; onC
             <div className="text-xl font-extrabold">{formatDOP(entry.totalDop)}</div>
           </div>
         </div>
-        <div className="mt-4 text-[11px] text-white/40">
-          {p.categoryName} · República Dominicana
+        <div className="mt-4 flex items-center justify-between text-[11px] text-white/40">
+          <span>{p.provinceName ? `${p.categoryName} · ${p.provinceName}` : p.categoryName}</span>
+          <span className="font-bold text-gold/70">www.top.com.do</span>
         </div>
       </div>
 

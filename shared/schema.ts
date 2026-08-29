@@ -18,6 +18,7 @@ export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal', 'credi
 export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected']);
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
 export const referralStatus = pgEnum('referral_status', ['pending', 'eligible', 'approved', 'rejected']);
+export const reviewStatus = pgEnum('review_status', ['published', 'flagged', 'hidden']);
 
 // ---------------- Tablas ----------------
 export const users = pgTable('users', {
@@ -204,6 +205,33 @@ export const creditTransactions = pgTable('credit_transactions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---------------- Reseñas ----------------
+export const reviews = pgTable(
+  'reviews',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    rating: integer('rating').notNull(), // 1..5
+    comment: text('comment'),
+    status: reviewStatus('status').notNull().default('published'),
+    ownerReply: text('owner_reply'),
+    ownerReplyAt: timestamp('owner_reply_at', { withTimezone: true }),
+    ipHash: text('ip_hash'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqPerUser: uniqueIndex('reviews_profile_user_uniq').on(t.profileId, t.userId),
+    byProfile: index('reviews_profile_idx').on(t.profileId, t.status),
+    byIp: index('reviews_ip_idx').on(t.ipHash, t.createdAt),
+  }),
+);
+
 // ---------------- Notificaciones y estado del ranking ----------------
 export const notifications = pgTable(
   'notifications',
@@ -250,3 +278,4 @@ export type Round = typeof rounds.$inferSelect;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type Review = typeof reviews.$inferSelect;

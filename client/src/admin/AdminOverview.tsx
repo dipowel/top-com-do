@@ -7,6 +7,7 @@ interface Overview {
   pendingCount: number;
   verifiedTotal: number;
   eligibleReferrals: number;
+  flaggedReviews: number;
 }
 
 export default function AdminOverview() {
@@ -23,7 +24,7 @@ export default function AdminOverview() {
   if (!d) return null;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <div className="glass p-4">
         <div className="text-xs text-white/40">Pagos por revisar</div>
         <div className="text-2xl font-black text-gold">{d.pendingCount}</div>
@@ -31,6 +32,10 @@ export default function AdminOverview() {
       <div className="glass p-4">
         <div className="text-xs text-white/40">Bonos de referido por liberar</div>
         <div className="text-2xl font-black text-amber-300">{d.eligibleReferrals}</div>
+      </div>
+      <div className="glass p-4">
+        <div className="text-xs text-white/40">Reseñas por revisar</div>
+        <div className="text-2xl font-black text-amber-300">{d.flaggedReviews}</div>
       </div>
       <div className="glass p-4">
         <div className="text-xs text-white/40">Recaudado (ronda activa)</div>

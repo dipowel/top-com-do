@@ -6,11 +6,17 @@
   "functions": {
     "api/index.ts": { "maxDuration": 30 }
   },
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "top.com.do" }],
+      "destination": "https://www.top.com.do/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/:path*", "destination": "/index.html" }
   ],
-  "crons": [
-    { "path": "/api/cron/reset-round", "schedule": "0 5 * * 1" }
-  ]
+  "crons": [{ "path": "/api/cron/reset-round", "schedule": "0 5 * * 1" }]
 }

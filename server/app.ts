@@ -16,12 +16,21 @@ import payments from './routes/payments';
 import me from './routes/me';
 import admin from './routes/admin';
 import cron from './routes/cron';
+import reviews from './routes/reviews';
 
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
-  app.use(cors());
+  app.use(
+    cors({
+      origin: [
+        /^https:\/\/([a-z0-9-]+\.)?top\.com\.do$/,
+        /^http:\/\/localhost:\d+$/,
+        /\.vercel\.app$/,
+      ],
+    }),
+  );
 
   // En Vercel el body JSON puede venir ya parseado. Evita doble lectura del stream.
   const jsonParser = express.json({ limit: '2mb' });
@@ -41,6 +50,7 @@ export function createApp() {
   app.use('/api/uploads', uploads);
   app.use('/api/payments', payments);
   app.use('/api/me', me);
+  app.use('/api/reviews', reviews);
   app.use('/api/admin', admin);
   app.use('/api/cron', cron);
 

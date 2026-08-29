@@ -10,6 +10,7 @@ import {
   bankAccounts,
   auditLog,
   referrals,
+  reviews,
 } from '../../shared/schema';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
@@ -41,11 +42,16 @@ r.get(
       .select({ n: sql<string>`count(*)` })
       .from(referrals)
       .where(eq(referrals.status, 'eligible'));
+    const flaggedReviews = await db
+      .select({ n: sql<string>`count(*)` })
+      .from(reviews)
+      .where(eq(reviews.status, 'flagged'));
     res.json({
       round,
       pendingCount: Number(pending[0]?.n ?? 0),
       verifiedTotal: Number(verified[0]?.s ?? 0),
       eligibleReferrals: Number(refs[0]?.n ?? 0),
+      flaggedReviews: Number(flaggedReviews[0]?.n ?? 0),
     });
   }),
 );
@@ -302,6 +308,54 @@ r.post(
       previousChampion: previous[0]?.profile.handle ?? null,
     });
     res.json({ round, previousChampion: previous[0] ?? null });
+  }),
+);
+
+// ---------------- Moderación de reseñas ----------------
+r.get(
+  '/reviews',
+  ah(async (req, res) => {
+    const status = (typeof req.query.status === 'string' ? req.query.status : 'flagged') as
+      | 'published'
+      | 'flagged'
+      | 'hidden';
+    const rows = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        status: reviews.status,
+        createdAt: reviews.createdAt,
+        ipHash: reviews.ipHash,
+        profileId: reviews.profileId,
+        profileName: profiles.name,
+        authorEmail: users.email,
+        authorName: users.displayName,
+      })
+      .from(reviews)
+      .innerJoin(profiles, eq(profiles.id, reviews.profileId))
+      .leftJoin(users, eq(users.id, reviews.userId))
+      .where(eq(reviews.status, status))
+      .orderBy(desc(reviews.createdAt))
+      .limit(200);
+    res.json(rows);
+  }),
+);
+
+r.post(
+  '/reviews/:id/status',
+  ah(async (req, res) => {
+    const { status } = z
+      .object({ status: z.enum(['published', 'hidden', 'flagged']) })
+      .parse(req.body);
+    const updated = await db
+      .update(reviews)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(reviews.id, req.params.id))
+      .returning();
+    if (!updated[0]) throw new HttpError(404, 'Reseña no encontrada');
+    await audit(req.user!.id, `review.${status}`, 'review', req.params.id, {});
+    res.json({ ok: true });
   }),
 );
 

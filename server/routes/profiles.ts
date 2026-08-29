@@ -2,12 +2,16 @@ import { Router } from 'express';
 import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
-import { profiles, categories, bids, users } from '../../shared/schema';
+import { profiles, categories, bids, users, reviews } from '../../shared/schema';
 import { ah } from '../lib/asyncHandler';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, loadUser } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
 import { PROVINCE_SLUGS, provinceName } from '../../shared/provinces';
+import { assertCanReview, detectBombing, reviewSummary } from '../lib/reviews';
+import { clientIpHash } from '../lib/ip';
+import { REVIEW_COMMENT_MAX, isValidRating } from '../../shared/reviews';
+import type { ReviewDTO } from '../../shared/types';
 
 const r = Router();
 
@@ -231,6 +235,127 @@ r.get(
       .where(and(eq(bids.profileId, req.params.id), eq(bids.status, 'verified')))
       .orderBy(desc(bids.verifiedAt));
     res.json(rows.map((x) => ({ ...x, amountDop: Number(x.amountDop) })));
+  }),
+);
+
+// ---------------- Reseñas ----------------
+function toReviewDTO(row: {
+  id: string;
+  rating: number;
+  comment: string | null;
+  status: 'published' | 'flagged' | 'hidden';
+  ownerReply: string | null;
+  ownerReplyAt: Date | null;
+  createdAt: Date;
+  authorName: string | null;
+  userId: string;
+}, meId?: string): ReviewDTO {
+  return {
+    id: row.id,
+    rating: row.rating,
+    comment: row.comment,
+    status: row.status,
+    ownerReply: row.ownerReply,
+    ownerReplyAt: row.ownerReplyAt ? row.ownerReplyAt.toISOString() : null,
+    createdAt: row.createdAt.toISOString(),
+    authorName: row.authorName || 'Usuario',
+    isMine: !!meId && row.userId === meId,
+  };
+}
+
+r.get(
+  '/:id/reviews',
+  ah(async (req, res) => {
+    const me = await loadUser(req).catch(() => null);
+    const prof = await db
+      .select({ id: profiles.id, ownerUserId: profiles.ownerUserId })
+      .from(profiles)
+      .where(eq(profiles.id, req.params.id))
+      .limit(1);
+    if (!prof[0]) throw new HttpError(404, 'Perfil no encontrado');
+
+    const rows = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        status: reviews.status,
+        ownerReply: reviews.ownerReply,
+        ownerReplyAt: reviews.ownerReplyAt,
+        createdAt: reviews.createdAt,
+        userId: reviews.userId,
+        authorName: users.displayName,
+      })
+      .from(reviews)
+      .leftJoin(users, eq(users.id, reviews.userId))
+      .where(eq(reviews.profileId, req.params.id))
+      .orderBy(desc(reviews.createdAt));
+
+    // Público: solo publicadas. Admin y el propio autor ven también las suyas.
+    const isAdmin = me?.role === 'admin' || me?.role === 'superadmin';
+    const visible = rows.filter(
+      (x) => x.status === 'published' || isAdmin || (me && x.userId === me.id),
+    );
+    const mine = me ? rows.find((x) => x.userId === me.id) : undefined;
+
+    res.json({
+      summary: await reviewSummary(req.params.id),
+      items: visible.map((x) => toReviewDTO(x, me?.id)),
+      mine: mine ? toReviewDTO(mine, me?.id) : null,
+      canReview: !!me && prof[0].ownerUserId !== me.id,
+    });
+  }),
+);
+
+r.post(
+  '/:id/reviews',
+  requireAuth,
+  ah(async (req, res) => {
+    const body = z
+      .object({ rating: z.number(), comment: z.string().max(REVIEW_COMMENT_MAX).optional() })
+      .parse(req.body);
+    if (!isValidRating(body.rating)) throw new HttpError(400, 'La calificación debe ser de 1 a 5.');
+
+    const prof = await db
+      .select({ id: profiles.id, ownerUserId: profiles.ownerUserId, isActive: profiles.isActive })
+      .from(profiles)
+      .where(eq(profiles.id, req.params.id))
+      .limit(1);
+    if (!prof[0] || !prof[0].isActive) throw new HttpError(404, 'Perfil no encontrado');
+
+    const ipHash = clientIpHash(req);
+    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'superadmin';
+    await assertCanReview({ profile: prof[0], userId: req.user!.id, ipHash, isAdmin });
+
+    const existing = await db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(and(eq(reviews.profileId, req.params.id), eq(reviews.userId, req.user!.id)))
+      .limit(1);
+
+    const saved = await db
+      .insert(reviews)
+      .values({
+        profileId: req.params.id,
+        userId: req.user!.id,
+        rating: body.rating,
+        comment: body.comment?.trim() || null,
+        ipHash,
+        status: 'published',
+      })
+      .onConflictDoUpdate({
+        target: [reviews.profileId, reviews.userId],
+        set: { rating: body.rating, comment: body.comment?.trim() || null, status: 'published', updatedAt: new Date() },
+      })
+      .returning();
+
+    if (!isAdmin && body.rating <= 2) await detectBombing(req.params.id);
+    await audit(req.user!.id, existing[0] ? 'review.update' : 'review.create', 'review', saved[0]!.id, {
+      profileId: req.params.id,
+      rating: body.rating,
+    });
+
+    res.status(201).json({ ok: true, summary: await reviewSummary(req.params.id) });
   }),
 );
 
