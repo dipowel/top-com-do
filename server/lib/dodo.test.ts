@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import crypto from 'node:crypto';
-import { verifyWebhook, dodoBaseUrl, dodoProductId } from './dodo';
+import { verifyWebhook, dodoBaseUrl, dodoProductId, dodoCheckoutReady } from './dodo';
 
 function sign(rawSecretB64: string, id: string, ts: string, payload: string): string {
   return crypto
@@ -71,5 +71,14 @@ describe('dodo · configuración', () => {
     expect(dodoProductId()).toBe('pdt_0NmSUGwTYDHQKdpmPVTI');
     process.env.DODO_PRODUCT_ID = 'pdt_custom';
     expect(dodoProductId()).toBe('pdt_custom');
+  });
+
+  it('dodoCheckoutReady solo exige DODO_API_KEY (no vacía)', () => {
+    delete process.env.DODO_API_KEY;
+    expect(dodoCheckoutReady()).toBe(false);
+    process.env.DODO_API_KEY = '   ';
+    expect(dodoCheckoutReady()).toBe(false);
+    process.env.DODO_API_KEY = 'k_live_abc';
+    expect(dodoCheckoutReady()).toBe(true);
   });
 });

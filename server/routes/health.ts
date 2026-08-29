@@ -15,6 +15,13 @@ r.get('/health', (_req, res) => {
  * Abre /api/health/config, o manda Authorization: Bearer <idToken>
  * para probar la verificación del token.
  */
+/** Pista segura de un secreto: nunca lo expone entero, solo longitud + 3 últimos chars. */
+function mask(v: string | undefined): string {
+  const t = (v ?? '').trim();
+  if (!t) return '(vacío)';
+  return `len=${t.length} …${t.slice(-3)}`;
+}
+
 r.get(
   '/health/config',
   ah(async (req, res) => {
@@ -25,6 +32,18 @@ r.get(
       superadminEmailsSet: Boolean(process.env.SUPERADMIN_EMAILS),
       dodoConfigured: Boolean(process.env.DODO_API_KEY && process.env.DODO_WEBHOOK_SECRET),
       dodoEnv: process.env.DODO_ENV || 'test',
+      dodo: {
+        apiKeySet: Boolean(process.env.DODO_API_KEY?.trim()),
+        webhookSecretSet: Boolean(process.env.DODO_WEBHOOK_SECRET?.trim()),
+        productId: process.env.DODO_PRODUCT_ID || 'pdt_0NmSUGwTYDHQKdpmPVTI (default)',
+        env: process.env.DODO_ENV || 'test',
+        apiKeyHint: mask(process.env.DODO_API_KEY),
+        webhookSecretHint: mask(process.env.DODO_WEBHOOK_SECRET),
+        // revela typos en el NOMBRE de la variable (p. ej. "DODO_APIKEY")
+        envVarsSeen: Object.keys(process.env)
+          .filter((k) => k.startsWith('DODO'))
+          .sort(),
+      },
     };
 
     try {

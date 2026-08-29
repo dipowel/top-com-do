@@ -8,7 +8,7 @@ import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { getActiveRound } from '../lib/rounds';
 import { audit } from '../lib/audit';
-import { createCheckout, dodoConfigured } from '../lib/dodo';
+import { createCheckout, dodoCheckoutReady } from '../lib/dodo';
 import { minNextBidForProfile } from '../lib/auction';
 import { formatDOP } from '../../shared/fx';
 
@@ -24,8 +24,11 @@ r.post(
   '/dodo',
   requireAuth,
   ah(async (req, res) => {
-    if (!dodoConfigured()) {
-      throw new HttpError(503, 'Los pagos no están configurados. Contacta al administrador.');
+    if (!dodoCheckoutReady()) {
+      throw new HttpError(
+        503,
+        'Pagos no configurados: falta DODO_API_KEY en el servidor. Revisa /api/health/config.',
+      );
     }
     const body = schema.parse(req.body);
     const amountDop = Math.round(body.amountDop * 100) / 100;

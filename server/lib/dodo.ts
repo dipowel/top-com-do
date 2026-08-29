@@ -12,8 +12,14 @@ const TOLERANCE_SEC = 5 * 60;
 /** Producto base "pay what you want" en Dodo. Un product_id no es secreto. */
 const DEFAULT_PRODUCT_ID = 'pdt_0NmSUGwTYDHQKdpmPVTI';
 
+/** Listo para todo el ciclo (checkout + webhook). */
 export function dodoConfigured(): boolean {
-  return Boolean(process.env.DODO_API_KEY && process.env.DODO_WEBHOOK_SECRET);
+  return Boolean(process.env.DODO_API_KEY?.trim() && process.env.DODO_WEBHOOK_SECRET?.trim());
+}
+
+/** El checkout solo necesita la API key; el webhook valida su secreto por su cuenta. */
+export function dodoCheckoutReady(): boolean {
+  return Boolean(process.env.DODO_API_KEY?.trim());
 }
 
 export function dodoBaseUrl(): string {
