@@ -69,7 +69,8 @@ export default function RankingPage() {
             >
               puja
             </button>{' '}
-            para poner tu negocio alante y llevarte todas las llamadas y los clientes.
+            para poner tu negocio en el <span className="text-gold">#1</span> y llevarte todas las
+            llamadas y los clientes.
           </h2>
           <p className="text-xs text-white/50">
             ¿Buscas lo mejor? Aquí solo rankea el{' '}
