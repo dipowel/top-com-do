@@ -39,7 +39,7 @@ export default function TopBar() {
             </Link>
           )}
           <Link to="/perfil" className="btn-ghost !px-3 !py-1.5 text-xs">
-            {user ? shortName || 'Mi perfil' : 'Entrar'}
+            {user ? shortName || 'Mi perfil' : 'Iniciar sesión'}
           </Link>
         </div>
       </div>
