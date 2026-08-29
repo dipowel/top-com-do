@@ -7,7 +7,6 @@ import {
   favorites,
   profiles,
   categories,
-  paymentReceipts,
   users,
   referrals,
   creditTransactions,
@@ -194,11 +193,9 @@ r.get(
         profileName: profiles.name,
         profileHandle: profiles.handle,
         profileAvatar: profiles.avatarUrl,
-        receiptUrl: paymentReceipts.fileUrl,
       })
       .from(bids)
       .innerJoin(profiles, eq(profiles.id, bids.profileId))
-      .leftJoin(paymentReceipts, eq(paymentReceipts.bidId, bids.id))
       .where(eq(bids.userId, req.user!.id))
       .orderBy(desc(bids.createdAt));
     res.json(

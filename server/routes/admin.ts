@@ -2,16 +2,7 @@ import { Router } from 'express';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
-import {
-  bids,
-  profiles,
-  users,
-  paymentReceipts,
-  bankAccounts,
-  auditLog,
-  referrals,
-  reviews,
-} from '../../shared/schema';
+import { bids, profiles, users, auditLog, referrals, reviews } from '../../shared/schema';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
@@ -76,13 +67,10 @@ r.get(
         profileHandle: profiles.handle,
         bidderEmail: users.email,
         bidderName: users.displayName,
-        receiptUrl: paymentReceipts.fileUrl,
-        receiptMime: paymentReceipts.fileMime,
       })
       .from(bids)
       .innerJoin(profiles, eq(profiles.id, bids.profileId))
       .innerJoin(users, eq(users.id, bids.userId))
-      .leftJoin(paymentReceipts, eq(paymentReceipts.bidId, bids.id))
       .where(status ? eq(bids.status, status as 'pending' | 'verified' | 'rejected') : undefined)
       .orderBy(desc(bids.createdAt))
       .limit(500);
@@ -97,39 +85,6 @@ r.get(
  * (por defecto `pending`), tengan o no comprobante subido. El admin ve el
  * número de confirmación y/o el comprobante y aprueba o rechaza.
  */
-r.get(
-  '/receipts',
-  ah(async (req, res) => {
-    const status = (typeof req.query.status === 'string' ? req.query.status : 'pending') as
-      | 'pending'
-      | 'verified'
-      | 'rejected';
-    const rows = await db
-      .select({
-        bidId: bids.id,
-        amountDop: bids.amountDop,
-        method: bids.method,
-        status: bids.status,
-        reference: bids.reference,
-        notes: bids.notes,
-        createdAt: bids.createdAt,
-        profileName: profiles.name,
-        bidderEmail: users.email,
-        bidderName: users.displayName,
-        receiptUrl: paymentReceipts.fileUrl,
-        receiptMime: paymentReceipts.fileMime,
-        uploadedAt: paymentReceipts.uploadedAt,
-      })
-      .from(bids)
-      .innerJoin(profiles, eq(profiles.id, bids.profileId))
-      .innerJoin(users, eq(users.id, bids.userId))
-      .leftJoin(paymentReceipts, eq(paymentReceipts.bidId, bids.id))
-      .where(and(eq(bids.status, status), eq(bids.method, 'bank_transfer')))
-      .orderBy(desc(bids.createdAt));
-    res.json(rows.map((x) => ({ ...x, amountDop: Number(x.amountDop) })));
-  }),
-);
-
 r.post(
   '/bids/:id/verify',
   ah(async (req, res) => {
@@ -243,58 +198,6 @@ r.post(
     if (!u) throw new HttpError(404, 'Usuario no encontrado');
     await moveCredit(u.id, amountDop, 'admin_adjust', null, note || 'Ajuste manual del admin');
     await audit(req.user!.id, 'credit.adjust', 'user', u.id, { amountDop, note });
-    res.json({ ok: true });
-  }),
-);
-
-const accountSchema = z.object({
-  bankName: z.string().min(2),
-  accountHolder: z.string().min(2),
-  accountNumber: z.string().min(3),
-  accountType: z.string().optional().nullable(),
-  currency: z.enum(['DOP', 'USD']).default('DOP'),
-  instructions: z.string().optional().nullable(),
-  isActive: z.boolean().default(true),
-  sortOrder: z.number().int().default(0),
-});
-
-r.get(
-  '/bank-accounts',
-  ah(async (_req, res) => {
-    res.json(await db.select().from(bankAccounts).orderBy(bankAccounts.sortOrder));
-  }),
-);
-
-r.post(
-  '/bank-accounts',
-  ah(async (req, res) => {
-    const body = accountSchema.parse(req.body);
-    const inserted = await db.insert(bankAccounts).values(body).returning();
-    await audit(req.user!.id, 'bank_account.create', 'bank_account', inserted[0]!.id, body);
-    res.status(201).json(inserted[0]);
-  }),
-);
-
-r.put(
-  '/bank-accounts/:id',
-  ah(async (req, res) => {
-    const body = accountSchema.partial().parse(req.body);
-    const updated = await db
-      .update(bankAccounts)
-      .set(body)
-      .where(eq(bankAccounts.id, req.params.id))
-      .returning();
-    if (!updated[0]) throw new HttpError(404, 'Cuenta no encontrada');
-    await audit(req.user!.id, 'bank_account.update', 'bank_account', req.params.id, body);
-    res.json(updated[0]);
-  }),
-);
-
-r.delete(
-  '/bank-accounts/:id',
-  ah(async (req, res) => {
-    await db.delete(bankAccounts).where(eq(bankAccounts.id, req.params.id));
-    await audit(req.user!.id, 'bank_account.delete', 'bank_account', req.params.id);
     res.json({ ok: true });
   }),
 );

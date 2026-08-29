@@ -89,6 +89,7 @@ describe('seo · sitemap', () => {
     expect(locs).toContain('https://www.top.com.do/');
     expect(locs).toContain('https://www.top.com.do/rd/gastronomia/santiago');
     expect(locs).toContain('https://www.top.com.do/p/p1');
+    expect(locs).toContain('https://www.top.com.do/terminos');
     expect(locs).not.toContain('https://www.top.com.do/rd/todo-rd');
   });
 

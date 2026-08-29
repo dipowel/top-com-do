@@ -21,8 +21,10 @@ Opcionales (cada función se auto-desactiva con aviso si falta):
 | Variable | Para |
 |---|---|
 | `FIREBASE_PROJECT_ID` + `VITE_FIREBASE_*` | login (Google/Email). El server valida tokens con solo el projectId; la config web ya viene como fallback en el código. |
-| `PAYPAL_ENV` (`sandbox`/`live`), `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `VITE_PAYPAL_CLIENT_ID` | pagos PayPal |
-| `BLOB_READ_WRITE_TOKEN` | subida de comprobantes |
+| `DODO_ENV` (`test`/`live`), `DODO_API_KEY`, `DODO_WEBHOOK_SECRET` | pagos con Dodo Payments |
+| `DODO_PRODUCT_500`, `DODO_PRODUCT_1000`, `DODO_PRODUCT_2500`, `DODO_PRODUCT_5000` | `product_id` de cada nivel de puja (Dodo) |
+
+Registrar el webhook `https://www.top.com.do/api/webhooks/dodo` en el panel de Dodo (evento `payment.succeeded`).
 
 > Las `VITE_*` se incrustan al compilar: después de agregarlas hay que **volver a desplegar**.
 

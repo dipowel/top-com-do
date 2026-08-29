@@ -11,8 +11,8 @@ compartir/referidos vive en `shared/site.ts` (`SITE_URL`, sobreescribible con `V
   **Supabase**, Neon, RDS, etc.).
 - **Auth:** Firebase Authentication (Google + Email/Password). El servidor verifica los ID tokens
   contra las claves públicas de Google con `jose` — solo necesita `FIREBASE_PROJECT_ID`, sin service account.
-- **Pagos:** Transferencias locales (Banreservas, Banco Popular, BHD, Qik) con comprobante +
-  PayPal REST v2 (USD, tasa fija `1 USD = 59.50 DOP`).
+- **Pagos:** Dodo Payments (checkout hospedado, RD$, niveles fijos 500/1.000/2.500/5.000) con
+  webhook `payment.succeeded`. Alternativa: saldo por referidos.
 - **Deploy:** Vercel (SPA estática + función serverless para `/api/*`).
 
 ---
@@ -28,8 +28,8 @@ top-com-do/
 │  ├─ db.ts              Drizzle + pg (Pool con SSL)
 │  ├─ seed.ts            Categorías, cuentas bancarias y ronda inicial
 │  ├─ middleware/        noStore · auth (Firebase) · errorHandler
-│  ├─ lib/               rankings · rounds · paypal · storage (Blob) · audit
-│  └─ routes/            categories · rankings · profiles · bank-accounts · bids
+│  ├─ lib/               rankings · rounds · dodo · rewards · notify · audit
+│  └─ routes/            categories · rankings · profiles · bids · checkout · webhooks
 │                        · uploads · payments · me · admin · cron
 ├─ shared/               Código compartido cliente/servidor
 │  ├─ schema.ts          Esquema Drizzle (PostgreSQL)
@@ -40,7 +40,7 @@ top-com-do/
 │     ├─ hooks/          useAuth · useRankings (polling) · useFavorites · useMyBids …
 │     ├─ components/     layout · ranking · bid · payments · share · common
 │     ├─ pages/          Ranking · Explorar · MisPujas · Favoritos · Perfil · Detalle · Login
-│     └─ admin/          Panel /admin (comprobantes, auditoría, cuentas, rondas, log)
+│     └─ admin/          Panel /admin (resumen, referidos, reseñas, pujas, rondas, log)
 ├─ drizzle/              Migraciones generadas
 ├─ vercel.json           Build, rewrites y cron semanal
 └─ .env.example
@@ -52,8 +52,7 @@ top-com-do/
 |---|---|
 | **PostgreSQL** | `DATABASE_URL` de Supabase o Neon. Con Supabase usa el *transaction pooler* (`:6543`); `db:push` cambia solo a `:5432` para migrar. |
 | **Firebase** | Proyecto web + proveedores Google y Email/Password habilitados. Solo la config web (`VITE_FIREBASE_*`) y `FIREBASE_PROJECT_ID`. **No hace falta service account.** |
-| **PayPal** | App REST (sandbox y live): `client id` y `secret`. |
-| **Vercel Blob** | `BLOB_READ_WRITE_TOKEN` (Storage → Blob en el dashboard de Vercel). |
+| **Dodo Payments** | `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `DODO_ENV`, y un `DODO_PRODUCT_<nivel>` por cada nivel de puja. Webhook: `/api/webhooks/dodo`. |
 
 ## 3. Puesta en marcha (local)
 
@@ -83,13 +82,12 @@ npm run typecheck # tsc --noEmit
 1. Un visitante (incluido incógnito) abre `/` → `GET /api/rankings` consulta PostgreSQL,
    suma las **pujas verificadas** de la ronda activa por perfil, filtra `> 0 DOP` y ordena.
    Respuesta siempre `Cache-Control: no-store`. Nada del ranking se guarda en `localStorage`.
-2. El usuario inicia sesión (Firebase) y pulsa **Pujar Ahora**:
-   - **Transferencia:** se crea la puja `pending`, copia el número de cuenta, sube el comprobante
-     (se comprime en el móvil; validación tolerante para Safari/Chrome). Un admin la aprueba en `/admin`.
-   - **PayPal:** paga en USD (`monto DOP / 59.5`). Al capturar la orden, la puja pasa a `verified`
-     automáticamente y aparece en el ranking en el siguiente refresco (~15 s).
-3. `/admin` (solo `SUPERADMIN_EMAILS`): resumen, cola de comprobantes, auditoría de pujas,
-   edición de cuentas bancarias, log y **reinicio de ronda semanal desde el #1**.
+2. El usuario inicia sesión (Firebase) y pulsa **Pujar Ahora**: elige el negocio, un nivel fijo
+   (RD$ 500/1.000/2.500/5.000), acepta Términos/Privacidad/Normas y paga en el checkout de
+   **Dodo Payments**. El webhook `payment.succeeded` verifica la puja y recalcula el #1
+   automáticamente. Alternativa: pagar con el saldo por referidos.
+3. `/admin` (solo `SUPERADMIN_EMAILS`): resumen, referidos, moderación de reseñas, auditoría de
+   pujas, log y **reinicio de ronda semanal desde el #1**.
 
 ## 6. Deploy en Vercel
 
@@ -99,7 +97,7 @@ vercel            # vincula el proyecto
 ```
 
 1. **Environment Variables** (Project → Settings): copia todas las claves de `.env`
-   (usa PayPal *live* y la `DATABASE_URL` de producción). Las `VITE_*` deben estar en
+   (usa Dodo en `live` y la `DATABASE_URL` de producción). Las `VITE_*` deben estar en
    *Build & Deploy* también.
 2. Ejecuta las migraciones contra la BD de producción:
    ```bash
@@ -115,9 +113,7 @@ vercel            # vincula el proyecto
 
 ## 7. Notas
 
-- **Límite de subida en Vercel:** el cuerpo de una función serverless (plan Hobby) es ~4.5 MB.
-  El cliente comprime las imágenes a ≈1 MB antes de enviarlas, así que los comprobantes entran sin
-  problema. Para PDFs muy grandes, sube el plan o migra `server/lib/storage.ts` a subida directa a Blob.
-- **Cambiar de proveedor de almacenamiento:** todo pasa por `server/lib/storage.ts`.
+- **Webhook de Dodo:** `/api/webhooks/dodo` valida la firma (Standard Webhooks) con
+  `DODO_WEBHOOK_SECRET`. El cuerpo crudo se preserva en `api/index.ts` para Vercel.
 - **Roles:** cualquier correo en `SUPERADMIN_EMAILS` se marca `superadmin` en su primer login.
 - **Tasa de cambio:** única fuente de verdad en `shared/fx.ts` (`FX_USD_DOP = 59.5`).

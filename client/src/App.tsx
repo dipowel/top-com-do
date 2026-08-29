@@ -8,6 +8,9 @@ import ProfilePage from './pages/ProfilePage';
 import ProfileDetailPage from './pages/ProfileDetailPage';
 import LoginPage from './pages/LoginPage';
 import NotificationsPage from './pages/NotificationsPage';
+import TerminosPage from './pages/legal/TerminosPage';
+import PrivacidadPage from './pages/legal/PrivacidadPage';
+import NormasPage from './pages/legal/NormasPage';
 import AdminLayout from './admin/AdminLayout';
 
 export default function App() {
@@ -25,6 +28,9 @@ export default function App() {
         <Route path="/notificaciones" element={<NotificationsPage />} />
         <Route path="/p/:id" element={<ProfileDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/terminos" element={<TerminosPage />} />
+        <Route path="/privacidad" element={<PrivacidadPage />} />
+        <Route path="/normas" element={<NormasPage />} />
       </Route>
       <Route path="/admin/*" element={<AdminLayout />} />
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -2,9 +2,7 @@ import { NavLink, Route, Routes, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/common/Spinner';
 import AdminOverview from './AdminOverview';
-import ReceiptsQueue from './ReceiptsQueue';
 import BidsAudit from './BidsAudit';
-import BankAccountsEditor from './BankAccountsEditor';
 import RoundsControl from './RoundsControl';
 import AuditLog from './AuditLog';
 import ReferralsQueue from './ReferralsQueue';
@@ -13,11 +11,9 @@ import NotificationBell from '../components/layout/NotificationBell';
 
 const tabs = [
   { to: '', label: 'Resumen', end: true },
-  { to: 'comprobantes', label: 'Pagos por revisar' },
   { to: 'referidos', label: 'Referidos' },
   { to: 'resenas', label: 'Reseñas' },
-  { to: 'pujas', label: 'Auditoría de pujas' },
-  { to: 'cuentas', label: 'Cuentas bancarias' },
+  { to: 'pujas', label: 'Pujas' },
   { to: 'rondas', label: 'Rondas' },
   { to: 'log', label: 'Log' },
 ];
@@ -86,11 +82,9 @@ export default function AdminLayout() {
 
       <Routes>
         <Route index element={<AdminOverview />} />
-        <Route path="comprobantes" element={<ReceiptsQueue />} />
         <Route path="referidos" element={<ReferralsQueue />} />
         <Route path="resenas" element={<ReviewsQueue />} />
         <Route path="pujas" element={<BidsAudit />} />
-        <Route path="cuentas" element={<BankAccountsEditor />} />
         <Route path="rondas" element={<RoundsControl />} />
         <Route path="log" element={<AuditLog />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />

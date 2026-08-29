@@ -26,7 +26,7 @@ export default function AdminOverview() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <div className="glass p-4">
-        <div className="text-xs text-white/40">Pagos por revisar</div>
+        <div className="text-xs text-white/40">Pujas Dodo sin confirmar</div>
         <div className="text-2xl font-black text-gold">{d.pendingCount}</div>
       </div>
       <div className="glass p-4">

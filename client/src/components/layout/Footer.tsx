@@ -97,8 +97,21 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="mt-6 border-t border-white/5 py-4 text-center text-[11px] text-white/35">
-        © {new Date().getFullYear()} Top.com.do · Marca registrada en ONAPI · República Dominicana
+      <div className="mt-6 space-y-2 border-t border-white/5 py-4 text-center text-[11px] text-white/35">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+          <Link to="/terminos" className="hover:text-gold">
+            Términos de Servicio
+          </Link>
+          <Link to="/privacidad" className="hover:text-gold">
+            Política de Privacidad
+          </Link>
+          <Link to="/normas" className="hover:text-gold">
+            Normas
+          </Link>
+        </div>
+        <div>
+          © {new Date().getFullYear()} Top.com.do · Marca registrada en ONAPI · República Dominicana
+        </div>
       </div>
     </footer>
   );

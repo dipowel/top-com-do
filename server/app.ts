@@ -14,10 +14,9 @@ import health from './routes/health';
 import categories from './routes/categories';
 import rankings from './routes/rankings';
 import profiles from './routes/profiles';
-import bankAccounts from './routes/bankAccounts';
 import bids from './routes/bids';
-import uploads from './routes/uploads';
-import payments from './routes/payments';
+import checkout from './routes/checkout';
+import webhooks from './routes/webhooks';
 import me from './routes/me';
 import admin from './routes/admin';
 import cron from './routes/cron';
@@ -36,6 +35,9 @@ export function createApp() {
       ],
     }),
   );
+
+  // Webhooks: ANTES del parser JSON global — necesitan el cuerpo crudo para la firma.
+  app.use('/api/webhooks', webhooks);
 
   // En Vercel el body JSON puede venir ya parseado. Evita doble lectura del stream.
   const jsonParser = express.json({ limit: '2mb' });
@@ -64,10 +66,8 @@ export function createApp() {
   app.use('/api/categories', categories);
   app.use('/api/rankings', rankings);
   app.use('/api/profiles', profiles);
-  app.use('/api/bank-accounts', bankAccounts);
   app.use('/api/bids', bids);
-  app.use('/api/uploads', uploads);
-  app.use('/api/payments', payments);
+  app.use('/api/checkout', checkout);
   app.use('/api/me', me);
   app.use('/api/reviews', reviews);
   app.use('/api/admin', admin);

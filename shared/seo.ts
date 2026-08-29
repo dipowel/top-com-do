@@ -254,6 +254,9 @@ export function sitemapUrls(
   const out: SitemapEntry[] = [
     { loc: `${SITE_URL}/`, changefreq: 'hourly', priority: 1 },
     { loc: `${SITE_URL}/explorar`, changefreq: 'daily', priority: 0.8 },
+    { loc: `${SITE_URL}/terminos`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/privacidad`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/normas`, changefreq: 'yearly', priority: 0.3 },
   ];
 
   for (const c of cats) {

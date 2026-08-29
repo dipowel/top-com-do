@@ -18,9 +18,23 @@ function loadApp(): Promise<Handler> {
   return appPromise;
 }
 
+async function bufferRawBody(req: IncomingMessage): Promise<void> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  (req as unknown as { rawBody?: Buffer }).rawBody = Buffer.concat(chunks);
+}
+
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
     const app = await loadApp();
+    // Webhooks: la verificación de firma necesita los bytes exactos del cuerpo.
+    // En Vercel el stream puede consumirse antes de que Express lo lea, así que
+    // lo bufferizamos aquí y el router del webhook usa `req.rawBody`.
+    if (req.url && req.url.startsWith('/api/webhooks/')) {
+      await bufferRawBody(req);
+    }
     return app(req, res);
   } catch (err) {
     appPromise = null;

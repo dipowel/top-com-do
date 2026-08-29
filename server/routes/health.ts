@@ -23,8 +23,8 @@ r.get(
       databaseUrlSet: Boolean(process.env.DATABASE_URL),
       firebaseProjectId: firebaseProjectId(),
       superadminEmailsSet: Boolean(process.env.SUPERADMIN_EMAILS),
-      paypalConfigured: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET),
-      blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+      dodoConfigured: Boolean(process.env.DODO_API_KEY && process.env.DODO_WEBHOOK_SECRET),
+      dodoEnv: process.env.DODO_ENV || 'test',
     };
 
     try {

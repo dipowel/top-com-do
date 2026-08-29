@@ -103,6 +103,22 @@ const statements = [
   `UPDATE users u SET account_type = 'merchant'
      WHERE account_type = 'consumer'
      AND EXISTS (SELECT 1 FROM profiles p WHERE p.owner_user_id = u.id)`,
+
+  // --- Dodo Payments (pasarela actual; sustituye a PayPal y transferencia) ---
+  `ALTER TYPE bid_method ADD VALUE IF NOT EXISTS 'dodo'`,
+  `CREATE TABLE IF NOT EXISTS dodo_payments (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     bid_id uuid NOT NULL REFERENCES bids(id) ON DELETE CASCADE,
+     session_id text,
+     payment_id text,
+     status text NOT NULL DEFAULT 'created',
+     tier_dop integer NOT NULL,
+     raw jsonb,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     updated_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS dodo_payments_bid_idx ON dodo_payments (bid_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS dodo_payments_payment_uniq ON dodo_payments (payment_id)`,
 ];
 
 for (const sql of statements) {

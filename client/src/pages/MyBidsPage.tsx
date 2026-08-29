@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMyBids } from '../hooks/useMyBids';
 import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/common/Spinner';
-import { formatDOP, formatUSD } from '../lib/format';
+import { formatDOP } from '../lib/format';
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   pending: { label: 'Pendiente', cls: 'bg-amber-400/15 text-amber-300' },
@@ -10,9 +11,36 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   rejected: { label: 'Rechazada', cls: 'bg-red-400/15 text-red-300' },
 };
 
+const METHOD: Record<string, string> = {
+  dodo: 'Dodo Payments',
+  credit: 'Saldo',
+  bank_transfer: 'Transferencia',
+  paypal: 'PayPal',
+};
+
 export default function MyBidsPage() {
   const { user } = useAuth();
-  const { data, loading } = useMyBids();
+  const { data, loading, reload } = useMyBids();
+  const [params, setParams] = useSearchParams();
+  const procesando = params.get('pago') === 'procesando';
+
+  // Tras volver del checkout de Dodo, el webhook confirma en segundos: re-consultamos.
+  useEffect(() => {
+    if (!procesando) return;
+    let n = 0;
+    const id = window.setInterval(() => {
+      n += 1;
+      void reload();
+      if (n >= 6) {
+        window.clearInterval(id);
+        const next = new URLSearchParams(params);
+        next.delete('pago');
+        setParams(next, { replace: true });
+      }
+    }, 5000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [procesando]);
 
   if (!user) {
     return (
@@ -29,6 +57,13 @@ export default function MyBidsPage() {
   return (
     <div className="space-y-3">
       <h1 className="text-xl font-extrabold">Mis pujas</h1>
+
+      {procesando && (
+        <div className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-xs text-gold">
+          Estamos confirmando tu pago con Dodo Payments… Esta página se actualiza sola.
+        </div>
+      )}
+
       {!data.length && <p className="text-sm text-white/50">Todavía no has pujado.</p>}
       {data.map((b) => (
         <div key={b.id} className="glass p-3">
@@ -42,35 +77,14 @@ export default function MyBidsPage() {
           </div>
           <div className="mt-1 flex justify-between text-xs text-white/50">
             <span>
-              {b.method === 'paypal' ? 'PayPal' : b.method === 'credit' ? 'Saldo' : 'Transferencia'} ·{' '}
-              {new Date(b.createdAt).toLocaleDateString('es-DO')}
+              {METHOD[b.method] ?? b.method} · {new Date(b.createdAt).toLocaleDateString('es-DO')}
             </span>
-            <span className="font-bold text-white">
-              {b.currency === 'USD' ? formatUSD(b.amountOriginal) : formatDOP(b.amountDop)}
-            </span>
+            <span className="font-bold text-white">{formatDOP(b.amountDop)}</span>
           </div>
-          {b.status === 'pending' && b.method === 'bank_transfer' && (
-            <div className="mt-2 space-y-1.5 rounded-lg bg-white/5 p-2 text-[11px]">
-              {b.reference && (
-                <div>
-                  <span className="text-white/40">N.º de confirmación: </span>
-                  <span className="font-semibold">{b.reference}</span>
-                </div>
-              )}
-              {b.receiptUrl && !b.receiptUrl.startsWith('data:application/pdf') && (
-                <img src={b.receiptUrl} className="h-16 rounded object-cover" alt="comprobante" />
-              )}
-              {b.receiptUrl?.startsWith('data:application/pdf') && (
-                <span className="text-white/50">Comprobante PDF adjunto ✓</span>
-              )}
-              {!b.receiptUrl && !b.reference ? (
-                <p className="text-amber-300/80">
-                  Falta el comprobante o el número de confirmación para poder verificarla.
-                </p>
-              ) : (
-                <p className="text-white/50">En revisión por un administrador.</p>
-              )}
-            </div>
+          {b.status === 'pending' && b.method === 'dodo' && (
+            <p className="mt-2 rounded-lg bg-white/5 p-2 text-[11px] text-white/50">
+              Esperando la confirmación del pago. Si ya pagaste, se acredita en unos segundos.
+            </p>
           )}
         </div>
       ))}

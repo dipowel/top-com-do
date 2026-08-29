@@ -10,8 +10,7 @@ import { getActiveRound } from '../lib/rounds';
 import { getRankings } from '../lib/rankings';
 import { audit } from '../lib/audit';
 import { moveCredit } from '../lib/rewards';
-import { checkDethronements, notifyAdmins } from '../lib/notify';
-import { FX_USD_DOP, usdToDop, formatDOP } from '../../shared/fx';
+import { checkDethronements } from '../lib/notify';
 import type { SuggestedBid } from '../../shared/types';
 
 const r = Router();
@@ -62,12 +61,15 @@ r.get(
   }),
 );
 
+/**
+ * Puja pagada con **saldo por referidos**. Los pagos con dinero real van por
+ * `POST /api/checkout/dodo` (Dodo Payments). Aquí solo `credit`.
+ */
 const schema = z.object({
   profileId: z.string().uuid(),
-  method: z.enum(['bank_transfer', 'paypal', 'credit']),
+  method: z.literal('credit'),
   amount: z.number().positive().max(100_000_000),
-  currency: z.enum(['DOP', 'USD']).default('DOP'),
-  reference: z.string().max(120).optional(),
+  currency: z.literal('DOP').default('DOP'),
 });
 
 r.post(
@@ -75,26 +77,17 @@ r.post(
   requireAuth,
   ah(async (req, res) => {
     const body = schema.parse(req.body);
-    if (body.method === 'paypal' && body.currency !== 'USD') {
-      throw new HttpError(400, 'Los pagos por PayPal se cobran en USD');
-    }
-    if (body.method === 'credit' && body.currency !== 'DOP') {
-      throw new HttpError(400, 'El saldo se usa en RD$');
-    }
 
     const profile = await db.select().from(profiles).where(eq(profiles.id, body.profileId)).limit(1);
     if (!profile[0] || !profile[0].isActive) throw new HttpError(404, 'Perfil no encontrado');
 
     const round = await getActiveRound();
-    const amountDop = body.currency === 'USD' ? usdToDop(body.amount) : body.amount;
+    const amountDop = body.amount;
     if (amountDop < MIN_BID_DOP) throw new HttpError(400, `El monto mínimo es RD$ ${MIN_BID_DOP}`);
 
-    // Pago con saldo de referidos → se descuenta al instante y la puja queda verificada.
-    if (body.method === 'credit') {
-      const me = (await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1))[0]!;
-      if (Number(me.creditBalanceDop) < amountDop) {
-        throw new HttpError(400, 'Saldo insuficiente');
-      }
+    const me = (await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1))[0]!;
+    if (Number(me.creditBalanceDop) < amountDop) {
+      throw new HttpError(400, 'Saldo insuficiente');
     }
 
     const inserted = await db
@@ -104,65 +97,32 @@ r.post(
         userId: req.user!.id,
         roundId: round.id,
         amountDop: amountDop.toFixed(2),
-        currency: body.currency,
-        amountOriginal: body.amount.toFixed(2),
-        fxRate: (body.currency === 'USD' ? FX_USD_DOP : 1).toFixed(4),
-        method: body.method,
-        status: body.method === 'credit' ? 'verified' : 'pending',
-        verifiedAt: body.method === 'credit' ? new Date() : null,
-        reference: body.method === 'credit' ? 'Pagado con saldo' : body.reference,
+        currency: 'DOP',
+        amountOriginal: amountDop.toFixed(2),
+        fxRate: '1.0000',
+        method: 'credit',
+        status: 'verified',
+        verifiedAt: new Date(),
+        reference: 'Pagado con saldo',
       })
       .returning();
 
-    if (body.method === 'credit') {
-      await moveCredit(
-        req.user!.id,
-        -amountDop,
-        'bid_payment',
-        inserted[0]!.id,
-        `Puja pagada con saldo — ${profile[0].name}`,
-      );
-      // Puja ya verificada → recalcula #1 y avisa a quien haya sido destronado.
-      await checkDethronements(body.profileId);
-    } else {
-      // Puja pendiente → avisa a los administradores para que la revisen rápido.
-      await notifyAdmins({
-        type: 'admin.new_bid',
-        title: `🔔 Nueva puja: ${formatDOP(amountDop)}`,
-        body: `${profile[0].name} · ${req.user!.email} · ${body.method === 'paypal' ? 'PayPal' : 'transferencia'}. Revísala en Pagos por revisar.`,
-        url: '/admin/comprobantes',
-        meta: { bidId: inserted[0]!.id, profileId: body.profileId },
-      });
-    }
+    await moveCredit(
+      req.user!.id,
+      -amountDop,
+      'bid_payment',
+      inserted[0]!.id,
+      `Puja pagada con saldo — ${profile[0].name}`,
+    );
+    await checkDethronements(body.profileId);
 
     await audit(req.user!.id, 'bid.create', 'bid', inserted[0]!.id, {
       amountDop,
-      method: body.method,
+      method: 'credit',
       profileId: body.profileId,
     });
 
     res.status(201).json({ bid: { ...inserted[0], amountDop: Number(inserted[0]!.amountDop) } });
-  }),
-);
-
-/** Guarda el número de confirmación de una transferencia (lo pega el usuario). */
-r.post(
-  '/:id/confirmation',
-  requireAuth,
-  ah(async (req, res) => {
-    const { reference } = z.object({ reference: z.string().min(3).max(120) }).parse(req.body);
-    const bid = await db.select().from(bids).where(eq(bids.id, req.params.id)).limit(1);
-    if (!bid[0]) throw new HttpError(404, 'Puja no encontrada');
-    if (bid[0].userId !== req.user!.id && req.user!.role === 'user') {
-      throw new HttpError(403, 'No autorizado');
-    }
-    const updated = await db
-      .update(bids)
-      .set({ reference: reference.trim() })
-      .where(eq(bids.id, req.params.id))
-      .returning();
-    await audit(req.user!.id, 'bid.confirmation', 'bid', req.params.id, { reference });
-    res.json({ bid: { ...updated[0], amountDop: Number(updated[0]!.amountDop) } });
   }),
 );
 

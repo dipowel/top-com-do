@@ -14,7 +14,9 @@ import {
 
 // ---------------- Enums ----------------
 export const userRole = pgEnum('user_role', ['user', 'admin', 'superadmin']);
-export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal', 'credit']);
+// 'dodo' = pago con Dodo Payments (procesador actual). 'bank_transfer'/'paypal' se
+// conservan solo para pujas históricas; ya no se emiten pujas nuevas con esos métodos.
+export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal', 'credit', 'dodo']);
 export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected']);
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
 export const referralStatus = pgEnum('referral_status', ['pending', 'eligible', 'approved', 'rejected']);
@@ -131,6 +133,28 @@ export const paymentReceipts = pgTable('payment_receipts', {
   uploadedByUserId: uuid('uploaded_by_user_id').references(() => users.id),
   uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Sesiones de checkout de Dodo Payments (una por intento de pago de una puja). */
+export const dodoPayments = pgTable(
+  'dodo_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bidId: uuid('bid_id')
+      .notNull()
+      .references(() => bids.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id'),
+    paymentId: text('payment_id'),
+    status: text('status').notNull().default('created'), // created | succeeded | failed
+    tierDop: integer('tier_dop').notNull(),
+    raw: jsonb('raw'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byBid: index('dodo_payments_bid_idx').on(t.bidId),
+    byPayment: uniqueIndex('dodo_payments_payment_uniq').on(t.paymentId),
+  }),
+);
 
 export const paypalOrders = pgTable('paypal_orders', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -283,3 +307,4 @@ export type BankAccount = typeof bankAccounts.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type DodoPayment = typeof dodoPayments.$inferSelect;

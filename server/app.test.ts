@@ -17,7 +17,17 @@ describe('API base', () => {
   });
 
   it('POST /api/bids sin token → 401', async () => {
-    const res = await request(app).post('/api/bids').send({ profileId: 'x', method: 'paypal', amount: 10 });
+    const res = await request(app).post('/api/bids').send({ profileId: 'x', method: 'credit', amount: 10 });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/checkout/dodo sin token → 401', async () => {
+    const res = await request(app).post('/api/checkout/dodo').send({ profileId: 'x', tier: 500 });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/webhooks/dodo sin firma → 401', async () => {
+    const res = await request(app).post('/api/webhooks/dodo').send({ type: 'payment.succeeded' });
     expect(res.status).toBe(401);
   });
 
