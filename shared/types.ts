@@ -33,8 +33,21 @@ export interface MeResponse {
   displayName: string | null;
   photoUrl: string | null;
   role: 'user' | 'admin' | 'superadmin';
+  accountType: 'consumer' | 'merchant' | 'admin';
   referralCode: string | null;
   creditBalanceDop: number;
+}
+
+export interface MyReviewDTO {
+  id: string;
+  rating: number;
+  comment: string | null;
+  status: 'published' | 'flagged' | 'hidden';
+  ownerReply: string | null;
+  createdAt: string;
+  profileId: string;
+  profileName: string;
+  profileAvatar: string | null;
 }
 
 export interface SuggestedBid {

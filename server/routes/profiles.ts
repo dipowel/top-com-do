@@ -151,6 +151,12 @@ r.post(
       })
       .returning();
 
+    // Al publicar su primer negocio, el consumidor pasa a "comerciante".
+    await db
+      .update(users)
+      .set({ accountType: 'merchant' })
+      .where(and(eq(users.id, req.user!.id), eq(users.accountType, 'consumer')));
+
     await audit(req.user!.id, 'profile.create', 'profile', inserted[0]!.id, { handle, name: body.name });
     res.status(201).json(inserted[0]);
   }),

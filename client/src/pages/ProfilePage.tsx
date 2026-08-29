@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useFavorites } from '../hooks/useFavorites';
+import { useMyReviews } from '../hooks/useMyReviews';
 import { api } from '../lib/api';
 import { avatarFallback, whatsappLink } from '../lib/share';
 import { formatDOP } from '../lib/format';
 import Modal from '../components/common/Modal';
+import { StarRating } from '../components/reviews/StarRating';
 import ProfileForm, {
   emptyProfileForm,
   profileFormToPayload,
@@ -40,11 +43,21 @@ const REF_STATUS: Record<string, { label: string; cls: string }> = {
   rejected: { label: 'Rechazado', cls: 'text-red-300' },
 };
 
+const ACCOUNT_BADGE: Record<string, { label: string; cls: string }> = {
+  consumer: { label: '👤 Consumidor', cls: 'bg-white/10 text-white/70' },
+  merchant: { label: '🏪 Negocio', cls: 'bg-emerald/15 text-emerald-soft' },
+  admin: { label: '🛡️ Administrador', cls: 'bg-gold/20 text-gold' },
+};
+
 export default function ProfilePage() {
-  const { user, me, isAdmin, meError, logout, refreshMe } = useAuth();
+  const { user, me, isAdmin, accountType, meError, logout, refreshMe } = useAuth();
+  const { list: favorites, toggle: toggleFav } = useFavorites();
+  const { data: myReviews, reload: reloadReviews } = useMyReviews();
+
   const [form, setForm] = useState<ProfileFormValue>(emptyProfileForm);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showBizForm, setShowBizForm] = useState(false);
 
   const [referrals, setReferrals] = useState<MyReferral[]>([]);
   const [myProfiles, setMyProfiles] = useState<MyProfile[]>([]);
@@ -72,12 +85,16 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <div className="space-y-3">
-        <h1 className="text-xl font-extrabold">Tu perfil</h1>
+        <h1 className="text-xl font-extrabold">Tu cuenta</h1>
         <p className="text-sm text-white/50">
-          Inicia sesión para pujar, guardar favoritos y registrar tu negocio en el directorio.
+          Crea tu cuenta gratis para calificar negocios, guardar favoritos y —si tienes un
+          negocio— publicarlo en el directorio.
         </p>
-        <Link to="/login" className="btn-gold w-full">
-          Iniciar sesión / Registrarse
+        <Link to="/login?registro=1" className="btn-gold w-full">
+          Crear cuenta gratis
+        </Link>
+        <Link to="/login" className="btn-ghost w-full">
+          Ya tengo cuenta
         </Link>
       </div>
     );
@@ -86,6 +103,8 @@ export default function ProfilePage() {
   const displayName = user.displayName || me?.displayName || user.email?.split('@')[0] || 'Usuario';
   const refLink = me?.referralCode ? refShareUrl(me.referralCode) : '';
   const credit = me?.creditBalanceDop ?? 0;
+  const isMerchant = accountType === 'merchant' || myProfiles.length > 0;
+  const badge = ACCOUNT_BADGE[accountType] ?? ACCOUNT_BADGE.consumer;
 
   async function createProfile() {
     setMsg(null);
@@ -94,6 +113,7 @@ export default function ProfilePage() {
       await api('/profiles', { method: 'POST', body: JSON.stringify(profileFormToPayload(form)), auth: true });
       setMsg('✓ Negocio registrado. Ya aparece en el directorio.');
       setForm(emptyProfileForm);
+      setShowBizForm(false);
       void refreshMe();
       void loadExtras();
     } catch (err) {
@@ -113,86 +133,124 @@ export default function ProfilePage() {
     window.setTimeout(() => setCopied(false), 1500);
   }
 
-  return (
-    <div className="space-y-5">
-      <div className="glass flex items-center gap-3 p-4">
-        <img
-          src={me?.photoUrl || user.photoURL || avatarFallback(displayName)}
-          className="h-14 w-14 rounded-xl"
-          alt=""
-        />
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-bold">{displayName}</div>
-          <div className="truncate text-xs text-white/40">{me?.email || user.email}</div>
-          {isAdmin && (
-            <span className="mt-1 inline-block rounded-full bg-gold/20 px-2 py-0.5 text-[10px] text-gold">
-              {me?.role ?? 'administrador'}
-            </span>
-          )}
-        </div>
-        <button onClick={() => void logout()} className="btn-ghost !py-1.5 text-xs">
-          Salir
-        </button>
-      </div>
-
-      {meError && (
-        <div className="glass p-3 text-xs text-amber-300">
-          Sesión iniciada, pero el servidor no la confirmó: <b>{meError}</b>.
-        </div>
-      )}
-
-      {isAdmin && (
-        <Link to="/admin" className="btn-gold w-full">
-          Ir al panel de administración
-        </Link>
-      )}
-
-      {/* Saldo por referidos */}
-      <div className="glass space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold">Saldo por referidos</h2>
-          <span className="text-lg font-black text-gold">{formatDOP(credit)}</span>
-        </div>
-        <p className="text-[11px] text-white/45">
-          Gana RD$ 100 cuando un invitado hace su primera puja válida y el admin la aprueba. Usa el
-          saldo para anunciarte gratis.
+  const favBlock = (
+    <div className="glass space-y-2 p-4">
+      <h2 className="font-bold">Mis favoritos</h2>
+      {favorites.length === 0 ? (
+        <p className="text-xs text-white/40">
+          Toca ☆ en cualquier negocio para guardarlo aquí.
         </p>
-
-        {refLink && (
-          <div className="rounded-xl bg-white/5 p-2.5">
-            <div className="text-[11px] text-white/40">Tu enlace de invitación</div>
-            <div className="mt-1 flex items-center gap-2">
-              <code className="flex-1 truncate text-xs">{refLink}</code>
-              <button onClick={copyRef} className="btn-ghost shrink-0 !py-1 text-xs">
-                {copied ? '¡Copiado!' : 'Copiar'}
-              </button>
+      ) : (
+        favorites.map((f) => (
+          <div key={f.id} className="flex items-center gap-3">
+            <img src={f.avatarUrl || avatarFallback(f.name)} className="h-9 w-9 rounded-lg" alt="" />
+            <Link to={`/p/${f.id}`} className="flex-1 truncate text-sm">
+              {f.name}
+            </Link>
+            {f.whatsapp && (
               <a
-                href={whatsappLink(undefined, `Únete a Top.com.do con mi enlace: ${refLink}`)}
+                href={whatsappLink(f.whatsapp)}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-emerald shrink-0 !py-1 text-xs"
+                className="btn-emerald !py-1 text-[11px]"
               >
-                Compartir
+                WhatsApp
               </a>
+            )}
+            <button onClick={() => toggleFav(f.id)} className="btn-ghost !py-1 text-[11px]">
+              Quitar
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+
+  const reviewsBlock = (
+    <div className="glass space-y-2 p-4">
+      <h2 className="font-bold">Mis reseñas</h2>
+      {myReviews.length === 0 ? (
+        <p className="text-xs text-white/40">Aún no has calificado ningún negocio.</p>
+      ) : (
+        myReviews.map((rv) => (
+          <div key={rv.id} className="rounded-lg bg-white/5 p-2.5">
+            <div className="flex items-center justify-between">
+              <Link to={`/p/${rv.profileId}`} className="truncate text-sm font-semibold">
+                {rv.profileName}
+              </Link>
+              <StarRating value={rv.rating} />
             </div>
+            {rv.comment && <p className="mt-1 text-xs text-white/60">{rv.comment}</p>}
+            {rv.status === 'flagged' && (
+              <p className="mt-1 text-[10px] text-amber-300">En revisión por un administrador.</p>
+            )}
+            {rv.ownerReply && (
+              <p className="mt-1 border-l-2 border-gold/40 pl-2 text-[11px] text-white/60">
+                <b className="text-gold/70">Respuesta:</b> {rv.ownerReply}
+              </p>
+            )}
+            <button
+              onClick={async () => {
+                if (confirm('¿Eliminar tu reseña?')) {
+                  await api(`/reviews/${rv.id}`, { method: 'DELETE', auth: true });
+                  reloadReviews();
+                }
+              }}
+              className="mt-1 text-[10px] text-white/40 underline"
+            >
+              Eliminar
+            </button>
           </div>
-        )}
+        ))
+      )}
+    </div>
+  );
 
-        {referrals.length > 0 && (
-          <div className="space-y-1.5">
-            {referrals.map((rf) => (
-              <div key={rf.id} className="flex items-center justify-between text-xs">
-                <span className="truncate text-white/70">
-                  {rf.referredName || rf.referredEmail || 'Invitado'}
-                </span>
-                <span className={REF_STATUS[rf.status]?.cls}>{REF_STATUS[rf.status]?.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
+  const referralBlock = (
+    <div className="glass space-y-3 p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-bold">Saldo por referidos</h2>
+        <span className="text-lg font-black text-gold">{formatDOP(credit)}</span>
       </div>
+      <p className="text-[11px] text-white/45">
+        Gana RD$ 100 cuando un invitado hace su primera puja válida y el admin la aprueba.
+      </p>
+      {refLink && (
+        <div className="rounded-xl bg-white/5 p-2.5">
+          <div className="text-[11px] text-white/40">Tu enlace de invitación</div>
+          <div className="mt-1 flex items-center gap-2">
+            <code className="flex-1 truncate text-xs">{refLink}</code>
+            <button onClick={copyRef} className="btn-ghost shrink-0 !py-1 text-xs">
+              {copied ? '¡Copiado!' : 'Copiar'}
+            </button>
+            <a
+              href={whatsappLink(undefined, `Únete a Top.com.do con mi enlace: ${refLink}`)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-emerald shrink-0 !py-1 text-xs"
+            >
+              Compartir
+            </a>
+          </div>
+        </div>
+      )}
+      {referrals.length > 0 && (
+        <div className="space-y-1.5">
+          {referrals.map((rf) => (
+            <div key={rf.id} className="flex items-center justify-between text-xs">
+              <span className="truncate text-white/70">
+                {rf.referredName || rf.referredEmail || 'Invitado'}
+              </span>
+              <span className={REF_STATUS[rf.status]?.cls}>{REF_STATUS[rf.status]?.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-      {/* Mis negocios */}
+  const bizBlock = (
+    <>
       {myProfiles.length > 0 && (
         <div className="glass space-y-2 p-4">
           <h2 className="font-bold">Mis negocios</h2>
@@ -217,18 +275,84 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Registrar negocio */}
       <div className="glass space-y-3 p-4">
-        <h2 className="font-bold">Registrar mi negocio en el directorio</h2>
-        <ProfileForm
-          value={form}
-          onChange={setForm}
-          onSubmit={createProfile}
-          submitLabel="Registrar negocio"
-          busy={busy}
-        />
-        {msg && <p className="text-xs text-white/60">{msg}</p>}
+        {isMerchant || showBizForm ? (
+          <>
+            <h2 className="font-bold">
+              {myProfiles.length ? 'Registrar otro negocio' : 'Registrar mi negocio en el directorio'}
+            </h2>
+            <ProfileForm
+              value={form}
+              onChange={setForm}
+              onSubmit={createProfile}
+              submitLabel="Registrar negocio"
+              busy={busy}
+            />
+            {msg && <p className="text-xs text-white/60">{msg}</p>}
+          </>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-bold">¿Tienes un negocio?</div>
+              <p className="text-[11px] text-white/45">Publícalo gratis y compite por el #1.</p>
+            </div>
+            <button onClick={() => setShowBizForm(true)} className="btn-gold shrink-0 !py-2 text-xs">
+              Publicar negocio
+            </button>
+          </div>
+        )}
       </div>
+    </>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="glass flex items-center gap-3 p-4">
+        <img
+          src={me?.photoUrl || user.photoURL || avatarFallback(displayName)}
+          className="h-14 w-14 rounded-xl"
+          alt=""
+        />
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-bold">{displayName}</div>
+          <div className="truncate text-xs text-white/40">{me?.email || user.email}</div>
+          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] ${badge.cls}`}>
+            {badge.label}
+          </span>
+        </div>
+        <button onClick={() => void logout()} className="btn-ghost !py-1.5 text-xs">
+          Salir
+        </button>
+      </div>
+
+      {meError && (
+        <div className="glass p-3 text-xs text-amber-300">
+          Sesión iniciada, pero el servidor no la confirmó: <b>{meError}</b>.
+        </div>
+      )}
+
+      {isAdmin && (
+        <Link to="/admin" className="btn-gold w-full">
+          Ir al panel de administración
+        </Link>
+      )}
+
+      {/* Consumidor: favoritos y reseñas primero. Comerciante: negocios primero. */}
+      {isMerchant ? (
+        <>
+          {bizBlock}
+          {favBlock}
+          {reviewsBlock}
+          {referralBlock}
+        </>
+      ) : (
+        <>
+          {favBlock}
+          {reviewsBlock}
+          {referralBlock}
+          {bizBlock}
+        </>
+      )}
 
       {editing && (
         <EditProfileModal

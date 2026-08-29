@@ -4,6 +4,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile,
   signOut,
   type User,
 } from 'firebase/auth';
@@ -18,13 +19,15 @@ interface AuthContextValue {
   me: MeResponse | null;
   /** true si el backend devolvió rol admin/superadmin, o si el correo está en la lista local. */
   isAdmin: boolean;
+  /** 'consumer' | 'merchant' | 'admin' — flujo/UI del usuario. */
+  accountType: 'consumer' | 'merchant' | 'admin';
   /** mensaje si `GET /api/me` falló (útil para diagnóstico en Vercel). */
   meError: string | null;
   loading: boolean;
   ready: boolean;
   loginGoogle: () => Promise<void>;
   loginEmail: (email: string, pass: string) => Promise<void>;
-  registerEmail: (email: string, pass: string) => Promise<void>;
+  registerEmail: (email: string, pass: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 }
@@ -109,11 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin =
     me?.role === 'admin' || me?.role === 'superadmin' || isAdminEmail(user?.email);
+  const accountType = isAdmin ? 'admin' : (me?.accountType ?? 'consumer');
 
   const value: AuthContextValue = {
     user,
     me,
     isAdmin,
+    accountType,
     meError,
     loading,
     ready: firebaseReady,
@@ -123,8 +128,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginEmail: async (email, pass) => {
       await signInWithEmailAndPassword(auth!, email, pass);
     },
-    registerEmail: async (email, pass) => {
-      await createUserWithEmailAndPassword(auth!, email, pass);
+    registerEmail: async (email, pass, name) => {
+      const cred = await createUserWithEmailAndPassword(auth!, email, pass);
+      if (name?.trim()) {
+        await updateProfile(cred.user, { displayName: name.trim() });
+        await cred.user.getIdToken(true); // refresca el token para que /api/me vea el nombre
+      }
     },
     logout: async () => {
       await signOut(auth!);

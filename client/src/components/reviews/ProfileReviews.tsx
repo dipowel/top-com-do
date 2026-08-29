@@ -105,11 +105,16 @@ export default function ProfileReviews({
 
       {/* Tu reseña */}
       {!user ? (
-        <div className="glass p-3 text-center text-xs text-white/50">
-          <Link to="/login" className="text-gold underline">
-            Inicia sesión
-          </Link>{' '}
-          para calificar este negocio.
+        <div className="glass space-y-2 p-3 text-center text-xs text-white/50">
+          <p>Solo usuarios registrados pueden calificar.</p>
+          <Link to="/login?registro=1" className="btn-gold inline-flex !py-1.5 text-xs">
+            Crear cuenta gratis
+          </Link>
+          <p>
+            <Link to="/login" className="text-gold underline">
+              o inicia sesión
+            </Link>
+          </p>
         </div>
       ) : isOwner ? (
         <p className="text-[11px] text-white/35">

@@ -12,6 +12,7 @@ export interface AuthUser {
   displayName: string | null;
   photoUrl: string | null;
   role: 'user' | 'admin' | 'superadmin';
+  accountType: 'consumer' | 'merchant' | 'admin';
   referralCode: string | null;
   creditBalanceDop: number;
 }
@@ -61,6 +62,7 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
         displayName: decoded.name ?? null,
         photoUrl: decoded.picture ?? null,
         role: isSuper ? 'superadmin' : 'user',
+        accountType: isSuper ? 'admin' : 'consumer',
         referralCode: generateReferralCode(email),
       })
       .onConflictDoUpdate({
@@ -69,13 +71,17 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
           firebaseUid: decoded.uid,
           displayName: decoded.name ?? null,
           photoUrl: decoded.picture ?? null,
-          ...(isSuper ? { role: 'superadmin' as const } : {}),
+          ...(isSuper ? { role: 'superadmin' as const, accountType: 'admin' as const } : {}),
         },
       })
       .returning();
     row = inserted[0]!;
   } else if (isSuper && row.role !== 'superadmin') {
-    const updated = await db.update(users).set({ role: 'superadmin' }).where(eq(users.id, row.id)).returning();
+    const updated = await db
+      .update(users)
+      .set({ role: 'superadmin', accountType: 'admin' })
+      .where(eq(users.id, row.id))
+      .returning();
     row = updated[0]!;
   }
 
@@ -95,6 +101,7 @@ export async function loadUser(req: Request): Promise<AuthUser | null> {
     displayName: row.displayName,
     photoUrl: row.photoUrl,
     role: row.role,
+    accountType: row.accountType,
     referralCode: row.referralCode,
     creditBalanceDop: Number(row.creditBalanceDop),
   };

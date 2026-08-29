@@ -1,19 +1,25 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function LoginPage() {
   const { loginGoogle, loginEmail, registerEmail, user, ready } = useAuth();
   const nav = useNavigate();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [params] = useSearchParams();
+  const [mode, setMode] = useState<'login' | 'register'>(
+    params.get('registro') ? 'register' : 'login',
+  );
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const next = params.get('next') || '/';
+
   useEffect(() => {
-    if (user) nav('/perfil', { replace: true });
-  }, [user, nav]);
+    if (user) nav(next, { replace: true });
+  }, [user, nav, next]);
 
   if (!ready) {
     return (
@@ -30,8 +36,8 @@ export default function LoginPage() {
     setBusy(true);
     try {
       if (mode === 'login') await loginEmail(email, pass);
-      else await registerEmail(email, pass);
-      nav('/', { replace: true });
+      else await registerEmail(email, pass, name);
+      nav(next, { replace: true });
     } catch (e2) {
       setErr((e2 as Error).message);
     } finally {
@@ -42,11 +48,16 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-sm space-y-4 py-6">
       <img src="/logo.png" alt="Top.com.do" className="mx-auto h-12 w-auto" />
-      <p className="text-center text-xs text-white/45">El directorio #1 de RD</p>
+      <p className="text-center text-xs text-white/45">
+        {mode === 'register'
+          ? 'Crea tu cuenta gratis para calificar negocios y guardar favoritos'
+          : 'El directorio #1 de RD'}
+      </p>
+
       <button
         onClick={() =>
           loginGoogle()
-            .then(() => nav('/'))
+            .then(() => nav(next))
             .catch((e) => setErr((e as Error).message))
         }
         className="btn-ghost w-full"
@@ -54,7 +65,19 @@ export default function LoginPage() {
         Continuar con Google
       </button>
       <div className="text-center text-xs text-white/30">o con tu correo</div>
+
       <form onSubmit={submit} className="space-y-3">
+        {mode === 'register' && (
+          <input
+            className="input"
+            type="text"
+            placeholder="Tu nombre"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            minLength={2}
+          />
+        )}
         <input
           className="input"
           type="email"
@@ -66,23 +89,34 @@ export default function LoginPage() {
         <input
           className="input"
           type="password"
-          placeholder="Contraseña"
+          placeholder="Contraseña (mín. 6)"
           value={pass}
           onChange={(e) => setPass(e.target.value)}
           required
           minLength={6}
         />
         <button disabled={busy} className="btn-gold w-full">
-          {mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+          {busy ? '…' : mode === 'login' ? 'Entrar' : 'Crear mi cuenta'}
         </button>
       </form>
+
       {err && <p className="text-center text-xs text-red-400">{err}</p>}
+
       <button
-        onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+        onClick={() => {
+          setMode(mode === 'login' ? 'register' : 'login');
+          setErr(null);
+        }}
         className="w-full text-center text-xs text-white/50"
       >
-        {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+        {mode === 'login' ? '¿Nuevo aquí? Crea tu cuenta gratis' : '¿Ya tienes cuenta? Inicia sesión'}
       </button>
+
+      {mode === 'register' && (
+        <p className="text-center text-[10px] text-white/30">
+          ¿Tienes un negocio? Regístrate igual y publícalo después desde tu perfil.
+        </p>
+      )}
     </div>
   );
 }

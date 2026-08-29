@@ -93,6 +93,16 @@ const statements = [
   `CREATE UNIQUE INDEX IF NOT EXISTS reviews_profile_user_uniq ON reviews (profile_id, user_id)`,
   `CREATE INDEX IF NOT EXISTS reviews_profile_idx ON reviews (profile_id, status)`,
   `CREATE INDEX IF NOT EXISTS reviews_ip_idx ON reviews (ip_hash, created_at)`,
+
+  `DO $$ BEGIN
+     CREATE TYPE account_type AS ENUM ('consumer','merchant','admin');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type account_type NOT NULL DEFAULT 'consumer'`,
+  // Backfill: quien tiene role admin -> 'admin'; quien ya publicó un negocio -> 'merchant'.
+  `UPDATE users SET account_type = 'admin' WHERE role IN ('admin','superadmin') AND account_type <> 'admin'`,
+  `UPDATE users u SET account_type = 'merchant'
+     WHERE account_type = 'consumer'
+     AND EXISTS (SELECT 1 FROM profiles p WHERE p.owner_user_id = u.id)`,
 ];
 
 for (const sql of statements) {

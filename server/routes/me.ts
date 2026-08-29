@@ -12,6 +12,7 @@ import {
   referrals,
   creditTransactions,
   notifications,
+  reviews,
 } from '../../shared/schema';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
@@ -26,6 +27,30 @@ r.use(requireAuth);
 r.get('/', (req, res) => {
   res.json(req.user);
 });
+
+/** Reseñas que YO he escrito (para el panel del consumidor). */
+r.get(
+  '/reviews',
+  ah(async (req, res) => {
+    const rows = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        status: reviews.status,
+        ownerReply: reviews.ownerReply,
+        createdAt: reviews.createdAt,
+        profileId: profiles.id,
+        profileName: profiles.name,
+        profileAvatar: profiles.avatarUrl,
+      })
+      .from(reviews)
+      .innerJoin(profiles, eq(profiles.id, reviews.profileId))
+      .where(eq(reviews.userId, req.user!.id))
+      .orderBy(desc(reviews.createdAt));
+    res.json(rows);
+  }),
+);
 
 /** Mis notificaciones (las últimas 40). */
 r.get(

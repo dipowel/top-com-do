@@ -19,6 +19,9 @@ export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected'
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
 export const referralStatus = pgEnum('referral_status', ['pending', 'eligible', 'approved', 'rejected']);
 export const reviewStatus = pgEnum('review_status', ['published', 'flagged', 'hidden']);
+// Tipo de cuenta: consumidor (usuario de a pie) vs comerciante (dueño de negocio) vs admin.
+// Ortogonal a `role` (que gobierna los permisos): distingue el flujo/UI del usuario.
+export const accountType = pgEnum('account_type', ['consumer', 'merchant', 'admin']);
 
 // ---------------- Tablas ----------------
 export const users = pgTable('users', {
@@ -29,6 +32,7 @@ export const users = pgTable('users', {
   photoUrl: text('photo_url'),
   whatsapp: text('whatsapp'),
   role: userRole('role').notNull().default('user'),
+  accountType: accountType('account_type').notNull().default('consumer'),
   referralCode: text('referral_code').unique(),
   referredByCode: text('referred_by_code'),
   creditBalanceDop: numeric('credit_balance_dop', { precision: 12, scale: 2 }).notNull().default('0'),
