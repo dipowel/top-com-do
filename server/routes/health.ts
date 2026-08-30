@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import { ah } from '../lib/asyncHandler';
 import { verifyIdToken, firebaseProjectId } from '../lib/firebaseAuth';
-import { probeProduct } from '../lib/dodo';
+import { probeProduct, listRecentPayments } from '../lib/dodo';
 
 const r = Router();
 
@@ -58,6 +58,7 @@ r.get(
     const probeKey = typeof req.query.dodoProbe === 'string' ? req.query.dodoProbe : '';
     if (probeKey && process.env.CRON_SECRET && probeKey === process.env.CRON_SECRET) {
       out.dodoProbe = await probeProduct();
+      out.dodoRecentPayments = await listRecentPayments(5);
     }
 
     const header = req.headers.authorization || '';

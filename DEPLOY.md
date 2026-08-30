@@ -24,7 +24,12 @@ Opcionales (cada función se auto-desactiva con aviso si falta):
 | `DODO_ENV` (`test`/`live`), `DODO_API_KEY`, `DODO_WEBHOOK_SECRET` | pagos con Dodo Payments |
 | `DODO_PRODUCT_ID` | producto base *pay-what-you-want* en Dodo (mínimo RD$100, DOP). Por defecto `pdt_0NmSUGwTYDHQKdpmPVTI` |
 
-Registrar el webhook `https://www.top.com.do/api/webhooks/dodo` en el panel de Dodo (evento `payment.succeeded`).
+**Webhook (obligatorio para que la puja pase de `pending` a `verified` sola):** en Dodo →
+Settings → Webhooks, registra `https://www.top.com.do/api/webhooks/dodo` (evento
+`payment.succeeded`) y copia el *signing secret* de ESE endpoint en `DODO_WEBHOOK_SECRET` → Redeploy.
+Verifica con `GET /api/webhooks/dodo` (debe responder `{"ok":true}`).
+Si una puja se queda colgada: `/admin` → Pujas → **🔄 Reconciliar pagos Dodo** (consulta a Dodo y
+acredita sin depender del webhook), o **Verificar** manual en la fila.
 
 > Las `VITE_*` se incrustan al compilar: después de agregarlas hay que **volver a desplegar**.
 

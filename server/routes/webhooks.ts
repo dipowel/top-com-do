@@ -1,14 +1,14 @@
 import { Router, type Request } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { bids, profiles, dodoPayments } from '../../shared/schema';
+import { dodoPayments } from '../../shared/schema';
 import { verifyWebhook } from '../lib/dodo';
-import { onBidVerified } from '../lib/rewards';
-import { checkDethronements, notifyUser } from '../lib/notify';
-import { audit } from '../lib/audit';
-import { formatDOP } from '../../shared/fx';
+import { fulfillBid } from '../lib/dodoFulfill';
 
 const r = Router();
+
+/** Ping de verificación del endpoint (Dodo hace un GET al registrar el webhook). */
+r.get('/dodo', (_req, res) => res.json({ ok: true, endpoint: 'dodo-webhook' }));
 
 /**
  * Cuerpo crudo del webhook. En Vercel lo bufferiza `api/index.ts` en `req.rawBody`;
@@ -29,15 +29,19 @@ function readRawBody(req: Request): Promise<Buffer> {
   });
 }
 
+interface DodoData {
+  payment_id?: string;
+  status?: string;
+  total_amount?: number;
+  settlement_amount?: number;
+  amount?: number;
+  metadata?: Record<string, string>;
+  checkout_session_id?: string;
+  payment?: DodoData;
+}
 interface DodoEvent {
   type?: string;
-  data?: {
-    payment_id?: string;
-    amount?: number;
-    metadata?: Record<string, string>;
-    payment?: { payment_id?: string; amount?: number; metadata?: Record<string, string> };
-    checkout_session_id?: string;
-  };
+  data?: DodoData;
 }
 
 r.post('/dodo', async (req, res) => {
@@ -56,88 +60,39 @@ r.post('/dodo', async (req, res) => {
 
   // A partir de aquí siempre respondemos 200 (Standard Webhooks reintenta ante no-2xx).
   try {
-    if (event.type === 'payment.succeeded') {
-      const d = event.data ?? {};
-      const meta = d.metadata ?? d.payment?.metadata ?? {};
-      const paymentId = d.payment_id ?? d.payment?.payment_id ?? null;
-      const centavos = d.amount ?? d.payment?.amount;
+    const type = event.type ?? '';
+    const d: DodoData = event.data ?? {};
+    const p: DodoData = d.payment ?? d;
+    const succeeded =
+      type === 'payment.succeeded' ||
+      (type.startsWith('payment.') && p.status === 'succeeded') ||
+      type === 'checkout.session.completed';
+
+    if (succeeded) {
+      const meta = d.metadata ?? p.metadata ?? {};
+      const paymentId = p.payment_id ?? d.payment_id ?? null;
+      const sessionId = d.checkout_session_id ?? p.checkout_session_id ?? null;
+      const centavos = p.total_amount ?? p.settlement_amount ?? p.amount ?? d.total_amount;
       const paidDop =
-        typeof centavos === 'number' && Number.isFinite(centavos)
-          ? Math.round(centavos) / 100
-          : null;
+        typeof centavos === 'number' && Number.isFinite(centavos) ? Math.round(centavos) / 100 : null;
 
       let bidId: string | null = meta.bid_id ?? null;
-      if (!bidId && (paymentId || d.checkout_session_id)) {
+      if (!bidId && (paymentId || sessionId)) {
         const dp = await db
           .select({ bidId: dodoPayments.bidId })
           .from(dodoPayments)
-          .where(
-            paymentId
-              ? eq(dodoPayments.paymentId, paymentId)
-              : eq(dodoPayments.sessionId, d.checkout_session_id!),
-          )
+          .where(paymentId ? eq(dodoPayments.paymentId, paymentId) : eq(dodoPayments.sessionId, sessionId!))
           .limit(1);
         bidId = dp[0]?.bidId ?? null;
       }
 
       if (bidId) {
-        await db
-          .update(dodoPayments)
-          .set({
-            paymentId,
-            status: 'succeeded',
-            raw: event as object,
-            updatedAt: new Date(),
-            ...(paidDop != null ? { amountDop: paidDop.toFixed(2) } : {}),
-          })
-          .where(eq(dodoPayments.bidId, bidId));
-
-        const bid = (await db.select().from(bids).where(eq(bids.id, bidId)).limit(1))[0];
-
-        if (bid && bid.status !== 'verified') {
-          const expectedDop = Number(bid.amountDop);
-          // El ranking usa lo REALMENTE cobrado por Dodo (anti-manipulación / pago de más).
-          const finalDop = paidDop != null && paidDop > 0 ? paidDop : expectedDop;
-
-          await db
-            .update(bids)
-            .set({
-              status: 'verified',
-              verifiedAt: new Date(),
-              amountDop: finalDop.toFixed(2),
-              amountOriginal: finalDop.toFixed(2),
-              reference: `Dodo ${paymentId ?? ''}`.trim(),
-            })
-            .where(eq(bids.id, bid.id));
-          bid.amountDop = finalDop.toFixed(2);
-
-          if (paidDop != null && Math.abs(paidDop - expectedDop) > 0.009) {
-            await audit(null, 'bid.amount.adjusted', 'bid', bid.id, { expectedDop, paidDop });
-          }
-
-          await onBidVerified(bid.id);
-          await checkDethronements(bid.profileId);
-
-          const prof = (
-            await db
-              .select({ name: profiles.name })
-              .from(profiles)
-              .where(eq(profiles.id, bid.profileId))
-              .limit(1)
-          )[0];
-          await notifyUser(bid.userId, {
-            type: 'bid.verified',
-            title: `✅ Puja verificada: ${formatDOP(Number(bid.amountDop))}`,
-            body: `Tu pago con Dodo Payments se confirmó. Tu puja por ${prof?.name ?? 'el perfil'} ya cuenta en el ranking.`,
-            url: `/p/${bid.profileId}`,
-          });
-          await audit(null, 'bid.verified.dodo', 'bid', bid.id, { paymentId });
-        }
+        await fulfillBid({ bidId, paymentId, paidDop, rawEvent: event });
       } else {
-        console.warn('[webhook/dodo] payment.succeeded sin bid_id resoluble', { paymentId });
+        console.warn('[webhook/dodo] evento sin bid resoluble', { type, paymentId, sessionId });
       }
-    } else if (event.type === 'payment.failed' || event.type === 'payment.cancelled') {
-      const meta = event.data?.metadata ?? event.data?.payment?.metadata ?? {};
+    } else if (type === 'payment.failed' || type === 'payment.cancelled') {
+      const meta = (event.data?.metadata ?? event.data?.payment?.metadata) ?? {};
       if (meta.bid_id) {
         await db
           .update(dodoPayments)

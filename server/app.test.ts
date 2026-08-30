@@ -31,6 +31,17 @@ describe('API base', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /api/webhooks/dodo → 200 (ping de verificación)', async () => {
+    const res = await request(app).get('/api/webhooks/dodo');
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+  });
+
+  it('POST /api/checkout/dodo/reconcile sin token → 401', async () => {
+    const res = await request(app).post('/api/checkout/dodo/reconcile');
+    expect(res.status).toBe(401);
+  });
+
   it('GET /api/admin/overview sin token → 401', async () => {
     const res = await request(app).get('/api/admin/overview');
     expect(res.status).toBe(401);

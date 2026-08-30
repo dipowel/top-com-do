@@ -101,9 +101,6 @@ export default function ProfileDetailPage() {
           </Link>
         )}
         <div className="mt-3 space-y-2">
-          <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
-            Pujar por este perfil
-          </button>
           <div className="flex flex-wrap gap-1.5">
             {profile.whatsapp && (
               <a
@@ -167,9 +164,30 @@ export default function ProfileDetailPage() {
         </div>
       </div>
 
-      <div className="glass flex justify-between p-4 text-sm">
-        <span className="text-white/50">Visibilidad acumulada (ronda)</span>
-        <b className="text-gold">{formatDOP(total)}</b>
+      {/* Apoyo comunitario — justo debajo de las redes, antes de las pujas */}
+      <section className="glass space-y-2 border border-gold/30 p-4 shadow-glow">
+        <p className="text-sm font-bold text-gold">⚡ ¿Te encantó este lugar? Ayúdalos a liderar</p>
+        <p className="text-xs text-white/60">
+          No dejes que bajen del trono. Puja con un pequeño aporte para llevarlos o mantenerlos en
+          el <span className="font-semibold text-gold">#1</span> indiscutible de la provincia.
+        </p>
+        <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
+          ⚡ Pujar y Apoyar este Negocio
+        </button>
+      </section>
+
+      <div className="glass space-y-1.5 p-4 text-sm">
+        <div className="flex justify-between">
+          <span className="text-white/50">Visibilidad acumulada (ronda)</span>
+          <b className="text-gold">{formatDOP(total)}</b>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-white/50">❤️ Apoyo de la comunidad</span>
+          <b className="text-white/80">
+            {bids.length} respaldo{bids.length === 1 ? '' : 's'} activo
+            {bids.length === 1 ? '' : 's'}
+          </b>
+        </div>
       </div>
 
       <div>

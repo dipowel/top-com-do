@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
 import { bids, profiles, dodoPayments } from '../../shared/schema';
 import { ah } from '../lib/asyncHandler';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { getActiveRound } from '../lib/rounds';
 import { audit } from '../lib/audit';
 import { createCheckout, dodoCheckoutReady } from '../lib/dodo';
+import { reconcilePendingDodoBids } from '../lib/dodoFulfill';
 import { minNextBidForProfile } from '../lib/auction';
 import { formatDOP } from '../../shared/fx';
 
@@ -96,6 +97,38 @@ r.post(
       console.error('[checkout] Dodo falló:', detail);
       throw new HttpError(502, `No se pudo iniciar el pago con Dodo Payments — ${detail}`);
     }
+  }),
+);
+
+/**
+ * Reconciliación manual del admin: pregunta a Dodo por los pagos recientes y
+ * acredita las pujas `dodo` pendientes que ya estén pagadas (no depende del webhook).
+ */
+r.post(
+  '/dodo/reconcile',
+  requireAdmin,
+  ah(async (_req, res) => {
+    const result = await reconcilePendingDodoBids();
+    res.json(result);
+  }),
+);
+
+/**
+ * El usuario vuelve del checkout: reconcilia solo sus pujas y devuelve el conteo.
+ * Lo llama `/mis-pujas?pago=procesando`.
+ */
+r.get(
+  '/dodo/status',
+  requireAuth,
+  ah(async (req, res) => {
+    await reconcilePendingDodoBids(req.user!.id).catch(() => null);
+    const rows = await db
+      .select({ status: bids.status, n: sql<string>`count(*)` })
+      .from(bids)
+      .where(and(eq(bids.userId, req.user!.id), eq(bids.method, 'dodo')))
+      .groupBy(bids.status);
+    const by = Object.fromEntries(rows.map((x) => [x.status, Number(x.n)]));
+    res.json({ pending: by.pending ?? 0, verified: by.verified ?? 0, rejected: by.rejected ?? 0 });
   }),
 );
 

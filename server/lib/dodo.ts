@@ -90,8 +90,31 @@ export async function createCheckout(
   };
 }
 
+/** GET autenticado a la API de Dodo. Lectura pura, nunca lanza: devuelve el estado. */
+export async function dodoGet(
+  path: string,
+): Promise<{ status: number | null; ok: boolean; body: unknown }> {
+  const apiKey = process.env.DODO_API_KEY?.trim();
+  if (!apiKey) return { status: null, ok: false, body: 'Falta DODO_API_KEY' };
+  try {
+    const res = await fetch(`${dodoBaseUrl()}${path}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const text = await res.text();
+    let body: unknown = text;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      /* deja el texto crudo */
+    }
+    return { status: res.status, ok: res.ok, body };
+  } catch (e) {
+    return { status: null, ok: false, body: (e as Error).message };
+  }
+}
+
 /**
- * Sonda de diagnóstico: consulta el producto base en Dodo (lectura pura, no crea nada).
+ * Sonda de diagnóstico del producto base en Dodo.
  *  - 401/403 → API key inválida o de otro entorno (test vs live)
  *  - 404     → el product_id no existe (typo / entorno equivocado)
  *  - 200     → el body muestra moneda y tipo de precio (debe ser DOP y pay-what-you-want)
@@ -104,26 +127,20 @@ export async function probeProduct(): Promise<{
   body: unknown;
 }> {
   const productId = dodoProductId();
-  const base = dodoBaseUrl();
-  const apiKey = process.env.DODO_API_KEY?.trim();
-  if (!apiKey) {
-    return { productId, base, status: null, ok: false, body: 'Falta DODO_API_KEY' };
-  }
-  try {
-    const res = await fetch(`${base}/products/${productId}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    const text = await res.text();
-    let body: unknown = text;
-    try {
-      body = text ? JSON.parse(text) : null;
-    } catch {
-      /* deja el texto crudo */
-    }
-    return { productId, base, status: res.status, ok: res.ok, body };
-  } catch (e) {
-    return { productId, base, status: null, ok: false, body: (e as Error).message };
-  }
+  const res = await dodoGet(`/products/${productId}`);
+  return { productId, base: dodoBaseUrl(), ...res };
+}
+
+/** Pagos recientes de la cuenta (para diagnóstico y reconciliación). */
+export async function listRecentPayments(limit = 20): Promise<unknown> {
+  const res = await dodoGet(`/payments?page_size=${limit}`);
+  return res.ok ? res.body : { error: res.status, detail: res.body };
+}
+
+/** Recupera una sesión de checkout por id. */
+export async function retrieveCheckoutSession(id: string): Promise<unknown> {
+  const res = await dodoGet(`/checkouts/${id}`);
+  return res.ok ? res.body : { error: res.status, detail: res.body };
 }
 
 // ---------------- Webhook (Standard Webhooks) ----------------
