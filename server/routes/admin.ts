@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { rankingWindowStart, RANKING_WINDOW_DAYS } from '../../shared/bidding';
 import { z } from 'zod';
 import { db } from '../db';
 import { bids, profiles, users, auditLog, referrals, reviews } from '../../shared/schema';
@@ -28,7 +29,7 @@ r.get(
     const verified = await db
       .select({ s: sql<string>`coalesce(sum(${bids.amountDop}),0)` })
       .from(bids)
-      .where(and(eq(bids.status, 'verified'), eq(bids.roundId, round.id)));
+      .where(and(eq(bids.status, 'verified'), gte(bids.verifiedAt, rankingWindowStart())));
     const refs = await db
       .select({ n: sql<string>`count(*)` })
       .from(referrals)
@@ -39,6 +40,7 @@ r.get(
       .where(eq(reviews.status, 'flagged'));
     res.json({
       round,
+      windowDays: RANKING_WINDOW_DAYS,
       pendingCount: Number(pending[0]?.n ?? 0),
       verifiedTotal: Number(verified[0]?.s ?? 0),
       eligibleReferrals: Number(refs[0]?.n ?? 0),

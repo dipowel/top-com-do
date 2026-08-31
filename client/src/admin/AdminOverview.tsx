@@ -4,6 +4,7 @@ import { formatDOP } from '../lib/format';
 
 interface Overview {
   round: { weekStart: string; weekEnd: string };
+  windowDays: number;
   pendingCount: number;
   verifiedTotal: number;
   eligibleReferrals: number;
@@ -38,14 +39,14 @@ export default function AdminOverview() {
         <div className="text-2xl font-black text-amber-300">{d.flaggedReviews}</div>
       </div>
       <div className="glass p-4">
-        <div className="text-xs text-white/40">Recaudado (ronda activa)</div>
+        <div className="text-xs text-white/40">
+          Recaudado (últimos {d.windowDays ?? 7} días)
+        </div>
         <div className="text-2xl font-black">{formatDOP(d.verifiedTotal)}</div>
       </div>
       <div className="glass p-4">
-        <div className="text-xs text-white/40">Ronda desde</div>
-        <div className="text-sm font-bold">
-          {new Date(d.round.weekStart).toLocaleDateString('es-DO')}
-        </div>
+        <div className="text-xs text-white/40">Ventana de ranking</div>
+        <div className="text-sm font-bold">Móvil · últimos {d.windowDays ?? 7} días</div>
       </div>
     </div>
   );

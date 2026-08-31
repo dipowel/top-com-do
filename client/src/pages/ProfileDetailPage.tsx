@@ -178,7 +178,7 @@ export default function ProfileDetailPage() {
 
       <div className="glass space-y-1.5 p-4 text-sm">
         <div className="flex justify-between">
-          <span className="text-white/50">Visibilidad acumulada (ronda)</span>
+          <span className="text-white/50">Visibilidad acumulada (últimos 7 días)</span>
           <b className="text-gold">{formatDOP(total)}</b>
         </div>
         <div className="flex justify-between text-xs">

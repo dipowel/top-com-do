@@ -2,7 +2,7 @@ import { Router, type Request } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { dodoPayments } from '../../shared/schema';
-import { verifyWebhook } from '../lib/dodo';
+import { verifyWebhook, dodoAmountToDop } from '../lib/dodo';
 import { fulfillBid } from '../lib/dodoFulfill';
 
 const r = Router();
@@ -74,7 +74,7 @@ r.post('/dodo', async (req, res) => {
       const sessionId = d.checkout_session_id ?? p.checkout_session_id ?? null;
       const centavos = p.total_amount ?? p.settlement_amount ?? p.amount ?? d.total_amount;
       const paidDop =
-        typeof centavos === 'number' && Number.isFinite(centavos) ? Math.round(centavos) / 100 : null;
+        typeof centavos === 'number' && Number.isFinite(centavos) ? dodoAmountToDop(centavos) : null;
 
       let bidId: string | null = meta.bid_id ?? null;
       if (!bidId && (paymentId || sessionId)) {

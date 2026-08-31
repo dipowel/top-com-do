@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { minNextBid, toLowestDenomination, MIN_BID_DOP } from './bidding';
+import {
+  minNextBid,
+  toLowestDenomination,
+  MIN_BID_DOP,
+  RANKING_WINDOW_DAYS,
+  rankingWindowStart,
+} from './bidding';
 
 describe('bidding · minNextBid', () => {
   it('ámbito sin líder → mínimo base', () => {
@@ -24,5 +30,14 @@ describe('bidding · toLowestDenomination', () => {
   it('convierte RD$ a centavos', () => {
     expect(toLowestDenomination(250.5)).toBe(25050);
     expect(toLowestDenomination(100)).toBe(10000);
+  });
+});
+
+describe('bidding · ventana de ranking', () => {
+  it('rankingWindowStart es ahora − N días', () => {
+    const now = new Date('2026-08-30T12:00:00Z');
+    const start = rankingWindowStart(now);
+    const days = (now.getTime() - start.getTime()) / 86_400_000;
+    expect(days).toBe(RANKING_WINDOW_DAYS);
   });
 });

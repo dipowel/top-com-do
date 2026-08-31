@@ -1,20 +1,21 @@
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, gt, gte, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { bids, profiles, categories } from '../../shared/schema';
-import { getActiveRound } from './rounds';
 import { isRealProvince, provinceName } from '../../shared/provinces';
+import { rankingWindowStart } from '../../shared/bidding';
 import type { RankingEntry } from '../../shared/types';
 
 /**
- * Ranking en vivo: suma de pujas VERIFICADAS por perfil en la ronda activa.
- * Filtra por categoría y, opcionalmente, por provincia (demarcación de RD).
+ * Ranking en vivo: suma de pujas VERIFICADAS por perfil dentro de la ventana móvil
+ * (últimos RANKING_WINDOW_DAYS días). Sin reinicio semanal: el orden responde en
+ * tiempo real a quién puja. Filtra por categoría y, opcionalmente, por provincia.
  */
 export async function getRankings(
   categorySlug?: string,
   provinceSlug?: string,
   limit = 100,
 ): Promise<RankingEntry[]> {
-  const round = await getActiveRound();
+  const since = rankingWindowStart();
 
   const total = sql<string>`coalesce(sum(${bids.amountDop}), 0)`;
   const count = sql<string>`count(${bids.id})`;
@@ -49,7 +50,11 @@ export async function getRankings(
     .innerJoin(categories, eq(categories.id, profiles.categoryId))
     .innerJoin(
       bids,
-      and(eq(bids.profileId, profiles.id), eq(bids.roundId, round.id), eq(bids.status, 'verified')),
+      and(
+        eq(bids.profileId, profiles.id),
+        eq(bids.status, 'verified'),
+        gte(bids.verifiedAt, since),
+      ),
     )
     .where(and(eq(profiles.isActive, true), filterCategory, filterProvince))
     .groupBy(profiles.id, categories.slug, categories.name)

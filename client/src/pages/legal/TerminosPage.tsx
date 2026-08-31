@@ -17,16 +17,16 @@ export default function TerminosPage() {
       <h2>1. Naturaleza del servicio</h2>
       <p>
         Top.com.do exhibe negocios por categoría y por provincia. La posición en el ranking de cada
-        categoría y provincia depende de la <strong>suma de las pujas verificadas</strong> de cada
-        negocio dentro de la ronda semanal activa. El Servicio no vende productos ni servicios de
-        los negocios listados; únicamente ofrece visibilidad.
+        categoría y provincia depende de la <strong>suma de las pujas verificadas de cada negocio
+        en los últimos 7 días</strong> (ventana móvil, sin reinicios de golpe). El Servicio no
+        vende productos ni servicios de los negocios listados; únicamente ofrece visibilidad.
       </p>
 
       <h2>2. Pujas por el puesto #1</h2>
       <ul>
         <li>
-          Las pujas se realizan en <strong>pesos dominicanos (RD$)</strong> por niveles fijos
-          (RD$ 500, 1.000, 2.500 y 5.000).
+          Las pujas se realizan en <strong>pesos dominicanos (RD$)</strong> por un monto libre que
+          debe superar el total acumulado del negocio que va #1 en ese momento.
         </li>
         <li>
           Una puja es <strong>definitiva y no reembolsable</strong> una vez que el pago ha sido
@@ -35,8 +35,9 @@ export default function TerminosPage() {
         </li>
         <li>
           El puesto #1 <strong>no está garantizado en el tiempo</strong>: cualquier competidor
-          puede superar tu monto acumulado en tiempo real dentro de la misma ronda. Al finalizar la
-          ronda semanal, los acumulados se reinician.
+          puede superar tu total acumulado en tiempo real, y <strong>cada puja deja de contar a los
+          7 días</strong>, así que hay que sostener el puesto con pujas nuevas. El que no defiende
+          su posición baja automáticamente.
         </li>
         <li>
           El Servicio puede anular pujas y ajustar el ranking cuando un pago sea{' '}

@@ -4,7 +4,7 @@ import { bids, profiles, dodoPayments } from '../../shared/schema';
 import { onBidVerified } from './rewards';
 import { checkDethronements, notifyUser } from './notify';
 import { audit } from './audit';
-import { listRecentPayments } from './dodo';
+import { listRecentPayments, dodoAmountToDop } from './dodo';
 import { formatDOP } from '../../shared/fx';
 
 /**
@@ -123,7 +123,7 @@ export async function reconcilePendingDodoBids(
 
     const centavos = pay.total_amount ?? pay.settlement_amount ?? pay.amount;
     const paidDop =
-      typeof centavos === 'number' && Number.isFinite(centavos) ? Math.round(centavos) / 100 : null;
+      typeof centavos === 'number' && Number.isFinite(centavos) ? dodoAmountToDop(centavos) : null;
 
     const r = await fulfillBid({
       bidId,

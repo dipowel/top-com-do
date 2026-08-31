@@ -26,14 +26,19 @@ export default function RoundsControl() {
 
   return (
     <div className="glass max-w-md space-y-3 p-4">
-      <h3 className="font-bold">Reiniciar ronda semanal</h3>
+      <h3 className="font-bold">Ranking por ventana móvil (7 días)</h3>
       <p className="text-sm text-white/50">
-        Cierra la ronda actual y abre una nueva desde el puesto #1. Las pujas verificadas anteriores
-        quedan archivadas para auditoría.
+        El ranking ya <strong className="text-white/70">no depende de rondas</strong>: el puesto de
+        cada negocio es la suma de sus pujas verificadas de los últimos 7 días y se recalcula solo
+        en tiempo real. No hace falta reiniciar nada.
+      </p>
+      <p className="text-xs text-white/40">
+        El botón de abajo solo agrupa las pujas nuevas bajo una etiqueta distinta (auditoría). No
+        borra ni pone a cero ningún ranking.
       </p>
       {!confirm ? (
         <button onClick={() => setConfirm(true)} className="btn-ghost w-full">
-          Reiniciar ronda…
+          Crear nueva etiqueta de ronda…
         </button>
       ) : (
         <div className="flex gap-2">

@@ -1,9 +1,8 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { bids, profiles, categories } from '../../shared/schema';
-import { getActiveRound } from './rounds';
 import { getRankings } from './rankings';
-import { minNextBid } from '../../shared/bidding';
+import { minNextBid, rankingWindowStart } from '../../shared/bidding';
 
 export interface AuctionState {
   leaderTotalDop: number;
@@ -27,12 +26,15 @@ export async function minNextBidForProfile(profileId: string): Promise<AuctionSt
   )[0];
   if (!prof) throw new Error('Perfil no encontrado');
 
-  const round = await getActiveRound();
   const mine = await db
     .select({ total: sql<string>`coalesce(sum(${bids.amountDop}), 0)` })
     .from(bids)
     .where(
-      and(eq(bids.profileId, profileId), eq(bids.roundId, round.id), eq(bids.status, 'verified')),
+      and(
+        eq(bids.profileId, profileId),
+        eq(bids.status, 'verified'),
+        gte(bids.verifiedAt, rankingWindowStart()),
+      ),
     );
   const myTotalDop = Number(mine[0]?.total ?? 0);
 

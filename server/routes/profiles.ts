@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
 import { profiles, categories, bids, users, reviews } from '../../shared/schema';
+import { rankingWindowStart } from '../../shared/bidding';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth, loadUser } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
@@ -239,7 +240,13 @@ r.get(
       })
       .from(bids)
       .leftJoin(users, eq(users.id, bids.userId))
-      .where(and(eq(bids.profileId, req.params.id), eq(bids.status, 'verified')))
+      .where(
+        and(
+          eq(bids.profileId, req.params.id),
+          eq(bids.status, 'verified'),
+          gte(bids.verifiedAt, rankingWindowStart()),
+        ),
+      )
       .orderBy(desc(bids.verifiedAt));
     res.json(rows.map((x) => ({ ...x, amountDop: Number(x.amountDop) })));
   }),

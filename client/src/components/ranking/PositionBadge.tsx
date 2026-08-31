@@ -1,6 +1,6 @@
 export function CrownBadge() {
   return (
-    <span title="Líder de la ronda" className="text-base leading-none">
+    <span title="Líder actual" className="text-base leading-none">
       👑
     </span>
   );

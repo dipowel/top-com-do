@@ -6,11 +6,21 @@
 import crypto from 'node:crypto';
 import { SITE_URL } from '../../shared/site';
 import { toLowestDenomination } from '../../shared/bidding';
+import { dopToUsd, usdToDop } from '../../shared/fx';
 
 const TOLERANCE_SEC = 5 * 60;
 
-/** Producto base "pay what you want" en Dodo. Un product_id no es secreto. */
-const DEFAULT_PRODUCT_ID = 'pdt_0NmSUGwTYDHQKdpmPVTI';
+/**
+ * Producto base "pay what you want" en Dodo (un product_id no es secreto).
+ * Se elige por entorno; el usuario puede borrar DODO_PRODUCT_ID de Vercel y
+ * cada entorno usa el suyo.
+ */
+const LIVE_PRODUCT_ID = 'pdt_0NmWVZ4XoM8UbE03yFiY8';
+const TEST_PRODUCT_ID = 'pdt_0NmSUGwTYDHQKdpmPVTI';
+
+function isLive(): boolean {
+  return (process.env.DODO_ENV || 'test').toLowerCase() === 'live';
+}
 
 /** Listo para todo el ciclo (checkout + webhook). */
 export function dodoConfigured(): boolean {
@@ -23,13 +33,32 @@ export function dodoCheckoutReady(): boolean {
 }
 
 export function dodoBaseUrl(): string {
-  return (process.env.DODO_ENV || 'test').toLowerCase() === 'live'
-    ? 'https://live.dodopayments.com'
-    : 'https://test.dodopayments.com';
+  return isLive() ? 'https://live.dodopayments.com' : 'https://test.dodopayments.com';
 }
 
 export function dodoProductId(): string {
-  return process.env.DODO_PRODUCT_ID || DEFAULT_PRODUCT_ID;
+  return process.env.DODO_PRODUCT_ID?.trim() || (isLive() ? LIVE_PRODUCT_ID : TEST_PRODUCT_ID);
+}
+
+/**
+ * Moneda del producto en Dodo. El producto live está en USD; si algún día se
+ * crea uno en DOP, poner DODO_PRODUCT_CURRENCY=DOP y se cobra 1:1.
+ */
+export function dodoProductCurrency(): 'USD' | 'DOP' {
+  return (process.env.DODO_PRODUCT_CURRENCY || 'USD').toUpperCase() === 'DOP' ? 'DOP' : 'USD';
+}
+
+/** RD$ → mínima denominación en la moneda del producto (centavos USD o DOP). */
+export function amountForProduct(amountDop: number): number {
+  return dodoProductCurrency() === 'DOP'
+    ? toLowestDenomination(amountDop)
+    : toLowestDenomination(dopToUsd(amountDop));
+}
+
+/** Centavos que devuelve Dodo (moneda del producto) → RD$. */
+export function dodoAmountToDop(centavos: number): number {
+  const major = centavos / 100;
+  return dodoProductCurrency() === 'DOP' ? Math.round(major * 100) / 100 : usdToDop(major);
 }
 
 interface CreateCheckoutInput {
@@ -48,9 +77,9 @@ export async function createCheckout(
 
   const body = {
     product_cart: [
-      { product_id: dodoProductId(), quantity: 1, amount: toLowestDenomination(input.amountDop) },
+      { product_id: dodoProductId(), quantity: 1, amount: amountForProduct(input.amountDop) },
     ],
-    billing_currency: 'DOP',
+    billing_currency: 'DOP', // el cliente ve RD$ (moneda adaptativa); el cargo va en la moneda del producto
     customer: { email: input.customerEmail },
     metadata: {
       bid_id: input.bidId,
@@ -78,7 +107,7 @@ export async function createCheckout(
     const msg: string =
       data.message || data.error || data.detail || data.code || text.slice(0, 300) || 'error';
     throw new Error(
-      `Dodo ${res.status} (product ${dodoProductId()}, DOP): ${msg}`,
+      `Dodo ${res.status} (product ${dodoProductId()}, ${dodoProductCurrency()}): ${msg}`,
     );
   }
   const checkoutUrl: string | undefined = data.checkout_url || data.payment_link || data.url;

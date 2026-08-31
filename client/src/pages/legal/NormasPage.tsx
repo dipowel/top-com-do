@@ -15,8 +15,9 @@ export default function NormasPage() {
       <h2>1. Cómo funciona el ranking</h2>
       <ul>
         <li>
-          Cada negocio acumula <strong>pujas verificadas</strong> durante una <strong>ronda
-          semanal</strong>. El ranking es la suma de esas pujas.
+          El puesto de cada negocio = <strong>suma de sus pujas verificadas de los últimos 7
+          días</strong> (ventana móvil). No hay reinicio de golpe: cada puja "envejece" y deja de
+          contar sola al cumplir 7 días.
         </li>
         <li>
           El orden se calcula por <strong>categoría × provincia</strong>: un negocio compite a la
@@ -24,8 +25,9 @@ export default function NormasPage() {
           país), con la misma puja.
         </li>
         <li>
-          El <strong>#1 es siempre superable</strong> en tiempo real: quien acumule más, lidera.
-          Al cerrar la ronda, los acumulados vuelven a cero.
+          El <strong>#1 es siempre superable</strong> en tiempo real: quien acumule más en la
+          ventana, lidera. El negocio que deja de pujar ve bajar su total día a día y un
+          competidor lo pasa. <strong>El que no defiende su puesto, baja.</strong>
         </li>
         <li>
           Una puja se considera verificada cuando su pago se confirma (Dodo Payments) o cuando se

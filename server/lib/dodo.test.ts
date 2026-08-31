@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import crypto from 'node:crypto';
-import { verifyWebhook, dodoBaseUrl, dodoProductId, dodoCheckoutReady } from './dodo';
+import {
+  verifyWebhook,
+  dodoBaseUrl,
+  dodoProductId,
+  dodoCheckoutReady,
+  amountForProduct,
+  dodoAmountToDop,
+} from './dodo';
 
 function sign(rawSecretB64: string, id: string, ts: string, payload: string): string {
   return crypto
@@ -66,11 +73,24 @@ describe('dodo · configuración', () => {
     expect(dodoBaseUrl()).toBe('https://test.dodopayments.com');
   });
 
-  it('dodoProductId usa el default o el override por env', () => {
+  it('dodoProductId usa el producto por entorno o el override por env', () => {
     delete process.env.DODO_PRODUCT_ID;
+    process.env.DODO_ENV = 'test';
     expect(dodoProductId()).toBe('pdt_0NmSUGwTYDHQKdpmPVTI');
+    process.env.DODO_ENV = 'live';
+    expect(dodoProductId()).toBe('pdt_0NmWVZ4XoM8UbE03yFiY8');
     process.env.DODO_PRODUCT_ID = 'pdt_custom';
     expect(dodoProductId()).toBe('pdt_custom');
+  });
+
+  it('convierte RD$ ↔ moneda del producto', () => {
+    process.env.DODO_PRODUCT_CURRENCY = 'DOP';
+    expect(amountForProduct(200)).toBe(20000); // RD$200 → 20000 centavos DOP
+    expect(dodoAmountToDop(20000)).toBe(200);
+
+    process.env.DODO_PRODUCT_CURRENCY = 'USD';
+    expect(amountForProduct(59.5)).toBe(100); // RD$59.50 → USD 1.00 → 100 centavos
+    expect(dodoAmountToDop(100)).toBe(59.5); // USD 1.00 → RD$59.50
   });
 
   it('dodoCheckoutReady solo exige DODO_API_KEY (no vacía)', () => {
