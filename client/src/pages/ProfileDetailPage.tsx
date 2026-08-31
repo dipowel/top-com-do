@@ -104,7 +104,7 @@ export default function ProfileDetailPage() {
           <div className="flex flex-wrap gap-1.5">
             {profile.whatsapp && (
               <a
-                href={whatsappLink(profile.whatsapp, `Hola ${profile.name}, te vi en Top.com.do`)}
+                href={whatsappLink(profile.whatsapp, `Hola ${profile.name}, te vi en https://www.top.com.do`)}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-emerald min-w-[88px] flex-1 !py-2 text-xs"

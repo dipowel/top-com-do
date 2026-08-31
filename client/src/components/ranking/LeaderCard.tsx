@@ -66,7 +66,7 @@ export default function LeaderCard({
         <div className="flex flex-wrap gap-1.5">
           {p.whatsapp && (
             <a
-              href={whatsappLink(p.whatsapp, `Hola ${p.name}, te vi en Top.com.do`)}
+              href={whatsappLink(p.whatsapp, `Hola ${p.name}, te vi en https://www.top.com.do`)}
               target="_blank"
               rel="noreferrer"
               className="btn-emerald min-w-[88px] flex-1 !px-2 !py-1.5 text-[11px]"
