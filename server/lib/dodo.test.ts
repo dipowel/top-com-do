@@ -83,14 +83,11 @@ describe('dodo · configuración', () => {
     expect(dodoProductId()).toBe('pdt_custom');
   });
 
-  it('convierte RD$ ↔ moneda del producto', () => {
-    process.env.DODO_PRODUCT_CURRENCY = 'DOP';
-    expect(amountForProduct(200)).toBe(20000); // RD$200 → 20000 centavos DOP
-    expect(dodoAmountToDop(20000)).toBe(200);
-
-    process.env.DODO_PRODUCT_CURRENCY = 'USD';
-    expect(amountForProduct(59.5)).toBe(100); // RD$59.50 → USD 1.00 → 100 centavos
-    expect(dodoAmountToDop(100)).toBe(59.5); // USD 1.00 → RD$59.50
+  it('maneja el monto nativo en DOP (sin conversión)', () => {
+    expect(amountForProduct(100)).toBe(10000); // RD$100 → 10000 centavos DOP
+    expect(amountForProduct(250.5)).toBe(25050);
+    expect(dodoAmountToDop(10000)).toBe(100); // 10000 centavos DOP → RD$100
+    expect(dodoAmountToDop(25050)).toBe(250.5);
   });
 
   it('dodoCheckoutReady solo exige DODO_API_KEY (no vacía)', () => {

@@ -6,7 +6,6 @@
 import crypto from 'node:crypto';
 import { SITE_URL } from '../../shared/site';
 import { toLowestDenomination } from '../../shared/bidding';
-import { dopToUsd, usdToDop } from '../../shared/fx';
 
 const TOLERANCE_SEC = 5 * 60;
 
@@ -41,24 +40,16 @@ export function dodoProductId(): string {
 }
 
 /**
- * Moneda del producto en Dodo. El producto live está en USD; si algún día se
- * crea uno en DOP, poner DODO_PRODUCT_CURRENCY=DOP y se cobra 1:1.
+ * El producto de Dodo está en DOP (pesos dominicanos). El monto va nativo:
+ * RD$ → centavos de DOP (1:1), sin conversión de tasa.
  */
-export function dodoProductCurrency(): 'USD' | 'DOP' {
-  return (process.env.DODO_PRODUCT_CURRENCY || 'USD').toUpperCase() === 'DOP' ? 'DOP' : 'USD';
-}
-
-/** RD$ → mínima denominación en la moneda del producto (centavos USD o DOP). */
 export function amountForProduct(amountDop: number): number {
-  return dodoProductCurrency() === 'DOP'
-    ? toLowestDenomination(amountDop)
-    : toLowestDenomination(dopToUsd(amountDop));
+  return toLowestDenomination(amountDop);
 }
 
-/** Centavos que devuelve Dodo (moneda del producto) → RD$. */
+/** Centavos de DOP que devuelve Dodo → RD$. */
 export function dodoAmountToDop(centavos: number): number {
-  const major = centavos / 100;
-  return dodoProductCurrency() === 'DOP' ? Math.round(major * 100) / 100 : usdToDop(major);
+  return Math.round(centavos) / 100;
 }
 
 interface CreateCheckoutInput {
@@ -107,7 +98,7 @@ export async function createCheckout(
     const msg: string =
       data.message || data.error || data.detail || data.code || text.slice(0, 300) || 'error';
     throw new Error(
-      `Dodo ${res.status} (product ${dodoProductId()}, ${dodoProductCurrency()}): ${msg}`,
+      `Dodo ${res.status} (product ${dodoProductId()}, DOP): ${msg}`,
     );
   }
   const checkoutUrl: string | undefined = data.checkout_url || data.payment_link || data.url;

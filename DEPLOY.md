@@ -22,8 +22,7 @@ Opcionales (cada función se auto-desactiva con aviso si falta):
 |---|---|
 | `FIREBASE_PROJECT_ID` + `VITE_FIREBASE_*` | login (Google/Email). El server valida tokens con solo el projectId; la config web ya viene como fallback en el código. |
 | `DODO_ENV` (`test`/`live`), `DODO_API_KEY`, `DODO_WEBHOOK_SECRET` | pagos con Dodo Payments |
-| `DODO_PRODUCT_ID` | producto base *pay-what-you-want*. **Déjalo vacío**: el código usa `pdt_0NmWVZ4XoM8UbE03yFiY8` en `live` y `pdt_0NmSUGwTYDHQKdpmPVTI` en `test`. |
-| `DODO_PRODUCT_CURRENCY` | `USD` (por defecto) o `DOP`. El producto live está en USD → el backend convierte RD$↔USD a `FX_USD_DOP` (59.50). El producto live debe tener el **precio mínimo bajado a ~USD 1.00** para que una puja de RD$100 (~USD 1.68) pase. |
+| `DODO_PRODUCT_ID` | producto base *pay-what-you-want* (en **DOP**, mínimo RD$100). **Déjalo vacío**: el código usa `pdt_0NmWVZ4XoM8UbE03yFiY8` en `live` y `pdt_0NmSUGwTYDHQKdpmPVTI` en `test`. El monto se cobra nativo en pesos (RD$100 → `10000` centavos), sin conversión. |
 
 **Webhook (obligatorio para que la puja pase de `pending` a `verified` sola):** en Dodo →
 Settings → Webhooks, registra `https://www.top.com.do/api/webhooks/dodo` (evento
