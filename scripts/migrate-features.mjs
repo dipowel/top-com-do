@@ -122,6 +122,14 @@ const statements = [
   // Subasta dinámica: el monto de la puja ya no es un "nivel" fijo.
   `ALTER TABLE dodo_payments DROP COLUMN IF EXISTS tier_dop`,
   `ALTER TABLE dodo_payments ADD COLUMN IF NOT EXISTS amount_dop numeric(12,2) NOT NULL DEFAULT 0`,
+
+  // Nuevas categorías principales (subcategorías van en shared/categories.ts, no en BD).
+  `INSERT INTO categories (slug, name, sort_order) VALUES
+     ('ocio', '🎉 Ocio, Discotecas y Lounge', 9),
+     ('educacion', '🎓 Educación y Academias', 10),
+     ('mascotas', '🐾 Mascotas y Veterinarias', 11)
+   ON CONFLICT (slug) DO UPDATE
+     SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, is_active = true`,
 ];
 
 for (const sql of statements) {

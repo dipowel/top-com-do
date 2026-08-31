@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMyReviews } from '../hooks/useMyReviews';
+import { useShell } from '../hooks/useShell';
 import { api } from '../lib/api';
 import { avatarFallback, whatsappLink } from '../lib/share';
 import { formatDOP } from '../lib/format';
 import Modal from '../components/common/Modal';
 import { StarRating } from '../components/reviews/StarRating';
+import type { MyRankEntry } from '@shared/types';
 import ProfileForm, {
   emptyProfileForm,
   profileFormToPayload,
@@ -53,6 +55,7 @@ export default function ProfilePage() {
   const { user, me, isAdmin, accountType, meError, logout, refreshMe } = useAuth();
   const { list: favorites, toggle: toggleFav } = useFavorites();
   const { data: myReviews, reload: reloadReviews } = useMyReviews();
+  const { openBid } = useShell();
 
   const [form, setForm] = useState<ProfileFormValue>(emptyProfileForm);
   const [msg, setMsg] = useState<string | null>(null);
@@ -61,6 +64,7 @@ export default function ProfilePage() {
 
   const [referrals, setReferrals] = useState<MyReferral[]>([]);
   const [myProfiles, setMyProfiles] = useState<MyProfile[]>([]);
+  const [rank, setRank] = useState<MyRankEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState<MyProfile | null>(null);
 
@@ -73,6 +77,11 @@ export default function ProfilePage() {
     }
     try {
       setMyProfiles(await api<MyProfile[]>('/me/profiles', { auth: true }));
+    } catch {
+      /* ignore */
+    }
+    try {
+      setRank(await api<MyRankEntry[]>('/me/rank', { auth: true }));
     } catch {
       /* ignore */
     }
@@ -252,26 +261,61 @@ export default function ProfilePage() {
   const bizBlock = (
     <>
       {myProfiles.length > 0 && (
-        <div className="glass space-y-2 p-4">
+        <div className="glass space-y-3 p-4">
           <h2 className="font-bold">Mis negocios</h2>
-          {myProfiles.map((p) => (
-            <div key={p.id} className="flex items-center gap-3">
-              <img src={p.avatarUrl || avatarFallback(p.name)} className="h-10 w-10 rounded-lg" alt="" />
-              <div className="min-w-0 flex-1">
-                <Link to={`/p/${p.id}`} className="truncate text-sm font-semibold">
-                  {p.name}
-                </Link>
-                <div className="truncate text-[11px] text-white/40">
-                  {p.subcategory ? `${p.subcategory} · ` : ''}
-                  {p.categoryName}
-                  {p.latitude != null ? ' · 📍 con ubicación' : ' · sin ubicación'}
+          {myProfiles.map((p) => {
+            const r = rank.find((x) => x.profileId === p.id);
+            return (
+              <div key={p.id} className="space-y-2 rounded-xl bg-white/5 p-2.5">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={p.avatarUrl || avatarFallback(p.name)}
+                    className="h-10 w-10 rounded-lg"
+                    alt=""
+                  />
+                  <div className="min-w-0 flex-1">
+                    <Link to={`/p/${p.id}`} className="truncate text-sm font-semibold">
+                      {p.name}
+                    </Link>
+                    <div className="truncate text-[11px] text-white/40">
+                      {p.subcategory ? `${p.subcategory} · ` : ''}
+                      {p.categoryName}
+                      {r ? ` · ${r.provinceName}` : ''}
+                    </div>
+                  </div>
+                  <button onClick={() => setEditing(p)} className="btn-ghost !py-1.5 text-xs">
+                    Editar
+                  </button>
                 </div>
+
+                {r?.isLeader ? (
+                  <div className="flex items-center justify-between rounded-lg bg-gold/10 px-2.5 py-1.5 text-[11px]">
+                    <span className="font-bold text-gold">👑 Eres el #1 en {p.categoryName}</span>
+                    <button
+                      onClick={() => openBid(p.id)}
+                      className="text-gold/80 underline"
+                    >
+                      Aumentar ventaja
+                    </button>
+                  </div>
+                ) : r && r.position ? (
+                  <button
+                    onClick={() => openBid(p.id)}
+                    className="btn-gold w-full !py-2 text-xs"
+                  >
+                    🔥 Recuperar #1 · {formatDOP(r.minBidDop)}
+                    <span className="ml-1 font-normal text-black/60">
+                      (vas #{r.position}, el #1 lleva {formatDOP(r.leaderTotalDop)})
+                    </span>
+                  </button>
+                ) : (
+                  <button onClick={() => openBid(p.id)} className="btn-ghost w-full !py-2 text-xs">
+                    Aún no compites — Puja para entrar al ranking
+                  </button>
+                )}
               </div>
-              <button onClick={() => setEditing(p)} className="btn-ghost !py-1.5 text-xs">
-                Editar
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

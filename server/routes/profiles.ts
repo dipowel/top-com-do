@@ -46,6 +46,10 @@ r.get(
   '/',
   ah(async (req, res) => {
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const subcategory =
+      typeof req.query.subcategory === 'string' && req.query.subcategory.trim()
+        ? req.query.subcategory.trim()
+        : undefined;
     const rows = await db
       .select(profileColumns)
       .from(profiles)
@@ -54,6 +58,7 @@ r.get(
         and(
           eq(profiles.isActive, true),
           category && category !== 'todo-rd' ? eq(categories.slug, category) : undefined,
+          subcategory ? eq(profiles.subcategory, subcategory) : undefined,
         ),
       )
       .orderBy(desc(profiles.createdAt));

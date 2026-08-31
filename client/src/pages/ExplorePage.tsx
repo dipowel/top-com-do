@@ -5,8 +5,12 @@ import CategoryTabs from '../components/ranking/CategoryTabs';
 import { useShell } from '../hooks/useShell';
 import { useSeo } from '../hooks/useSeo';
 import { avatarFallback } from '../lib/share';
-import { CATEGORY_SLUGS } from '@shared/categories';
-import { exploreSeo } from '@shared/seo';
+import {
+  CATEGORY_SLUGS,
+  subcategoriesWithSlugsFor,
+  subcategoryLabel,
+} from '@shared/categories';
+import { exploreSeo, subcategorySeo } from '@shared/seo';
 
 interface P {
   id: string;
@@ -21,17 +25,24 @@ export default function ExplorePage() {
   const navigate = useNavigate();
   const [sp, setSp] = useSearchParams();
 
-  const cat = params.categoria && CATEGORY_SLUGS.includes(params.categoria) ? params.categoria : 'todo-rd';
+  const cat =
+    params.categoria && CATEGORY_SLUGS.includes(params.categoria) ? params.categoria : 'todo-rd';
+  const subChips = cat !== 'todo-rd' ? subcategoriesWithSlugsFor(cat) : [];
+  const subLabel = params.sub ? subcategoryLabel(cat, params.sub) : '';
+  const activeSub = subLabel ? params.sub! : undefined;
+
   const [profiles, setProfiles] = useState<P[]>([]);
   const [q, setQ] = useState(sp.get('q') ?? '');
   const { openBid } = useShell();
 
   useEffect(() => {
-    const query = cat && cat !== 'todo-rd' ? `?category=${cat}` : '';
-    api<P[]>(`/profiles${query}`)
+    const qs = new URLSearchParams();
+    if (cat && cat !== 'todo-rd') qs.set('category', cat);
+    if (subLabel) qs.set('subcategory', subLabel);
+    api<P[]>(`/profiles${qs.toString() ? `?${qs}` : ''}`)
       .then(setProfiles)
       .catch(() => setProfiles([]));
-  }, [cat]);
+  }, [cat, subLabel]);
 
   // Mantén ?q= en la URL para la SearchAction de los resultados enriquecidos.
   useEffect(() => {
@@ -42,16 +53,28 @@ export default function ExplorePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  useSeo(exploreSeo(cat === 'todo-rd' ? null : cat, q));
+  useSeo(
+    activeSub
+      ? subcategorySeo({
+          categorySlug: cat,
+          subSlug: activeSub,
+          items: profiles.slice(0, 20).map((p) => ({ id: p.id, name: p.name })),
+        })
+      : exploreSeo(cat === 'todo-rd' ? null : cat, q),
+  );
 
   const filtered = useMemo(
     () => profiles.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())),
     [profiles, q],
   );
 
+  const h1 = activeSub
+    ? `Mejor ${subLabel} en República Dominicana`
+    : 'Explorar negocios en República Dominicana';
+
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-extrabold">Explorar negocios en República Dominicana</h1>
+      <h1 className="text-xl font-extrabold">{h1}</h1>
       <input
         className="input"
         placeholder="Buscar marca o persona…"
@@ -62,6 +85,32 @@ export default function ExplorePage() {
         value={cat}
         onChange={(slug) => navigate(slug === 'todo-rd' ? '/explorar' : `/explorar/${slug}`)}
       />
+
+      {subChips.length > 0 && (
+        <nav aria-label="Filtrar por rubro" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+          <Link
+            to={`/explorar/${cat}`}
+            className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs ${
+              !activeSub ? 'border-gold/60 bg-gold/15 text-gold' : 'border-white/10 text-white/55'
+            }`}
+          >
+            Todos
+          </Link>
+          {subChips.map((s) => (
+            <Link
+              key={s.slug}
+              to={`/explorar/${cat}/${s.slug}`}
+              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs ${
+                activeSub === s.slug
+                  ? 'border-gold/60 bg-gold/15 text-gold'
+                  : 'border-white/10 text-white/55'
+              }`}
+            >
+              {s.label}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {filtered.map((p) => (

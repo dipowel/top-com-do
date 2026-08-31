@@ -12,9 +12,12 @@ import ViralCard from '../share/ViralCard';
 export default function LeaderCard({
   entry,
   onBid,
+  recoverAmount,
 }: {
   entry: RankingEntry;
   onBid: (profileId: string) => void;
+  /** Monto exacto para que este #2 recupere el #1 (solo se pasa a la posición 2). */
+  recoverAmount?: number;
 }) {
   const { user } = useAuth();
   const { ids, toggle } = useFavorites();
@@ -59,7 +62,9 @@ export default function LeaderCard({
 
       <div className="mt-3 space-y-2">
         <button onClick={() => onBid(p.id)} className="btn-gold w-full !py-2.5 text-xs">
-          Pujar por {p.name.split(' ')[0]}
+          {entry.position === 2
+            ? `🔥 Recuperar el #1${recoverAmount ? ` · ${formatDOP(recoverAmount)}` : ''}`
+            : `Pujar por ${p.name.split(' ')[0]}`}
         </button>
 
         {/* Acciones secundarias: se reparten y envuelven (2+ por fila en móvil, 1 fila en PC) */}

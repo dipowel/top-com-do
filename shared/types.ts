@@ -126,3 +126,16 @@ export interface MyReferral {
   createdAt: string;
   approvedAt: string | null;
 }
+
+export interface MyRankEntry {
+  profileId: string;
+  name: string;
+  categoryName: string;
+  provinceName: string;
+  position: number | null;
+  isLeader: boolean;
+  leaderName: string | null;
+  leaderTotalDop: number;
+  myTotalDop: number;
+  minBidDop: number;
+}

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   homeSeo,
   categorySeo,
+  subcategorySeo,
   profileSeo,
   exploreSeo,
   localBusinessLd,
@@ -34,6 +35,12 @@ describe('seo · títulos y descripciones con geografía', () => {
   it('explorar por categoría tiene canónico propio', () => {
     expect(exploreSeo('salud').canonical).toBe('https://www.top.com.do/explorar/salud');
     expect(exploreSeo(null).canonical).toBe('https://www.top.com.do/explorar');
+  });
+
+  it('subcategoría genera "Mejor {rubro} en RD" y canónico propio', () => {
+    const s = subcategorySeo({ categorySlug: 'gastronomia', subSlug: 'liquor-stores-y-drinks' });
+    expect(s.title).toBe('Mejor Liquor Stores y Drinks en República Dominicana | Top.com.do');
+    expect(s.canonical).toBe('https://www.top.com.do/explorar/gastronomia/liquor-stores-y-drinks');
   });
 });
 
@@ -90,6 +97,8 @@ describe('seo · sitemap', () => {
     expect(locs).toContain('https://www.top.com.do/rd/gastronomia/santiago');
     expect(locs).toContain('https://www.top.com.do/p/p1');
     expect(locs).toContain('https://www.top.com.do/terminos');
+    expect(locs).toContain('https://www.top.com.do/explorar/gastronomia/liquor-stores-y-drinks');
+    expect(locs).toContain('https://www.top.com.do/explorar/mascotas/clinicas-veterinarias');
     expect(locs).not.toContain('https://www.top.com.do/rd/todo-rd');
   });
 

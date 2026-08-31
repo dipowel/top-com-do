@@ -22,6 +22,7 @@ export default function App() {
         <Route path="/rd/:categoria/:provincia" element={<RankingPage />} />
         <Route path="/explorar" element={<ExplorePage />} />
         <Route path="/explorar/:categoria" element={<ExplorePage />} />
+        <Route path="/explorar/:categoria/:sub" element={<ExplorePage />} />
         <Route path="/mis-pujas" element={<MyBidsPage />} />
         <Route path="/favoritos" element={<FavoritesPage />} />
         <Route path="/perfil" element={<ProfilePage />} />

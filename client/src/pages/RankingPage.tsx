@@ -150,7 +150,16 @@ export default function RankingPage() {
 
       <div className="space-y-2.5">
         {data.map((e) => (
-          <LeaderCard key={e.profile.id} entry={e} onBid={(pid) => openBid(pid, cat, province)} />
+          <LeaderCard
+            key={e.profile.id}
+            entry={e}
+            onBid={(pid) => openBid(pid, cat, province)}
+            recoverAmount={
+              e.position === 2 && data[0]
+                ? Math.max(Number(data[0].totalDop) - Number(e.totalDop) + 100, 100)
+                : undefined
+            }
+          />
         ))}
       </div>
     </div>

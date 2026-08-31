@@ -18,7 +18,11 @@ import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
 import { markRead } from '../lib/notify';
+import { getRankings } from '../lib/rankings';
+import { minNextBid } from '../../shared/bidding';
+import { provinceName, NATIONAL_SLUG } from '../../shared/provinces';
 import { normalizeRefCode } from '../../shared/referral';
+import type { RankingEntry } from '../../shared/types';
 
 const r = Router();
 r.use(requireAuth);
@@ -158,6 +162,60 @@ r.get(
         longitude: x.longitude != null ? Number(x.longitude) : null,
       })),
     );
+  }),
+);
+
+/**
+ * Estado de subasta de cada negocio del usuario: posición, si es #1, y el monto
+ * exacto para recuperar/tomar el #1. Alimenta el botón "Recuperar #1" del panel.
+ */
+r.get(
+  '/rank',
+  ah(async (req, res) => {
+    const mine = await db
+      .select({
+        id: profiles.id,
+        name: profiles.name,
+        province: profiles.province,
+        categorySlug: categories.slug,
+        categoryName: categories.name,
+      })
+      .from(profiles)
+      .innerJoin(categories, eq(categories.id, profiles.categoryId))
+      .where(eq(profiles.ownerUserId, req.user!.id));
+
+    const cache = new Map<string, RankingEntry[]>();
+    const rankingFor = async (cat: string, prov?: string) => {
+      const key = `${cat}:${prov ?? 'nat'}`;
+      if (!cache.has(key)) cache.set(key, await getRankings(cat, prov, 100));
+      return cache.get(key)!;
+    };
+
+    const out = [];
+    for (const b of mine) {
+      const prov = b.province && b.province !== NATIONAL_SLUG ? b.province : undefined;
+      const ranking = await rankingFor(b.categorySlug, prov);
+      const idx = ranking.findIndex((e) => e.profile.id === b.id);
+      const position = idx >= 0 ? idx + 1 : null;
+      const isLeader = position === 1;
+      const leader = ranking[0];
+      const myEntry = idx >= 0 ? ranking[idx] : null;
+      const leaderTotalDop = leader?.totalDop ?? 0;
+      const myTotalDop = myEntry?.totalDop ?? 0;
+      out.push({
+        profileId: b.id,
+        name: b.name,
+        categoryName: b.categoryName,
+        provinceName: prov ? provinceName(prov) : 'Todo RD',
+        position,
+        isLeader,
+        leaderName: leader && !isLeader ? leader.profile.name : null,
+        leaderTotalDop,
+        myTotalDop,
+        minBidDop: minNextBid({ leaderTotalDop, myTotalDop, iAmLeader: isLeader }),
+      });
+    }
+    res.json(out);
   }),
 );
 

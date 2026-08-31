@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import Spinner from '../components/common/Spinner';
 import { formatDOP } from '../lib/format';
@@ -50,6 +50,8 @@ export default function ProfileDetailPage() {
   const { openBid } = useShell();
   const { ids, toggle } = useFavorites();
   const { user, me } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const autoOpened = useRef(false);
 
   useEffect(() => {
     api<Detail>(`/profiles/${id}`)
@@ -59,6 +61,17 @@ export default function ProfileDetailPage() {
       .then(setBids)
       .catch(() => setBids([]));
   }, [id]);
+
+  // Enlace del correo "Recuperar #1" / de las notificaciones → abre el checkout.
+  useEffect(() => {
+    if (params.get('pujar') === '1' && id && !autoOpened.current) {
+      autoOpened.current = true;
+      openBid(id);
+      const next = new URLSearchParams(params);
+      next.delete('pujar');
+      setParams(next, { replace: true });
+    }
+  }, [params, id, openBid, setParams]);
 
   useSeo(profile ? profileSeo(profile, profile.reviewSummary) : null);
 

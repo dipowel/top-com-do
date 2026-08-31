@@ -2,6 +2,8 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { notifications, users, profiles, categories, rankLeaders } from '../../shared/schema';
 import { getRankings } from './rankings';
+import { minNextBidForProfile } from './auction';
+import { sendEmail, dethroneEmailHtml } from './email';
 import { NATIONAL_SLUG, provinceName } from '../../shared/provinces';
 import { formatDOP } from '../../shared/fx';
 
@@ -92,28 +94,61 @@ export async function checkDethronements(bidProfileId: string): Promise<void> {
       await db.select().from(rankLeaders).where(eq(rankLeaders.scopeKey, scopeKey)).limit(1)
     )[0];
 
-    // ¿Cambió el líder? El anterior queda en #2 → notificarlo.
+    // ¿Cambió el líder? El anterior queda en #2 → notificarlo (in-app + correo).
     if (prev?.leaderProfileId && prev.leaderProfileId !== newLeader.profile.id) {
       const dethroned = (
         await db
-          .select({ id: profiles.id, ownerUserId: profiles.ownerUserId, name: profiles.name })
+          .select({
+            id: profiles.id,
+            ownerUserId: profiles.ownerUserId,
+            name: profiles.name,
+            ownerEmail: users.email,
+          })
           .from(profiles)
+          .leftJoin(users, eq(users.id, profiles.ownerUserId))
           .where(and(eq(profiles.id, prev.leaderProfileId), eq(profiles.isActive, true)))
           .limit(1)
       )[0];
       if (dethroned?.ownerUserId) {
+        let minBidDop = newLeader.totalDop + 100;
+        try {
+          minBidDop = (await minNextBidForProfile(dethroned.id)).minBidDop;
+        } catch {
+          /* usa el estimado */
+        }
+
         await notifyUser(dethroned.ownerUserId, {
           type: 'rank.dethroned',
           title: `⚠️ Te superaron en ${s.label}`,
-          body: `Ahora estás #2. El nuevo #1 (${newLeader.profile.name}) está en ${formatDOP(newLeader.totalDop)}. Vuelve a liderar pujando por encima.`,
-          url: '/',
+          body: `Ahora estás #2. El nuevo #1 (${newLeader.profile.name}) está en ${formatDOP(newLeader.totalDop)}. Recupera el #1 con ${formatDOP(minBidDop)}.`,
+          url: `/p/${dethroned.id}?pujar=1`,
           meta: {
             profileId: dethroned.id,
             categorySlug: prof.categorySlug,
             province: s.province ?? NATIONAL_SLUG,
             newLeaderTotal: newLeader.totalDop,
+            minBidDop,
           },
         });
+
+        if (dethroned.ownerEmail) {
+          try {
+            await sendEmail({
+              to: dethroned.ownerEmail,
+              subject: `⚠️ Te superaron en ${s.label} — recupera tu #1`,
+              html: dethroneEmailHtml({
+                businessName: dethroned.name,
+                scopeLabel: s.label,
+                newLeaderName: newLeader.profile.name,
+                newLeaderTotalDop: newLeader.totalDop,
+                minBidDop,
+                profileId: dethroned.id,
+              }),
+            });
+          } catch (e) {
+            console.error('[notify] correo destronamiento falló:', (e as Error).message);
+          }
+        }
       }
     }
 

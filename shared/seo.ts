@@ -5,7 +5,7 @@
  * `useSeo` y el servidor para `GET /sitemap.xml`.
  */
 import { SITE_URL, SOCIAL_URLS, profileShareUrl } from './site';
-import { CATEGORY_DEFS } from './categories';
+import { CATEGORY_DEFS, SUBCATEGORY_DEFS, subcategoryLabel } from './categories';
 import { PROVINCE_DEFS, NATIONAL_SLUG, provinceName } from './provinces';
 import type { ReviewSummary } from './types';
 
@@ -95,6 +95,26 @@ export function categorySeo(opts: {
     canonical,
     image: OG_IMAGE,
     jsonLd: opts.items && opts.items.length ? [itemListLd(opts.items, canonical, `${cat} en ${zone}`)] : undefined,
+  };
+}
+
+/** Landing de subcategoría a nivel nacional: /explorar/{categoria}/{sub}. */
+export function subcategorySeo(opts: {
+  categorySlug: string;
+  subSlug: string;
+  items?: { id: string; name: string }[];
+}): SeoData {
+  const sub = subcategoryLabel(opts.categorySlug, opts.subSlug) || categoryLabel(opts.categorySlug);
+  const canonical = `${SITE_URL}/explorar/${opts.categorySlug}/${opts.subSlug}`;
+  return {
+    title: `Mejor ${sub} en ${RD} | Top.com.do`,
+    description: `Directorio verificado de ${sub} en la ${RD}. Compara por reputación y reseñas reales, mira ubicación y contacta directo por WhatsApp. Actualizado en vivo en Top.com.do.`,
+    canonical,
+    image: OG_IMAGE,
+    jsonLd:
+      opts.items && opts.items.length
+        ? [itemListLd(opts.items, canonical, `Mejor ${sub} en ${RD}`)]
+        : undefined,
   };
 }
 
@@ -266,6 +286,14 @@ export function sitemapUrls(
     for (const p of provs) {
       out.push({ loc: `${SITE_URL}/rd/${c.slug}/${p.slug}`, changefreq: 'daily', priority: 0.55 });
     }
+  }
+
+  for (const s of SUBCATEGORY_DEFS) {
+    out.push({
+      loc: `${SITE_URL}/explorar/${s.categorySlug}/${s.slug}`,
+      changefreq: 'weekly',
+      priority: 0.6,
+    });
   }
 
   for (const pr of profiles) {
