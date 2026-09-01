@@ -56,7 +56,7 @@ export default function ChampionMedal({ className = '' }: { className?: string }
         fontSize="11.5"
         fontWeight="800"
         letterSpacing="2"
-        fill="#ffffff"
+        fill="#111111"
       >
         PUESTO
       </text>
@@ -67,7 +67,7 @@ export default function ChampionMedal({ className = '' }: { className?: string }
         fontFamily={FONT}
         fontSize="33"
         fontWeight="900"
-        fill="#ffffff"
+        fill="#111111"
       >
         #1
       </text>
