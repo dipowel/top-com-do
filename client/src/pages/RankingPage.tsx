@@ -129,7 +129,7 @@ export default function RankingPage() {
               </div>
             </div>
             <button
-              onClick={() => openBid(leader?.profile.id, cat, province)}
+              onClick={() => openBid(undefined, cat, province)}
               className="btn-gold shrink-0 !px-4 !py-2.5 text-xs"
             >
               Pujar para liderar

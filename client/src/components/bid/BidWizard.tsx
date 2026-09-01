@@ -130,9 +130,18 @@ export default function BidWizard({
   if (!user) {
     return (
       <Modal onClose={onClose} title="Pujar Ahora">
-        <p className="text-sm text-white/60">Necesitas iniciar sesión para pujar.</p>
-        <Link to="/login" onClick={onClose} className="btn-gold mt-4 w-full">
-          Iniciar sesión
+        <p className="text-sm text-white/60">
+          Regístrate gratis para pujar y poner tu negocio en el #1.
+        </p>
+        <Link to="/login?registro=1" onClick={onClose} className="btn-gold mt-4 w-full">
+          Crear cuenta gratis
+        </Link>
+        <Link
+          to="/login"
+          onClick={onClose}
+          className="mt-2 block text-center text-xs text-white/50 underline"
+        >
+          o inicia sesión
         </Link>
       </Modal>
     );

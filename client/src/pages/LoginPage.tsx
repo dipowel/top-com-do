@@ -1,14 +1,29 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { normalizeRefCode } from '@shared/referral';
 
 export default function LoginPage() {
-  const { loginGoogle, loginEmail, registerEmail, user, ready } = useAuth();
+  const { loginGoogle, loginEmail, registerEmail, user, ready, pendingRef } = useAuth();
   const nav = useNavigate();
   const [params] = useSearchParams();
   const [mode, setMode] = useState<'login' | 'register'>(
     params.get('registro') ? 'register' : 'login',
   );
+
+  // Si el enlace fue /login?ref=CODIGO, guárdalo también aquí.
+  useEffect(() => {
+    const code = normalizeRefCode(params.get('ref'));
+    if (code) {
+      try {
+        localStorage.setItem('pendingRef', code);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [params]);
+
+  const refCode = pendingRef || normalizeRefCode(params.get('ref'));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
@@ -53,6 +68,12 @@ export default function LoginPage() {
           ? 'Crea tu cuenta gratis para calificar negocios y guardar favoritos'
           : 'El directorio #1 de RD'}
       </p>
+
+      {mode === 'register' && refCode && (
+        <p className="rounded-lg border border-emerald/30 bg-emerald/10 px-3 py-2 text-center text-xs text-emerald-soft">
+          🎁 Código de invitación aplicado: <b>{refCode}</b> — al registrarte, ambos ganan RD$ 100.
+        </p>
+      )}
 
       <button
         onClick={() =>

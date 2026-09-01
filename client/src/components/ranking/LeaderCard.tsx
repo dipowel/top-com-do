@@ -5,6 +5,7 @@ import { formatDOP } from '../../lib/format';
 import { whatsappLink, avatarFallback } from '../../lib/share';
 import { googleDirectionsUrl } from '../../lib/geo';
 import { PositionBadge, CrownBadge } from './PositionBadge';
+import ChampionMedal from './ChampionMedal';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useAuth } from '../../hooks/useAuth';
 import ViralCard from '../share/ViralCard';
@@ -28,7 +29,11 @@ export default function LeaderCard({
   return (
     <div className={`glass p-3 ${entry.isChampion ? 'shadow-glow ring-1 ring-gold/40' : ''}`}>
       <div className="flex items-center gap-3">
-        <PositionBadge position={entry.position} champion={entry.isChampion} />
+        {entry.isChampion ? (
+          <ChampionMedal />
+        ) : (
+          <PositionBadge position={entry.position} champion={entry.isChampion} />
+        )}
         <Link to={`/p/${p.id}`}>
           <img
             src={p.avatarUrl || avatarFallback(p.name)}

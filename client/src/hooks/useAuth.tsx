@@ -11,8 +11,24 @@ import {
 import { auth, googleProvider, firebaseReady } from '../lib/firebase';
 import { api } from '../lib/api';
 import { isAdminEmail } from '../lib/admin';
-import { extractRefCode } from '@shared/referral';
+import { extractRefCode, normalizeRefCode } from '@shared/referral';
 import type { MeResponse } from '@shared/types';
+
+function readStoredRef(): string | null {
+  try {
+    return normalizeRefCode(localStorage.getItem('pendingRef'));
+  } catch {
+    return null;
+  }
+}
+
+function storeRef(code: string) {
+  try {
+    localStorage.setItem('pendingRef', code);
+  } catch {
+    /* navegador in-app puede bloquear localStorage: el estado en memoria lo sostiene */
+  }
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -23,6 +39,8 @@ interface AuthContextValue {
   accountType: 'consumer' | 'merchant' | 'admin';
   /** mensaje si `GET /api/me` falló (útil para diagnóstico en Vercel). */
   meError: string | null;
+  /** código `?ref=` capturado que se aplicará al registrarse (o null). */
+  pendingRef: string | null;
   loading: boolean;
   ready: boolean;
   loginGoogle: () => Promise<void>;
@@ -44,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [meError, setMeError] = useState<string | null>(null);
+  const [pendingRef, setPendingRef] = useState<string | null>(readStoredRef);
   const [loading, setLoading] = useState(true);
 
   async function refreshMe() {
@@ -60,15 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Captura ?ref=CODIGO de la URL (validado) y lo guarda hasta que inicie sesión.
+  // Captura ?ref=CODIGO de la URL (validado) en localStorage + estado en memoria.
   useEffect(() => {
     const code = extractRefCode(window.location.search);
     if (code) {
-      try {
-        localStorage.setItem('pendingRef', code);
-      } catch {
-        /* ignore */
-      }
+      storeRef(code);
+      setPendingRef(code);
     }
   }, []);
 
@@ -83,25 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u);
       setLoading(false);
       if (u) {
-        // Registra al referente si venía un ?ref pendiente
-        let pendingRef: string | null = null;
-        try {
-          pendingRef = localStorage.getItem('pendingRef');
-        } catch {
-          /* ignore */
-        }
-        if (pendingRef) {
-          try {
-            await api('/me/referral', { method: 'POST', body: JSON.stringify({ code: pendingRef }), auth: true });
-          } catch {
-            /* código inválido / ya registrado */
-          }
-          try {
-            localStorage.removeItem('pendingRef');
-          } catch {
-            /* ignore */
-          }
-        }
         await refreshMe();
       } else {
         setMe(null);
@@ -109,6 +106,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
   }, []);
+
+  // Aplica el código de referido en cuanto hay sesión (usa el estado en memoria,
+  // no localStorage, para funcionar aunque el navegador in-app lo bloquee).
+  useEffect(() => {
+    if (!user || !pendingRef) return;
+    let cancelled = false;
+    api('/me/referral', {
+      method: 'POST',
+      body: JSON.stringify({ code: pendingRef }),
+      auth: true,
+    })
+      .catch(() => {
+        /* código inválido / ya referido */
+      })
+      .finally(() => {
+        if (cancelled) return;
+        try {
+          localStorage.removeItem('pendingRef');
+        } catch {
+          /* ignore */
+        }
+        setPendingRef(null);
+        void refreshMe();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, pendingRef]);
 
   const isAdmin =
     me?.role === 'admin' || me?.role === 'superadmin' || isAdminEmail(user?.email);
@@ -120,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin,
     accountType,
     meError,
+    pendingRef,
     loading,
     ready: firebaseReady,
     loginGoogle: async () => {
