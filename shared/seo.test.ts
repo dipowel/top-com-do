@@ -101,6 +101,10 @@ describe('seo · sitemap', () => {
     expect(locs).toContain('https://www.top.com.do/terminos');
     expect(locs).toContain('https://www.top.com.do/explorar/gastronomia/liquor-stores-y-drinks');
     expect(locs).toContain('https://www.top.com.do/explorar/mascotas/clinicas-veterinarias');
+    expect(locs).toContain(
+      'https://www.top.com.do/explorar/automotriz/gasolineras-y-estaciones-de-servicio',
+    );
+    expect(locs).toContain('https://www.top.com.do/explorar/inmobiliaria/inmobiliarias-y-alquileres');
     expect(locs).not.toContain('https://www.top.com.do/rd/todo-rd');
   });
 

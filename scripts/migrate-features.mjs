@@ -125,11 +125,29 @@ const statements = [
 
   // Nuevas categorías principales (subcategorías van en shared/categories.ts, no en BD).
   `INSERT INTO categories (slug, name, sort_order) VALUES
-     ('ocio', '🎉 Ocio, Discotecas y Lounge', 9),
-     ('educacion', '🎓 Educación y Academias', 10),
-     ('mascotas', '🐾 Mascotas y Veterinarias', 11)
+     ('ocio', '🎉 Ocio, Discotecas y Lounge', 10),
+     ('educacion', '🎓 Educación y Academias', 11),
+     ('mascotas', '🐾 Mascotas y Veterinarias', 12)
    ON CONFLICT (slug) DO UPDATE
      SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, is_active = true`,
+
+  // "Inmobiliaria y Bienes Raíces" se separa de "servicios" como categoría propia.
+  `INSERT INTO categories (slug, name, sort_order) VALUES
+     ('inmobiliaria', '🏢 Inmobiliaria y Bienes Raíces', 8)
+   ON CONFLICT (slug) DO UPDATE
+     SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, is_active = true`,
+  `UPDATE categories SET name = '💼 Servicios Profesionales' WHERE slug = 'servicios'`,
+  `UPDATE categories SET sort_order = CASE slug
+       WHEN 'politica' THEN 9
+       WHEN 'ocio' THEN 10
+       WHEN 'educacion' THEN 11
+       WHEN 'mascotas' THEN 12
+     END
+   WHERE slug IN ('politica','ocio','educacion','mascotas')`,
+  // Reasignar negocios existentes de las 2 subcategorías que se mudaron.
+  `UPDATE profiles SET category_id = (SELECT id FROM categories WHERE slug = 'inmobiliaria')
+   WHERE subcategory IN ('Inmobiliarias y Alquileres', 'Hoteles, Villas y Cabañas')
+     AND category_id = (SELECT id FROM categories WHERE slug = 'servicios')`,
 ];
 
 for (const sql of statements) {
