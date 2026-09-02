@@ -12,9 +12,11 @@ import {
 } from './seo';
 
 describe('seo · títulos y descripciones con geografía', () => {
-  it('portada menciona República Dominicana', () => {
+  it('portada: publicidad + ranking + República Dominicana', () => {
     const s = homeSeo();
+    expect(s.title).toMatch(/Publicidad/);
     expect(s.title).toMatch(/República Dominicana/);
+    expect(s.description).toMatch(/WhatsApp/);
     expect(s.canonical).toBe('https://www.top.com.do/');
     expect(s.jsonLd?.[0]).toMatchObject({ '@type': 'Organization' });
   });

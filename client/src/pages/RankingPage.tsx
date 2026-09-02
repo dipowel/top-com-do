@@ -51,32 +51,59 @@ export default function RankingPage() {
   return (
     <div className="space-y-4">
       {isHome ? (
-        <header aria-labelledby="hero-title" className="space-y-2 pt-1">
+        <header aria-labelledby="hero-title" className="space-y-3 pt-1">
           <h1
             id="hero-title"
             className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl"
           >
-            El directorio <span className="text-gold">#1</span> de la{' '}
-            <span className="uppercase tracking-wide text-gold">República Dominicana</span>
+            <span className="text-gold">Publicidad efectiva:</span> domina el puesto{' '}
+            <span className="text-gold">#1</span> de tu categoría y llévate todos los clientes.
           </h1>
-          <h2 className="text-sm font-normal leading-relaxed text-white/70">
-            Encuentra el mejor restaurante o negocio verificado de tu zona — o{' '}
-            <button
-              type="button"
-              onClick={() => openBid()}
-              aria-label="Pujar para posicionar tu negocio en el #1"
-              className="font-semibold text-gold underline decoration-gold/50 underline-offset-2 hover:decoration-gold"
-            >
-              puja
-            </button>{' '}
-            para poner tu negocio en el <span className="text-gold">#1</span> y llevarte todas las
-            llamadas y los clientes.
-          </h2>
-          <p className="text-xs text-white/50">
-            ¿Buscas lo mejor? Aquí solo rankea el{' '}
-            <strong className="font-semibold text-white/80">líder verificado</strong> de cada
-            provincia.
+          <p className="text-sm leading-relaxed text-white/70">
+            La plataforma de publicidad y ranking número uno de la República Dominicana. Solo hay un
+            líder por provincia y categoría: paga para desplazar a tu competencia y recibe llamadas
+            directas a tu <span className="font-semibold text-emerald-soft">WhatsApp</span>.
           </p>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <section className="glass space-y-2 p-3">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gold/80">
+                Para dueños de negocios
+              </h2>
+              <p className="text-[12px] leading-snug text-white/60">
+                📢 <b className="text-white/80">Publicidad que da resultados.</b> No pierdas
+                presupuesto en anuncios aburridos. El que paga más se apodera del primer lugar y
+                acapara todo el tráfico web de su sector.
+              </p>
+              <p className="text-[12px] leading-snug text-white/60">
+                ⚡ <b className="text-white/80">Control total e inmediato.</b> Revisa cuánto paga el
+                líder actual en tu zona, supera su oferta con tarjeta y toma el control al instante.{' '}
+                <button
+                  type="button"
+                  onClick={() => openBid()}
+                  className="font-semibold text-gold underline decoration-gold/50 underline-offset-2 hover:decoration-gold"
+                >
+                  Pujar para liderar
+                </button>
+              </p>
+            </section>
+
+            <section className="glass space-y-2 p-3">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-soft/80">
+                Para clientes y consumidores
+              </h2>
+              <p className="text-[12px] leading-snug text-white/60">
+                ⭐ <b className="text-white/80">Tu negocio favorito al alcance.</b> Encuentra los
+                mejores negocios verificados en tu provincia sin perder tiempo entre opciones
+                mediocres.
+              </p>
+              <p className="text-[12px] leading-snug text-white/60">
+                📞 <b className="text-white/80">Contacto directo.</b> Toca WhatsApp o llamada y
+                conéctate al instante con el comercio líder que manda en tu zona.
+              </p>
+            </section>
+          </div>
+
           <p className="text-[11px] text-white/35">
             <span className="text-emerald-soft">●</span> Datos en vivo · 32 provincias · negocios
             verificados
