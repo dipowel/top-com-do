@@ -116,20 +116,26 @@ export default function RankingPage() {
           </div>
 
           <section
-            aria-label="Cómo funciona: ejemplo"
+            aria-label="Cómo funciona: el #1 ahora mismo"
             className="glass space-y-3 border border-gold/20 p-3.5"
           >
             <h2 className="text-center text-[11px] font-bold uppercase tracking-widest text-white/50">
-              ¿Cómo funciona? Un ejemplo real
+              ¿Cómo funciona? El #1 ahora mismo
             </h2>
             <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-1.5 text-center sm:gap-2">
               <div className="space-y-1">
                 <div className="text-[9.5px] font-bold uppercase tracking-wider text-gold/80">
                   #1 actual
                 </div>
-                <div className="text-base font-black text-gold sm:text-lg">RD$500</div>
-                <div className="text-[10px] leading-tight text-white/45">
-                  👑 El líder de tu zona hoy
+                <div className="text-[15px] font-black tabular-nums text-gold sm:text-base">
+                  {loading && !data.length
+                    ? '…'
+                    : leader
+                      ? formatDOP(Number(leader.totalDop))
+                      : 'Libre'}
+                </div>
+                <div className="text-[10px] leading-tight text-white/45 break-words">
+                  {leader ? `👑 ${leader.profile.name}` : 'Nadie manda esta zona'}
                 </div>
               </div>
               <span aria-hidden className="self-center text-white/25">
@@ -139,8 +145,12 @@ export default function RankingPage() {
                 <div className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-soft/80">
                   Tú pujas
                 </div>
-                <div className="text-base font-black text-emerald-soft sm:text-lg">RD$600</div>
-                <div className="text-[10px] leading-tight text-white/45">Superas su oferta</div>
+                <div className="text-[15px] font-black tabular-nums text-emerald-soft sm:text-base">
+                  {loading && !data.length ? '…' : formatDOP(toLead)}
+                </div>
+                <div className="text-[10px] leading-tight text-white/45">
+                  {leader ? 'Superas su oferta' : 'Tomas el #1 libre'}
+                </div>
               </div>
               <span aria-hidden className="self-center text-white/25">
                 →
