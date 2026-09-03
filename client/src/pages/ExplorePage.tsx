@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import CategoryTabs from '../components/ranking/CategoryTabs';
 import { useShell } from '../hooks/useShell';
@@ -27,7 +27,6 @@ interface P {
 
 export default function ExplorePage() {
   const params = useParams();
-  const navigate = useNavigate();
   const [sp, setSp] = useSearchParams();
 
   const cat =
@@ -104,7 +103,7 @@ export default function ExplorePage() {
       />
       <CategoryTabs
         value={cat}
-        onChange={(slug) => navigate(slug === 'todo-rd' ? '/explorar' : `/explorar/${slug}`)}
+        hrefFor={(slug) => (slug === 'todo-rd' ? '/explorar' : `/explorar/${slug}`)}
       />
 
       {subChips.length > 0 && (

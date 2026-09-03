@@ -8,6 +8,7 @@ import { ah } from '../lib/asyncHandler';
 import { requireAuth, loadUser } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
+import { pingIndexNow } from '../lib/indexnow';
 import { PROVINCE_SLUGS, provinceName } from '../../shared/provinces';
 import { assertCanReview, detectBombing, reviewSummary } from '../lib/reviews';
 import { clientIpHash } from '../lib/ip';
@@ -171,6 +172,16 @@ r.post(
       .where(and(eq(users.id, req.user!.id), eq(users.accountType, 'consumer')));
 
     await audit(req.user!.id, 'profile.create', 'profile', inserted[0]!.id, { handle, name: body.name });
+
+    // IndexNow: la nueva ficha y sus landings de categoría/provincia.
+    const prov = body.province && body.province !== 'todo-rd' ? body.province : null;
+    pingIndexNow([
+      `/p/${inserted[0]!.id}`,
+      `/rd/${body.categorySlug}`,
+      `/explorar/${body.categorySlug}`,
+      ...(prov ? [`/rd/${body.categorySlug}/${prov}`] : []),
+    ]);
+
     res.status(201).json(inserted[0]);
   }),
 );

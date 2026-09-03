@@ -1,10 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
-import { bids, profiles, dodoPayments } from '../../shared/schema';
+import { bids, profiles, categories, dodoPayments } from '../../shared/schema';
 import { onBidVerified } from './rewards';
 import { checkDethronements, notifyUser } from './notify';
 import { audit } from './audit';
 import { listRecentPayments, dodoAmountToDop } from './dodo';
+import { pingIndexNow } from './indexnow';
 import { formatDOP } from '../../shared/fx';
 
 /**
@@ -56,8 +57,25 @@ export async function fulfillBid(opts: {
   await checkDethronements(bid.profileId);
 
   const prof = (
-    await db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, bid.profileId)).limit(1)
+    await db
+      .select({ name: profiles.name, province: profiles.province, categorySlug: categories.slug })
+      .from(profiles)
+      .innerJoin(categories, eq(categories.id, profiles.categoryId))
+      .where(eq(profiles.id, bid.profileId))
+      .limit(1)
   )[0];
+
+  // El ranking cambió: avisa a Bing de las páginas afectadas.
+  if (prof) {
+    const prov = prof.province && prof.province !== 'todo-rd' ? prof.province : null;
+    pingIndexNow([
+      '/',
+      `/p/${bid.profileId}`,
+      `/rd/${prof.categorySlug}`,
+      ...(prov ? [`/rd/${prof.categorySlug}/${prov}`] : []),
+    ]);
+  }
+
   await notifyUser(bid.userId, {
     type: 'bid.verified',
     title: `✅ Puja verificada: ${formatDOP(finalDop)}`,

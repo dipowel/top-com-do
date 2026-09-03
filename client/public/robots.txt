@@ -2,8 +2,12 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /login
-Disallow: /notificaciones
-Disallow: /mis-pujas
 Disallow: /perfil
+Disallow: /mis-pujas
+Disallow: /favoritos
+Disallow: /notificaciones
+Disallow: /*?ref=
+Disallow: /*?pujar=
+Disallow: /*?pago=
 
 Sitemap: https://www.top.com.do/sitemap.xml

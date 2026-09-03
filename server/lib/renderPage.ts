@@ -302,9 +302,15 @@ async function resolve(pathname: string): Promise<Resolved> {
 
   if (head === 'rd') {
     const cat = segs[1];
-    if (!isCat(cat)) return notFound(pathname);
+    const allCats = cat === 'todo-rd';
     const prov = isProv(segs[2]) ? segs[2] : null;
-    const items = await catItems(cat, prov);
+    // /rd/todo-rd → es la portada; /rd/todo-rd/:prov → todos los negocios de esa provincia.
+    if (allCats && !prov) {
+      return { seo: { ...homeSeo(), canonical: `${SITE_URL}/` }, status: 200, cache: 600, body: homeBody() };
+    }
+    if (!allCats && !isCat(cat)) return notFound(pathname);
+    const catForData = allCats ? undefined : cat;
+    const items = await catItems(catForData ?? 'todo-rd', prov);
     const zone = prov ? provinceName(prov) || RD : RD;
     const seo = categorySeo({
       categorySlug: cat,
@@ -316,8 +322,8 @@ async function resolve(pathname: string): Promise<Resolved> {
       status: 200,
       cache: 900,
       body: listBody(
-        `Los mejores ${categoryLabel(cat) || 'negocios'} en ${zone}`,
-        categoryIntro(cat, zone),
+        `Los mejores ${allCats ? 'negocios' : categoryLabel(cat) || 'negocios'} en ${zone}`,
+        categoryIntro(allCats ? null : cat, zone),
         items,
       ),
     };

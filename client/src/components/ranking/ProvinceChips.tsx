@@ -1,3 +1,4 @@
+import { Link, useNavigate } from 'react-router-dom';
 import { PROVINCE_DEFS } from '@shared/provinces';
 
 /** Provincias destacadas como chips; el resto vive en el chip "Más ▾". */
@@ -19,11 +20,13 @@ const chipClass = (active: boolean) =>
 
 export default function ProvinceChips({
   value,
-  onChange,
+  hrefFor,
 }: {
   value: string;
-  onChange: (slug: string) => void;
+  /** URL destino de cada provincia (anclas reales, rastreables). */
+  hrefFor: (slug: string) => string;
 }) {
+  const navigate = useNavigate();
   const featured = FEATURED.map((slug) => PROVINCE_DEFS.find((p) => p.slug === slug)).filter(
     (p): p is (typeof PROVINCE_DEFS)[number] => Boolean(p),
   );
@@ -33,14 +36,9 @@ export default function ProvinceChips({
   return (
     <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 py-1">
       {featured.map((p) => (
-        <button
-          key={p.slug}
-          type="button"
-          onClick={() => onChange(p.slug)}
-          className={chipClass(value === p.slug)}
-        >
+        <Link key={p.slug} to={hrefFor(p.slug)} className={chipClass(value === p.slug)}>
           {p.slug === 'todo-rd' ? p.name : `📍 ${p.name}`}
-        </button>
+        </Link>
       ))}
 
       <div className={`relative ${chipClass(Boolean(activeInRest))}`}>
@@ -49,7 +47,7 @@ export default function ProvinceChips({
         </span>
         <select
           value={activeInRest ? value : ''}
-          onChange={(e) => e.target.value && onChange(e.target.value)}
+          onChange={(e) => e.target.value && navigate(hrefFor(e.target.value))}
           aria-label="Más provincias"
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         >

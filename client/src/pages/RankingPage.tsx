@@ -29,10 +29,10 @@ export default function RankingPage() {
   const canBid = useAuctionAccess();
   const [search, setSearch] = useState('');
 
-  function go(nextCat: string, nextProv: string) {
-    if (nextCat === 'todo-rd' && nextProv === 'todo-rd') navigate('/');
-    else if (nextProv === 'todo-rd') navigate(`/rd/${nextCat}`);
-    else navigate(`/rd/${nextCat}/${nextProv}`);
+  function rankingHref(nextCat: string, nextProv: string): string {
+    if (nextCat === 'todo-rd' && nextProv === 'todo-rd') return '/';
+    if (nextProv === 'todo-rd') return `/rd/${nextCat}`;
+    return `/rd/${nextCat}/${nextProv}`;
   }
 
   const leader = data[0];
@@ -181,7 +181,7 @@ export default function RankingPage() {
 
       {/* Provincia (chips + "Más") */}
       <nav aria-label="Filtrar por provincia">
-        <ProvinceChips value={province} onChange={(p) => go(cat, p)} />
+        <ProvinceChips value={province} hrefFor={(p) => rankingHref(cat, p)} />
       </nav>
 
       {/* Búsqueda rápida */}
@@ -207,7 +207,7 @@ export default function RankingPage() {
 
       {/* Categoría */}
       <nav aria-label="Filtrar por categoría">
-        <CategoryTabs value={cat} onChange={(slug) => go(slug, province)} />
+        <CategoryTabs value={cat} hrefFor={(slug) => rankingHref(slug, province)} />
       </nav>
 
       {/* Precio para tomar el puesto #1 */}
