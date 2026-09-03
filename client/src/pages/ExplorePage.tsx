@@ -11,7 +11,11 @@ import {
   subcategoriesWithSlugsFor,
   subcategoryLabel,
 } from '@shared/categories';
-import { exploreSeo, subcategorySeo } from '@shared/seo';
+import { PROVINCE_DEFS, PROVINCE_SLUGS, NATIONAL_SLUG, provinceName } from '@shared/provinces';
+import { exploreSeo, subcategorySeo, subcategoryProvinceSeo } from '@shared/seo';
+
+const FEATURED_PROVINCE_SLUGS = ['distrito-nacional', 'santo-domingo', 'santiago', 'la-altagracia', 'la-vega'];
+const FEATURED_PROVINCES = FEATURED_PROVINCE_SLUGS.map((s) => PROVINCE_DEFS.find((p) => p.slug === s)!).filter(Boolean);
 
 interface P {
   id: string;
@@ -31,6 +35,10 @@ export default function ExplorePage() {
   const subChips = cat !== 'todo-rd' ? subcategoriesWithSlugsFor(cat) : [];
   const subLabel = params.sub ? subcategoryLabel(cat, params.sub) : '';
   const activeSub = subLabel ? params.sub! : undefined;
+  const prov =
+    params.provincia && PROVINCE_SLUGS.includes(params.provincia) && params.provincia !== NATIONAL_SLUG
+      ? params.provincia
+      : undefined;
 
   const [profiles, setProfiles] = useState<P[]>([]);
   const [q, setQ] = useState(sp.get('q') ?? '');
@@ -41,10 +49,11 @@ export default function ExplorePage() {
     const qs = new URLSearchParams();
     if (cat && cat !== 'todo-rd') qs.set('category', cat);
     if (subLabel) qs.set('subcategory', subLabel);
+    if (prov) qs.set('province', prov);
     api<P[]>(`/profiles${qs.toString() ? `?${qs}` : ''}`)
       .then(setProfiles)
       .catch(() => setProfiles([]));
-  }, [cat, subLabel]);
+  }, [cat, subLabel, prov]);
 
   // Mantén ?q= en la URL para la SearchAction de los resultados enriquecidos.
   useEffect(() => {
@@ -56,13 +65,20 @@ export default function ExplorePage() {
   }, [q]);
 
   useSeo(
-    activeSub
-      ? subcategorySeo({
+    activeSub && prov
+      ? subcategoryProvinceSeo({
           categorySlug: cat,
           subSlug: activeSub,
+          provinceSlug: prov,
           items: profiles.slice(0, 20).map((p) => ({ id: p.id, name: p.name })),
         })
-      : exploreSeo(cat === 'todo-rd' ? null : cat, q),
+      : activeSub
+        ? subcategorySeo({
+            categorySlug: cat,
+            subSlug: activeSub,
+            items: profiles.slice(0, 20).map((p) => ({ id: p.id, name: p.name })),
+          })
+        : exploreSeo(cat === 'todo-rd' ? null : cat, q),
   );
 
   const filtered = useMemo(
@@ -70,9 +86,12 @@ export default function ExplorePage() {
     [profiles, q],
   );
 
-  const h1 = activeSub
-    ? `Mejor ${subLabel} en República Dominicana`
-    : 'Explorar negocios en República Dominicana';
+  const h1 =
+    activeSub && prov
+      ? `Mejor ${subLabel} en ${provinceName(prov)}`
+      : activeSub
+        ? `Mejor ${subLabel} en República Dominicana`
+        : 'Explorar negocios en República Dominicana';
 
   return (
     <div className="space-y-4">
@@ -109,6 +128,35 @@ export default function ExplorePage() {
               }`}
             >
               {s.label}
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {activeSub && (
+        <nav
+          aria-label="Filtrar por provincia"
+          className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4"
+        >
+          <Link
+            to={`/explorar/${cat}/${activeSub}`}
+            className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs ${
+              !prov ? 'border-gold/60 bg-gold/15 text-gold' : 'border-white/10 text-white/55'
+            }`}
+          >
+            🇩🇴 Todo RD
+          </Link>
+          {FEATURED_PROVINCES.map((p) => (
+            <Link
+              key={p.slug}
+              to={`/explorar/${cat}/${activeSub}/${p.slug}`}
+              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs ${
+                prov === p.slug
+                  ? 'border-gold/60 bg-gold/15 text-gold'
+                  : 'border-white/10 text-white/55'
+              }`}
+            >
+              📍 {p.name}
             </Link>
           ))}
         </nav>

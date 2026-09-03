@@ -7,6 +7,7 @@
     "node": "22.x"
   },
   "scripts": {
+    "prepare": "node scripts/gen-shell.mjs",
     "dev": "concurrently -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "tsx watch server/server.ts",
     "dev:web": "vite",

@@ -32,6 +32,12 @@ export default function TopBar() {
           )}
         </Link>
         <div className="flex items-center gap-1.5">
+          <Link
+            to="/publicar"
+            className="btn-ghost hidden !px-3 !py-1.5 text-xs sm:inline-flex"
+          >
+            Anunciar
+          </Link>
           <NotificationBell />
           {isAdmin && (
             <Link to="/admin" className="btn-ghost !px-3 !py-1.5 text-xs">

@@ -1,24 +1,14 @@
 import { build } from 'esbuild';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 /**
- * 1) Congela el HTML base (`client/dist/index.html`, ya con los assets con hash)
- *    en `server/generated/pageShell.ts` para que el render en servidor pueda
- *    inyectar <title>/meta/canónico/JSON-LD por ruta. `npm run build` corre
- *    `vite build` ANTES que este script, así que el archivo ya existe.
- * 2) Empaqueta el servidor Express en `api/_server.mjs` (Vercel solo rastrea
- *    lo que hay dentro de `api/`). Las deps de node_modules quedan externas.
+ * `npm run build` = `vite build && node scripts/build-api.mjs`. Aquí:
+ * 1) `gen-shell.mjs` congela `client/dist/index.html` en pageShell.ts (para el
+ *    render en servidor de <title>/meta/JSON-LD por ruta).
+ * 2) esbuild empaqueta el servidor Express en `api/_server.mjs` (Vercel solo
+ *    rastrea lo que hay dentro de `api/`). Las deps de node_modules quedan externas.
  */
-
-const shell = existsSync('client/dist/index.html')
-  ? readFileSync('client/dist/index.html', 'utf8')
-  : '';
-mkdirSync('server/generated', { recursive: true });
-writeFileSync(
-  'server/generated/pageShell.ts',
-  `/* AUTO-GENERADO por scripts/build-api.mjs — no editar a mano. */\nexport const PAGE_SHELL: string = ${JSON.stringify(shell)};\n`,
-);
-console.log(`[build-api] pageShell.ts (${shell.length} bytes de HTML base)`);
+execFileSync(process.execPath, ['scripts/gen-shell.mjs'], { stdio: 'inherit' });
 
 await build({
   entryPoints: ['server/app.ts'],

@@ -50,6 +50,12 @@ r.get(
       typeof req.query.subcategory === 'string' && req.query.subcategory.trim()
         ? req.query.subcategory.trim()
         : undefined;
+    const province =
+      typeof req.query.province === 'string' &&
+      PROVINCE_SLUGS.includes(req.query.province) &&
+      req.query.province !== 'todo-rd'
+        ? req.query.province
+        : undefined;
     const rows = await db
       .select(profileColumns)
       .from(profiles)
@@ -59,6 +65,7 @@ r.get(
           eq(profiles.isActive, true),
           category && category !== 'todo-rd' ? eq(categories.slug, category) : undefined,
           subcategory ? eq(profiles.subcategory, subcategory) : undefined,
+          province ? eq(profiles.province, province) : undefined,
         ),
       )
       .orderBy(desc(profiles.createdAt));

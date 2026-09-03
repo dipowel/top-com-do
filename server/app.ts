@@ -9,8 +9,10 @@ import { noStore } from './middleware/noStore';
 import { errorHandler } from './middleware/errorHandler';
 import { ah } from './lib/asyncHandler';
 import { db } from './db';
-import { profiles as profilesTable } from '../shared/schema';
+import { profiles as profilesTable, categories as categoriesTable } from '../shared/schema';
 import { sitemapUrls, renderSitemap } from '../shared/seo';
+import { subSlug } from '../shared/categories';
+import { isRealProvince } from '../shared/provinces';
 import { renderPage } from './lib/renderPage';
 
 import health from './routes/health';
@@ -56,10 +58,35 @@ export function createApp() {
       const rows = await db
         .select({ id: profilesTable.id, createdAt: profilesTable.createdAt })
         .from(profilesTable)
-        .where(eq(profilesTable.isActive, true));
+        .where(eq(profilesTable.isActive, true))
+        .orderBy(profilesTable.createdAt);
+
+      // Combos sub-rubro × provincia CON negocios reales (evita thin content).
+      let combos: { categorySlug: string; subSlug: string; provinceSlug: string }[] = [];
+      try {
+        const grp = await db
+          .selectDistinct({
+            categorySlug: categoriesTable.slug,
+            subcategory: profilesTable.subcategory,
+            province: profilesTable.province,
+          })
+          .from(profilesTable)
+          .innerJoin(categoriesTable, eq(categoriesTable.id, profilesTable.categoryId))
+          .where(eq(profilesTable.isActive, true));
+        combos = grp
+          .filter((g) => g.subcategory && isRealProvince(g.province))
+          .map((g) => ({
+            categorySlug: g.categorySlug,
+            subSlug: subSlug(g.subcategory as string),
+            provinceSlug: g.province as string,
+          }));
+      } catch {
+        combos = [];
+      }
+
       res.type('application/xml');
       res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-      res.send(renderSitemap(sitemapUrls(rows)));
+      res.send(renderSitemap(sitemapUrls(rows, combos)));
     }),
   );
 

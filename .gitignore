@@ -12,3 +12,6 @@ api/_server.mjs.map
 *.log
 .DS_Store
 coverage
+
+# Generado por scripts/gen-shell.mjs (prepare + build)
+server/generated/pageShell.ts

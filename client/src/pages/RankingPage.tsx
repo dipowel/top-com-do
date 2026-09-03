@@ -91,10 +91,10 @@ export default function RankingPage() {
                 Mira cuánto está pagando el #1. Haz una oferta mayor y sube al primer lugar.
               </p>
               <Link
-                to="/normas"
+                to="/publicar"
                 className="inline-flex items-center gap-1 text-[12px] font-semibold text-gold underline decoration-gold/40 underline-offset-2 hover:decoration-gold"
               >
-                Aprende cómo funciona <span aria-hidden>→</span>
+                Anuncia tu negocio <span aria-hidden>→</span>
               </Link>
             </section>
 

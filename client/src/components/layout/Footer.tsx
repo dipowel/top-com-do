@@ -1,8 +1,20 @@
 import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { CATEGORY_DEFS } from '@shared/categories';
+import { PROVINCE_DEFS } from '@shared/provinces';
 import { SOCIAL_LINKS } from '@shared/site';
 import { cleanName } from '@shared/seo';
+
+const ZONE_SLUGS = [
+  'distrito-nacional',
+  'santo-domingo',
+  'santiago',
+  'la-altagracia',
+  'la-vega',
+  'san-cristobal',
+  'puerto-plata',
+  'la-romana',
+];
 
 const ICONS: Record<string, ReactElement> = {
   Instagram: (
@@ -18,6 +30,8 @@ const ICONS: Record<string, ReactElement> = {
 
 export default function Footer() {
   const cats = CATEGORY_DEFS.filter((c) => c.slug !== 'todo-rd');
+  const zones = ZONE_SLUGS.map((s) => PROVINCE_DEFS.find((p) => p.slug === s)!).filter(Boolean);
+  const topCats = cats.slice(0, 4);
 
   return (
     <footer className="mt-10 border-t border-white/10 pt-6 text-sm text-white/60">
@@ -61,13 +75,13 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/login?registro=1" className="hover:text-gold">
-                Crear cuenta gratis
+              <Link to="/publicar" className="hover:text-gold">
+                Anunciar mi negocio
               </Link>
             </li>
             <li>
-              <Link to="/perfil" className="hover:text-gold">
-                Publicar mi negocio
+              <Link to="/login?registro=1" className="hover:text-gold">
+                Crear cuenta gratis
               </Link>
             </li>
           </ul>
@@ -94,6 +108,25 @@ export default function Footer() {
               </a>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/5 pt-4">
+        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-white/40">
+          Explora por zona
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+          {topCats.flatMap((c) =>
+            zones.slice(0, 5).map((z) => (
+              <Link
+                key={`${c.slug}-${z.slug}`}
+                to={`/rd/${c.slug}/${z.slug}`}
+                className="text-white/45 hover:text-gold"
+              >
+                {cleanName(c.name)} en {z.name}
+              </Link>
+            )),
+          )}
         </div>
       </div>
 
