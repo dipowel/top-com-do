@@ -7,6 +7,7 @@ import LeaderCard from '../components/ranking/LeaderCard';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
 import { useShell } from '../hooks/useShell';
+import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
 import { formatDOP } from '../lib/format';
 import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
@@ -25,6 +26,7 @@ export default function RankingPage() {
 
   const { data, loading, error } = useRankings(cat, province);
   const { openBid } = useShell();
+  const canBid = useAuctionAccess();
   const [search, setSearch] = useState('');
 
   function go(nextCat: string, nextProv: string) {
@@ -224,7 +226,7 @@ export default function RankingPage() {
             onClick={() => openBid(undefined, cat, province)}
             className="btn-gold shrink-0 !px-5 !py-3 text-sm uppercase tracking-wide"
           >
-            ¡Pujar ahora! <span aria-hidden>→</span>
+            Crea tu puja ahora <span aria-hidden>→</span>
           </button>
         </div>
       ) : (
@@ -245,12 +247,14 @@ export default function RankingPage() {
                     : `Zona libre · el primero en poner ${formatDOP(MIN_BID)} se lleva el #1`}
                 </div>
               </div>
-              <button
-                onClick={() => openBid(undefined, cat, province)}
-                className="btn-gold shrink-0 !px-4 !py-2.5 text-xs uppercase tracking-wide"
-              >
-                ¡Pujar ahora!
-              </button>
+              {canBid && (
+                <button
+                  onClick={() => openBid(undefined, cat, province)}
+                  className="btn-gold shrink-0 !px-4 !py-2.5 text-xs uppercase tracking-wide"
+                >
+                  ¡Pujar ahora!
+                </button>
+              )}
             </div>
           </div>
         )
@@ -280,6 +284,7 @@ export default function RankingPage() {
           <LeaderCard
             key={e.profile.id}
             entry={e}
+            canBid={canBid}
             onBid={(pid) => openBid(pid, cat, province)}
             recoverAmount={
               e.position === 2 && data[0]

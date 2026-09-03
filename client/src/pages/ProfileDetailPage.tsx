@@ -6,6 +6,7 @@ import { formatDOP } from '../lib/format';
 import { whatsappLink, avatarFallback } from '../lib/share';
 import { googleDirectionsUrl, wazeUrl } from '../lib/geo';
 import { useShell } from '../hooks/useShell';
+import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
 import { useSeo } from '../hooks/useSeo';
@@ -50,6 +51,7 @@ export default function ProfileDetailPage() {
   const { openBid } = useShell();
   const { ids, toggle } = useFavorites();
   const { user, me } = useAuth();
+  const canBid = useAuctionAccess();
   const [params, setParams] = useSearchParams();
   const autoOpened = useRef(false);
 
@@ -177,17 +179,19 @@ export default function ProfileDetailPage() {
         </div>
       </div>
 
-      {/* Apoyo comunitario — justo debajo de las redes, antes de las pujas */}
-      <section className="glass space-y-2 border border-gold/30 p-4 shadow-glow">
-        <p className="text-sm font-bold text-gold">⚡ ¿Te encantó este lugar? Ayúdalos a liderar</p>
-        <p className="text-xs text-white/60">
-          No dejes que bajen del trono. Puja con un pequeño aporte para llevarlos o mantenerlos en
-          el <span className="font-semibold text-gold">#1</span> indiscutible de la provincia.
-        </p>
-        <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
-          ⚡ Pujar y Apoyar este Negocio
-        </button>
-      </section>
+      {/* Apoyo comunitario — solo para comerciantes/participantes */}
+      {canBid && (
+        <section className="glass space-y-2 border border-gold/30 p-4 shadow-glow">
+          <p className="text-sm font-bold text-gold">⚡ ¿Te encantó este lugar? Ayúdalos a liderar</p>
+          <p className="text-xs text-white/60">
+            No dejes que bajen del trono. Puja con un pequeño aporte para llevarlos o mantenerlos en
+            el <span className="font-semibold text-gold">#1</span> indiscutible de la provincia.
+          </p>
+          <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
+            ⚡ Pujar y Apoyar este Negocio
+          </button>
+        </section>
+      )}
 
       <div className="glass space-y-1.5 p-4 text-sm">
         <div className="flex justify-between">

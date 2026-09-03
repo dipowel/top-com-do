@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api';
 import CategoryTabs from '../components/ranking/CategoryTabs';
 import { useShell } from '../hooks/useShell';
+import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
 import { avatarFallback } from '../lib/share';
 import {
@@ -34,6 +35,7 @@ export default function ExplorePage() {
   const [profiles, setProfiles] = useState<P[]>([]);
   const [q, setQ] = useState(sp.get('q') ?? '');
   const { openBid } = useShell();
+  const canBid = useAuctionAccess();
 
   useEffect(() => {
     const qs = new URLSearchParams();
@@ -124,9 +126,11 @@ export default function ExplorePage() {
               <div className="truncate text-sm font-bold">{p.name}</div>
               <div className="truncate text-[11px] text-white/40">{p.categoryName}</div>
             </Link>
-            <button onClick={() => openBid(p.id)} className="btn-gold mt-2 w-full !py-1.5 text-xs">
-              Pujar
-            </button>
+            {canBid && (
+              <button onClick={() => openBid(p.id)} className="btn-gold mt-2 w-full !py-1.5 text-xs">
+                Pujar
+              </button>
+            )}
           </div>
         ))}
       </div>

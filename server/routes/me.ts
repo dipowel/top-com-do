@@ -27,9 +27,24 @@ import type { RankingEntry } from '../../shared/types';
 const r = Router();
 r.use(requireAuth);
 
-r.get('/', (req, res) => {
-  res.json(req.user);
-});
+r.get(
+  '/',
+  ah(async (req, res) => {
+    // `hasBids` gobierna la UI de subasta en el cliente (junto con accountType).
+    let hasBids = false;
+    try {
+      const [row] = await db
+        .select({ id: bids.id })
+        .from(bids)
+        .where(eq(bids.userId, req.user!.id))
+        .limit(1);
+      hasBids = Boolean(row);
+    } catch {
+      hasBids = false;
+    }
+    res.json({ ...req.user, hasBids });
+  }),
+);
 
 /** Reseñas que YO he escrito (para el panel del consumidor). */
 r.get(

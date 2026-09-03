@@ -36,6 +36,8 @@ export interface MeResponse {
   accountType: 'consumer' | 'merchant' | 'admin';
   referralCode: string | null;
   creditBalanceDop: number;
+  /** true si el usuario tiene al menos una puja (gobierna la UI de subasta). */
+  hasBids: boolean;
 }
 
 export interface MyReviewDTO {

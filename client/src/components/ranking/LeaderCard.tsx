@@ -14,11 +14,14 @@ export default function LeaderCard({
   entry,
   onBid,
   recoverAmount,
+  canBid = false,
 }: {
   entry: RankingEntry;
   onBid: (profileId: string) => void;
   /** Monto exacto para que este #2 recupere el #1 (solo se pasa a la posición 2). */
   recoverAmount?: number;
+  /** Si el usuario es comerciante/participante: muestra el botón de puja. */
+  canBid?: boolean;
 }) {
   const { user } = useAuth();
   const { ids, toggle } = useFavorites();
@@ -66,11 +69,13 @@ export default function LeaderCard({
       </div>
 
       <div className="mt-3 space-y-2">
-        <button onClick={() => onBid(p.id)} className="btn-gold w-full !py-2.5 text-xs">
-          {entry.position === 2
-            ? `🔥 Recuperar el #1${recoverAmount ? ` · ${formatDOP(recoverAmount)}` : ''}`
-            : `Pujar por ${p.name.split(' ')[0]}`}
-        </button>
+        {canBid && (
+          <button onClick={() => onBid(p.id)} className="btn-gold w-full !py-2.5 text-xs">
+            {entry.position === 2
+              ? `🔥 Recuperar el #1${recoverAmount ? ` · ${formatDOP(recoverAmount)}` : ''}`
+              : `Pujar por ${p.name.split(' ')[0]}`}
+          </button>
+        )}
 
         {/* Acciones secundarias: se reparten y envuelven (2+ por fila en móvil, 1 fila en PC) */}
         <div className="flex flex-wrap gap-1.5">
