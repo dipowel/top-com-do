@@ -45,9 +45,9 @@ function zoneLabel(province?: string | null, city?: string | null): string {
 
 export function homeSeo(): SeoData {
   return {
-    title: 'Top.com.do — Publicidad y ranking #1 de negocios en República Dominicana',
+    title: 'Top.com.do — Publicidad efectiva y directorio de negocios en República Dominicana',
     description:
-      'Plataforma de publicidad y ranking #1 de la República Dominicana. Un solo líder por provincia y categoría: paga para desplazar a tu competencia y recibe llamadas directas a tu WhatsApp. Negocios verificados en las 32 provincias.',
+      'Publicidad efectiva en República Dominicana: el directorio de negocios donde un solo líder manda por provincia y categoría. Supera a tu competencia con tu puja y recibe llamadas directas a tu WhatsApp. Negocios verificados en las 32 provincias.',
     canonical: `${SITE_URL}/`,
     image: OG_IMAGE,
     jsonLd: [organizationLd(), websiteLd()],
@@ -168,7 +168,7 @@ export function organizationLd(): Record<string, unknown> {
     '@type': 'Organization',
     name: 'Top.com.do',
     alternateName: 'Top RD',
-    slogan: 'El directorio #1 de la República Dominicana',
+    slogan: 'Publicidad efectiva y directorio de negocios en la República Dominicana',
     url: `${SITE_URL}/`,
     logo: LOGO_URL,
     image: OG_IMAGE,

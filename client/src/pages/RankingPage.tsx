@@ -1,12 +1,15 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import CategoryTabs from '../components/ranking/CategoryTabs';
+import ChampionMedal from '../components/ranking/ChampionMedal';
+import ProvinceChips from '../components/ranking/ProvinceChips';
 import LeaderCard from '../components/ranking/LeaderCard';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
 import { useShell } from '../hooks/useShell';
 import { useSeo } from '../hooks/useSeo';
 import { formatDOP } from '../lib/format';
-import { PROVINCE_DEFS, PROVINCE_SLUGS, provinceName } from '@shared/provinces';
+import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
 import { CATEGORY_SLUGS } from '@shared/categories';
 import { categoryLabel, categorySeo, homeSeo } from '@shared/seo';
 
@@ -22,6 +25,7 @@ export default function RankingPage() {
 
   const { data, loading, error } = useRankings(cat, province);
   const { openBid } = useShell();
+  const [search, setSearch] = useState('');
 
   function go(nextCat: string, nextProv: string) {
     if (nextCat === 'todo-rd' && nextProv === 'todo-rd') navigate('/');
@@ -51,63 +55,107 @@ export default function RankingPage() {
   return (
     <div className="space-y-4">
       {isHome ? (
-        <header aria-labelledby="hero-title" className="space-y-3 pt-1">
-          <h1
-            id="hero-title"
-            className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl"
-          >
-            <span className="text-gold">Publicidad efectiva:</span> domina el puesto{' '}
-            <span className="text-gold">#1</span> de tu categoría y llévate todos los clientes.
-          </h1>
-          <p className="text-sm leading-relaxed text-white/70">
-            La plataforma de publicidad y ranking número uno de la República Dominicana. Solo hay un
-            líder por provincia y categoría: paga para desplazar a tu competencia y recibe llamadas
-            directas a tu <span className="font-semibold text-emerald-soft">WhatsApp</span>.
-          </p>
+        <header aria-labelledby="hero-title" className="space-y-4 pt-1">
+          <div className="space-y-2.5">
+            <h1
+              id="hero-title"
+              className="text-[26px] font-extrabold leading-[1.15] tracking-tight sm:text-3xl"
+            >
+              <span className="text-gold">Publicidad efectiva:</span> domina el puesto{' '}
+              <span className="text-gold">#1</span> de tu categoría y consigue{' '}
+              <span className="text-gold">más clientes potenciales</span>.
+            </h1>
+            <p className="text-sm leading-relaxed text-white/65">
+              Solo hay un líder por provincia y categoría. Supera a tu competencia con tu puja y
+              recibe llamadas directas a tu{' '}
+              <span className="font-semibold text-emerald-soft">WhatsApp</span>.
+            </p>
+          </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <section className="glass space-y-2 p-3">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gold/80">
-                Para dueños de negocios
-              </h2>
-              <p className="text-[12px] leading-snug text-white/60">
-                📢 <b className="text-white/80">Publicidad que da resultados.</b> No pierdas
-                presupuesto en anuncios aburridos. El que paga más se apodera del primer lugar y
-                acapara todo el tráfico web de su sector.
-              </p>
-              <p className="text-[12px] leading-snug text-white/60">
-                ⚡ <b className="text-white/80">Control total e inmediato.</b> Revisa cuánto paga el
-                líder actual en tu zona, supera su oferta con tarjeta y toma el control al instante.{' '}
-                <button
-                  type="button"
-                  onClick={() => openBid()}
-                  className="font-semibold text-gold underline decoration-gold/50 underline-offset-2 hover:decoration-gold"
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <section className="glass space-y-2 p-3.5">
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/40 bg-gold/10 text-sm"
                 >
-                  Pujar para liderar
-                </button>
+                  📢
+                </span>
+                <h2 className="text-[11px] font-bold uppercase tracking-widest text-gold/85">
+                  Para dueños de negocios
+                </h2>
+              </div>
+              <p className="text-[12.5px] leading-snug text-white/65">
+                Mira cuánto está pagando el #1. Haz una oferta mayor y sube al primer lugar.
               </p>
+              <Link
+                to="/normas"
+                className="inline-flex items-center gap-1 text-[12px] font-semibold text-gold underline decoration-gold/40 underline-offset-2 hover:decoration-gold"
+              >
+                Aprende cómo funciona <span aria-hidden>→</span>
+              </Link>
             </section>
 
-            <section className="glass space-y-2 p-3">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-soft/80">
-                Para clientes y consumidores
-              </h2>
-              <p className="text-[12px] leading-snug text-white/60">
-                ⭐ <b className="text-white/80">Tu negocio favorito al alcance.</b> Encuentra los
-                mejores negocios verificados en tu provincia sin perder tiempo entre opciones
-                mediocres.
-              </p>
-              <p className="text-[12px] leading-snug text-white/60">
-                📞 <b className="text-white/80">Contacto directo.</b> Toca WhatsApp o llamada y
-                conéctate al instante con el comercio líder que manda en tu zona.
+            <section className="glass space-y-2 p-3.5">
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-emerald-soft/40 bg-emerald-soft/10 text-sm"
+                >
+                  ⭐
+                </span>
+                <h2 className="text-[11px] font-bold uppercase tracking-widest text-emerald-soft/85">
+                  Para clientes
+                </h2>
+              </div>
+              <p className="text-[12.5px] leading-snug text-white/65">
+                Encuentra los mejores negocios verificados en tu provincia y contáctalos al instante
+                por WhatsApp o llamada.
               </p>
             </section>
           </div>
 
-          <p className="text-[11px] text-white/35">
-            <span className="text-emerald-soft">●</span> Datos en vivo · 32 provincias · negocios
-            verificados
-          </p>
+          <section
+            aria-label="Cómo funciona: ejemplo"
+            className="glass space-y-3 border border-gold/20 p-3.5"
+          >
+            <h2 className="text-center text-[11px] font-bold uppercase tracking-widest text-white/50">
+              ¿Cómo funciona? Un ejemplo real
+            </h2>
+            <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-1.5 text-center sm:gap-2">
+              <div className="space-y-1">
+                <div className="text-[9.5px] font-bold uppercase tracking-wider text-gold/80">
+                  #1 actual
+                </div>
+                <div className="text-base font-black text-gold sm:text-lg">RD$500</div>
+                <div className="text-[10px] leading-tight text-white/45">
+                  👑 El líder de tu zona hoy
+                </div>
+              </div>
+              <span aria-hidden className="self-center text-white/25">
+                →
+              </span>
+              <div className="space-y-1">
+                <div className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-soft/80">
+                  Tú pujas
+                </div>
+                <div className="text-base font-black text-emerald-soft sm:text-lg">RD$600</div>
+                <div className="text-[10px] leading-tight text-white/45">Superas su oferta</div>
+              </div>
+              <span aria-hidden className="self-center text-white/25">
+                →
+              </span>
+              <div className="space-y-1">
+                <div className="text-[9.5px] font-bold uppercase tracking-wider text-gold/80">
+                  Tú subes al #1
+                </div>
+                <div className="flex justify-center">
+                  <ChampionMedal className="!h-10 !w-10 sm:!h-12 sm:!w-12" />
+                </div>
+                <div className="text-[10px] leading-tight text-white/45">Eres el nuevo líder</div>
+              </div>
+            </div>
+          </section>
         </header>
       ) : (
         <div>
@@ -119,50 +167,83 @@ export default function RankingPage() {
         </div>
       )}
 
+      {/* Provincia (chips + "Más") */}
+      <nav aria-label="Filtrar por provincia">
+        <ProvinceChips value={province} onChange={(p) => go(cat, p)} />
+      </nav>
+
+      {/* Búsqueda rápida */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const term = search.trim();
+          navigate(term ? `/explorar?q=${encodeURIComponent(term)}` : '/explorar');
+        }}
+        className="flex gap-2"
+      >
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar categoría o negocio"
+          aria-label="Buscar categoría o negocio"
+          className="input flex-1"
+        />
+        <Link to="/explorar" className="btn-ghost shrink-0 !px-3 !py-2 text-[11px]">
+          ⊞ Todas las categorías
+        </Link>
+      </form>
+
+      {/* Categoría */}
       <nav aria-label="Filtrar por categoría">
         <CategoryTabs value={cat} onChange={(slug) => go(slug, province)} />
       </nav>
 
-      {/* Filtro de provincia (las 32 demarcaciones) */}
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-white/40">📍 Zona:</span>
-        <select
-          value={province}
-          onChange={(e) => go(cat, e.target.value)}
-          aria-label="Filtrar por provincia"
-          className="input !w-auto flex-1 !py-1.5 text-xs"
-        >
-          {PROVINCE_DEFS.map((p) => (
-            <option key={p.slug} value={p.slug}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Precio para tomar el puesto #1 — se calcula solo según categoría + zona */}
-      {!loading && !error && (
-        <div className="glass border border-gold/30 shadow-glow">
-          <div className="flex items-center justify-between gap-3 p-3.5">
+      {/* Precio para tomar el puesto #1 */}
+      {isHome ? (
+        <div className="glass flex items-center justify-between gap-3 border border-gold/30 p-3.5 shadow-glow">
+          <div className="flex min-w-0 items-center gap-3">
+            <span aria-hidden className="text-2xl">
+              ⚡
+            </span>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-gold/80">
-                Para tomar el #1 en {zona}
-              </div>
-              <div className="text-2xl font-black leading-tight text-gold">{formatDOP(toLead)}</div>
-              <div className="mt-0.5 truncate text-[11px] text-white/45">
-                {leader
-                  ? `El #1 hoy es ${leader.profile.name} con ${formatDOP(Number(leader.totalDop))} · debes pujar por encima`
-                  : `Zona libre · el primero en poner ${formatDOP(MIN_BID)} se lleva el #1`}
-              </div>
+              <div className="text-[11px] text-white/50">Empieza desde</div>
+              <div className="text-xl font-black leading-tight text-gold">{formatDOP(MIN_BID)}</div>
             </div>
-            <button
-              onClick={() => openBid(undefined, cat, province)}
-              className="btn-gold shrink-0 !px-4 !py-2.5 text-xs"
-            >
-              Pujar para liderar
-            </button>
           </div>
+          <button
+            onClick={() => openBid(undefined, cat, province)}
+            className="btn-gold shrink-0 !px-5 !py-3 text-sm uppercase tracking-wide"
+          >
+            ¡Pujar ahora! <span aria-hidden>→</span>
+          </button>
         </div>
+      ) : (
+        !loading &&
+        !error && (
+          <div className="glass border border-gold/30 shadow-glow">
+            <div className="flex items-center justify-between gap-3 p-3.5">
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-gold/80">
+                  Para tomar el #1 en {zona}
+                </div>
+                <div className="text-2xl font-black leading-tight text-gold">
+                  {formatDOP(toLead)}
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-white/45">
+                  {leader
+                    ? `El #1 hoy es ${leader.profile.name} con ${formatDOP(Number(leader.totalDop))} · debes pujar por encima`
+                    : `Zona libre · el primero en poner ${formatDOP(MIN_BID)} se lleva el #1`}
+                </div>
+              </div>
+              <button
+                onClick={() => openBid(undefined, cat, province)}
+                className="btn-gold shrink-0 !px-4 !py-2.5 text-xs uppercase tracking-wide"
+              >
+                ¡Pujar ahora!
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {loading && !data.length && <Spinner />}
@@ -172,6 +253,15 @@ export default function RankingPage() {
       {!loading && !data.length && !error && (
         <div className="glass p-6 text-center text-sm text-white/50">
           Aún no hay pujas activas en {zona}. ¡La posición #1 está libre!
+        </div>
+      )}
+
+      {!!data.length && (
+        <div className="flex items-center justify-between pt-1">
+          <h2 className="text-sm font-bold text-white/85">Ranking en {zona}</h2>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-soft">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-soft" /> En vivo
+          </span>
         </div>
       )}
 
