@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-DO">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
     <meta name="theme-color" content="#070b14" />
     <meta name="description" content="Publicidad efectiva en República Dominicana: el directorio de negocios donde un solo líder manda por provincia y categoría. Supera a tu competencia con tu puja y recibe llamadas directas a tu WhatsApp. Negocios verificados en las 32 provincias." />
-    <meta name="keywords" content="publicidad efectiva en República Dominicana, directorio de negocios en RD, publicidad para negocios RD, anunciar mi negocio en Google, ranking de negocios por provincia, negocios verificados RD, dominar el puesto #1, directorio de negocios República Dominicana, líder verificado por provincia" />
+    <meta name="keywords" content="publicidad efectiva en República Dominicana, directorio de negocios en RD, registrar negocio gratis RD, anunciar mi negocio, cómo hacer publicidad efectiva en República Dominicana, posicionar mi negocio en Google República Dominicana, cómo salir primero en Google RD, plataforma de anuncios y pauta comercial dominicana, mejores negocios en República Dominicana, directorio de empresas en Santo Domingo, ranking de marcas Santiago, buscar tiendas y servicios República Dominicana" />
     <link rel="canonical" href="https://www.top.com.do/" />
+    <link rel="alternate" hreflang="es-do" href="https://www.top.com.do/" />
+    <link rel="alternate" hreflang="x-default" href="https://www.top.com.do/" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <title>Top.com.do — Publicidad efectiva y directorio de negocios en República Dominicana</title>
@@ -24,6 +26,7 @@
     <meta name="twitter:title" content="Top.com.do — Publicidad efectiva y directorio de negocios en RD" />
     <meta name="twitter:description" content="Domina el puesto #1 de tu categoría y consigue más clientes potenciales. Negocios verificados en las 32 provincias." />
 
+    <!--LD-->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -59,6 +62,7 @@
         ]
       }
     </script>
+    <!--/LD-->
     <meta name="twitter:image" content="https://www.top.com.do/og.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -69,7 +73,7 @@
   </head>
   <body>
     <div id="root">
-      <!-- Hero estático (SEO): React lo reemplaza al montar; el script lo quita fuera de "/" -->
+      <!--SSR-->
       <div
         id="ssr-hero"
         style="max-width: 48rem; margin: 0 auto; padding: 20px 16px; color: #e8ecf4; font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif"
@@ -84,13 +88,8 @@
           llamadas directas a tu WhatsApp.
         </p>
       </div>
+      <!--/SSR-->
     </div>
-    <script>
-      if (location.pathname !== '/') {
-        var e = document.getElementById('ssr-hero');
-        if (e) e.remove();
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -77,6 +77,22 @@ function clearJsonLd() {
   document.head.querySelectorAll('script[data-seo="1"]').forEach((n) => n.remove());
 }
 
+function setRobots(noindex: boolean) {
+  const existing = document.head.querySelector('meta[name="robots"]');
+  if (noindex) {
+    if (existing) existing.setAttribute('content', 'noindex,follow');
+    else {
+      const el = document.createElement('meta');
+      el.setAttribute('name', 'robots');
+      el.setAttribute('content', 'noindex,follow');
+      el.setAttribute('data-seo', '1');
+      document.head.appendChild(el);
+    }
+  } else if (existing) {
+    existing.remove();
+  }
+}
+
 export function useSeo(data: SeoData | null | undefined) {
   const key = data
     ? JSON.stringify([data.title, data.description, data.canonical, data.image, data.jsonLd])
@@ -92,6 +108,8 @@ export function useSeo(data: SeoData | null | undefined) {
       canonical: data.canonical,
       image: data.image || defaults.image,
     });
+    setRobots(Boolean(data.noindex));
+    document.documentElement.lang = 'es-DO';
 
     clearJsonLd();
     for (const obj of data.jsonLd ?? []) {
@@ -104,6 +122,7 @@ export function useSeo(data: SeoData | null | undefined) {
 
     return () => {
       clearJsonLd();
+      setRobots(false);
       apply(defaults);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

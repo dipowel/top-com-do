@@ -19,6 +19,8 @@ export interface SeoData {
   canonical: string;
   image?: string;
   jsonLd?: Record<string, unknown>[];
+  /** Si true, la página emite <meta name="robots" content="noindex,follow">. */
+  noindex?: boolean;
 }
 
 export function absoluteUrl(path: string): string {
@@ -39,6 +41,47 @@ export function categoryLabel(slug: string | null | undefined): string {
 
 function zoneLabel(province?: string | null, city?: string | null): string {
   return city?.trim() || (province ? provinceName(province) || RD : RD);
+}
+
+/** Tipo de Schema.org más específico según la categoría (todos heredan de LocalBusiness). */
+const SCHEMA_TYPE_BY_CATEGORY: Record<string, string> = {
+  gastronomia: 'Restaurant',
+  automotriz: 'AutoRepair',
+  tecnologia: 'ElectronicsStore',
+  hogar: 'HardwareStore',
+  'moda-belleza': 'HealthAndBeautyBusiness',
+  salud: 'MedicalBusiness',
+  servicios: 'ProfessionalService',
+  inmobiliaria: 'RealEstateAgent',
+  ocio: 'EntertainmentBusiness',
+  educacion: 'EducationalOrganization',
+  mascotas: 'VeterinaryCare',
+  politica: 'Organization',
+};
+
+export function businessSchemaType(slug?: string | null): string {
+  return (slug && SCHEMA_TYPE_BY_CATEGORY[slug]) || 'LocalBusiness';
+}
+
+/** Frase única de intro local por categoría (para el <h1>/<p> renderizado en servidor). */
+export function categoryIntro(categorySlug: string | null | undefined, zone: string): string {
+  const cat = (categoryLabel(categorySlug) || 'negocios').toLowerCase();
+  const ex: Record<string, string> = {
+    gastronomia: 'restaurantes, pica pollos, reposterías y cafeterías',
+    automotriz: 'talleres, gomeras, repuestos y rent a car',
+    tecnologia: 'tiendas de celulares, reparación y electrodomésticos',
+    hogar: 'ferreterías, mueblerías, plomeros y electricistas',
+    'moda-belleza': 'salones, barberías, boutiques y spas',
+    salud: 'farmacias 24h, clínicas, laboratorios y odontólogos',
+    servicios: 'abogados, contables, financieras y agencias de viajes',
+    inmobiliaria: 'inmobiliarias, corredores, villas y tasadores',
+    ocio: 'discotecas, bares, terrazas y lounges',
+    educacion: 'universidades, academias de idiomas y autoescuelas',
+    mascotas: 'veterinarias, pet shops y peluquería canina',
+    politica: 'figuras, candidatos, alcaldías y movimientos',
+  };
+  const tail = categorySlug && ex[categorySlug] ? ` — ${ex[categorySlug]}` : '';
+  return `Encuentra los mejores ${cat} en ${zone}${tail}. Ranking verificado con reseñas reales, ubicación y contacto directo por WhatsApp, actualizado en vivo en Top.com.do.`;
 }
 
 // ---------------- Meta por tipo de página ----------------
@@ -89,12 +132,22 @@ export function categorySeo(opts: {
     ? `/rd/${opts.categorySlug}/${opts.provinceSlug}`
     : `/rd/${opts.categorySlug}`;
   const canonical = `${SITE_URL}${path}`;
+  const crumbs = breadcrumbLd([
+    { name: 'Inicio', url: `${SITE_URL}/` },
+    { name: cat, url: `${SITE_URL}/rd/${opts.categorySlug}` },
+    ...(isProv ? [{ name: zone, url: canonical }] : []),
+  ]);
   return {
     title: `Los mejores ${cat} en ${zone} | Top.com.do`,
     description: `Ranking verificado de ${cat} en ${zone}${isProv ? `, ${RD}` : ''}. Compara negocios por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo. Actualizado en vivo en Top.com.do.`,
     canonical,
     image: OG_IMAGE,
-    jsonLd: opts.items && opts.items.length ? [itemListLd(opts.items, canonical, `${cat} en ${zone}`)] : undefined,
+    jsonLd: [
+      ...(opts.items && opts.items.length
+        ? [itemListLd(opts.items, canonical, `${cat} en ${zone}`)]
+        : []),
+      crumbs,
+    ],
   };
 }
 
@@ -105,16 +158,126 @@ export function subcategorySeo(opts: {
   items?: { id: string; name: string }[];
 }): SeoData {
   const sub = subcategoryLabel(opts.categorySlug, opts.subSlug) || categoryLabel(opts.categorySlug);
+  const cat = categoryLabel(opts.categorySlug) || 'Negocios';
   const canonical = `${SITE_URL}/explorar/${opts.categorySlug}/${opts.subSlug}`;
+  const crumbs = breadcrumbLd([
+    { name: 'Inicio', url: `${SITE_URL}/` },
+    { name: cat, url: `${SITE_URL}/explorar/${opts.categorySlug}` },
+    { name: sub, url: canonical },
+  ]);
   return {
     title: `Mejor ${sub} en ${RD} | Top.com.do`,
     description: `Directorio verificado de ${sub} en la ${RD}. Compara por reputación y reseñas reales, mira ubicación y contacta directo por WhatsApp. Actualizado en vivo en Top.com.do.`,
     canonical,
     image: OG_IMAGE,
-    jsonLd:
-      opts.items && opts.items.length
+    jsonLd: [
+      ...(opts.items && opts.items.length
         ? [itemListLd(opts.items, canonical, `Mejor ${sub} en ${RD}`)]
-        : undefined,
+        : []),
+      crumbs,
+    ],
+  };
+}
+
+/** Landing hiperlocal sub-rubro × provincia: /explorar/{categoria}/{sub}/{provincia}. */
+export function subcategoryProvinceSeo(opts: {
+  categorySlug: string;
+  subSlug: string;
+  provinceSlug: string;
+  items?: { id: string; name: string }[];
+}): SeoData {
+  const sub = subcategoryLabel(opts.categorySlug, opts.subSlug) || categoryLabel(opts.categorySlug);
+  const cat = categoryLabel(opts.categorySlug) || 'Negocios';
+  const prov = provinceName(opts.provinceSlug) || RD;
+  const canonical = `${SITE_URL}/explorar/${opts.categorySlug}/${opts.subSlug}/${opts.provinceSlug}`;
+  const crumbs = breadcrumbLd([
+    { name: 'Inicio', url: `${SITE_URL}/` },
+    { name: cat, url: `${SITE_URL}/explorar/${opts.categorySlug}` },
+    { name: sub, url: `${SITE_URL}/explorar/${opts.categorySlug}/${opts.subSlug}` },
+    { name: prov, url: canonical },
+  ]);
+  return {
+    title: `Mejor ${sub} en ${prov} | Top.com.do`,
+    description: `${sub} en ${prov}, ${RD}: directorio verificado con reseñas reales, ubicación y contacto directo por WhatsApp. Encuentra el mejor y contáctalo al instante en Top.com.do.`,
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [
+      ...(opts.items && opts.items.length
+        ? [itemListLd(opts.items, canonical, `Mejor ${sub} en ${prov}`)]
+        : []),
+      crumbs,
+    ],
+  };
+}
+
+/** Página de intención publicitaria: /publicar. */
+export function publicarSeo(): SeoData {
+  const canonical = `${SITE_URL}/publicar`;
+  const faqs = [
+    {
+      q: '¿Cómo anuncio mi negocio en República Dominicana?',
+      a: 'Regístrate gratis en Top.com.do, publica tu negocio con su ubicación y contacto, y puja para colocarlo en el puesto #1 de tu categoría y provincia. Desde RD$100.',
+    },
+    {
+      q: '¿Cuánto cuesta anunciar mi negocio?',
+      a: 'Registrar el negocio es gratis. Para liderar el ranking pujas el monto que quieras, empezando en RD$100. Pagas solo si quieres competir por el primer lugar.',
+    },
+    {
+      q: '¿Cómo salgo primero en Google en República Dominicana?',
+      a: 'Cada negocio de Top.com.do tiene su propia página optimizada (título, reseñas y datos estructurados) que Google y Bing indexan. Al liderar tu categoría apareces primero dentro del directorio y ganas visibilidad en los buscadores.',
+    },
+    {
+      q: '¿Es una plataforma de publicidad y pauta comercial?',
+      a: 'Sí. Top.com.do es un directorio y una subasta de visibilidad: publicidad efectiva y medible para negocios dominicanos, sin agencias ni contratos.',
+    },
+  ];
+  return {
+    title:
+      'Anuncia tu negocio en República Dominicana — Publicidad efectiva y pauta digital | Top.com.do',
+    description:
+      'Registra tu negocio gratis y anúncialo en la República Dominicana. Publicidad efectiva por provincia y categoría: puja para salir primero, posiciona tu negocio en Google y recibe clientes directos por WhatsApp. Desde RD$100.',
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [
+      faqPageLd(faqs),
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        serviceType: 'Publicidad y posicionamiento de negocios',
+        provider: { '@type': 'Organization', name: 'Top.com.do', url: `${SITE_URL}/` },
+        areaServed: { '@type': 'Country', name: RD },
+        offers: { '@type': 'Offer', price: '100', priceCurrency: 'DOP' },
+      },
+      breadcrumbLd([
+        { name: 'Inicio', url: `${SITE_URL}/` },
+        { name: 'Anuncia tu negocio', url: canonical },
+      ]),
+    ],
+  };
+}
+
+/** Meta de las páginas legales (compartida por LegalLayout y el render en servidor). */
+export function legalSeo(kind: 'terminos' | 'privacidad' | 'normas'): SeoData {
+  const map = {
+    terminos: {
+      t: 'Términos y Condiciones',
+      d: 'Términos de uso de Top.com.do: cómo funcionan las pujas por el puesto #1, los pagos con Dodo Payments y la política de no reembolsos.',
+    },
+    privacidad: {
+      t: 'Política de Privacidad',
+      d: 'Cómo Top.com.do trata y protege tus datos personales en la República Dominicana.',
+    },
+    normas: {
+      t: 'Normas de la comunidad',
+      d: 'Cómo funciona el ranking de Top.com.do: ventana móvil de 7 días, pujas verificadas y reglas para negocios y reseñas.',
+    },
+  } as const;
+  const m = map[kind];
+  return {
+    title: `${m.t} | Top.com.do`,
+    description: m.d,
+    canonical: `${SITE_URL}/${kind}`,
+    image: OG_IMAGE,
   };
 }
 
@@ -151,12 +314,23 @@ export function profileSeo(p: ProfileSeoInput, summary?: ReviewSummary | null): 
     (base ? `${base} ` : '') +
     `${p.name} — ${sector} en ${zone}${provName && provName !== zone ? `, ${provName}` : ''}, ${RD}. ` +
     `Reputación verificada${summary && summary.count > 0 ? ` (${summary.average}★ · ${summary.count} reseñas)` : ''}, ubicación y contacto directo en Top.com.do.`;
+  const catName = cleanName(p.categoryName || '') || categoryLabel(p.categorySlug);
+  const crumbs = breadcrumbLd([
+    { name: 'Inicio', url: `${SITE_URL}/` },
+    ...(p.categorySlug && catName
+      ? [{ name: catName, url: `${SITE_URL}/rd/${p.categorySlug}` }]
+      : []),
+    ...(provName && p.categorySlug
+      ? [{ name: provName, url: `${SITE_URL}/rd/${p.categorySlug}/${p.province}` }]
+      : []),
+    { name: p.name, url: profileShareUrl(p.id) },
+  ]);
   return {
     title: `${p.name} — ${sector} en ${zone} | Top.com.do`,
     description: description.slice(0, 300),
     canonical: profileShareUrl(p.id),
     image: p.avatarUrl && /^https?:\/\//.test(p.avatarUrl) ? p.avatarUrl : OG_IMAGE,
-    jsonLd: [localBusinessLd(p, summary)],
+    jsonLd: [localBusinessLd(p, summary), crumbs],
   };
 }
 
@@ -195,6 +369,31 @@ export function websiteLd(): Record<string, unknown> {
   };
 }
 
+export function breadcrumbLd(items: { name: string; url: string }[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      item: it.url,
+    })),
+  };
+}
+
+export function faqPageLd(qas: { q: string; a: string }[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: qas.map((x) => ({
+      '@type': 'Question',
+      name: x.q,
+      acceptedAnswer: { '@type': 'Answer', text: x.a },
+    })),
+  };
+}
+
 export function itemListLd(
   items: { id: string; name: string }[],
   url: string,
@@ -224,7 +423,7 @@ export function localBusinessLd(
   const phone = p.whatsapp ? p.whatsapp.replace(/[^\d+]/g, '') : '';
   const ld: Record<string, unknown> = {
     '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
+    '@type': businessSchemaType(p.categorySlug),
     '@id': profileShareUrl(p.id),
     name: p.name,
     url: profileShareUrl(p.id),
@@ -268,31 +467,44 @@ export interface SitemapEntry {
 /** Todas las rutas indexables: portada, explorar, landings categoría×provincia y fichas. */
 export function sitemapUrls(
   profiles: { id: string; createdAt?: string | Date | null }[] = [],
+  subProvinceCombos: { categorySlug: string; subSlug: string; provinceSlug: string }[] = [],
 ): SitemapEntry[] {
   const cats = CATEGORY_DEFS.filter((c) => c.slug !== 'todo-rd');
   const provs = PROVINCE_DEFS.filter((p) => p.slug !== NATIONAL_SLUG);
+  const today = new Date().toISOString().slice(0, 10);
 
   const out: SitemapEntry[] = [
-    { loc: `${SITE_URL}/`, changefreq: 'hourly', priority: 1 },
-    { loc: `${SITE_URL}/explorar`, changefreq: 'daily', priority: 0.8 },
+    { loc: `${SITE_URL}/`, lastmod: today, changefreq: 'daily', priority: 1 },
+    { loc: `${SITE_URL}/publicar`, lastmod: today, changefreq: 'monthly', priority: 0.8 },
+    { loc: `${SITE_URL}/explorar`, lastmod: today, changefreq: 'daily', priority: 0.8 },
     { loc: `${SITE_URL}/terminos`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/privacidad`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/normas`, changefreq: 'yearly', priority: 0.3 },
   ];
 
   for (const c of cats) {
-    out.push({ loc: `${SITE_URL}/rd/${c.slug}`, changefreq: 'daily', priority: 0.7 });
-    out.push({ loc: `${SITE_URL}/explorar/${c.slug}`, changefreq: 'daily', priority: 0.5 });
+    out.push({ loc: `${SITE_URL}/rd/${c.slug}`, lastmod: today, changefreq: 'weekly', priority: 0.7 });
+    out.push({ loc: `${SITE_URL}/explorar/${c.slug}`, lastmod: today, changefreq: 'weekly', priority: 0.5 });
     for (const p of provs) {
-      out.push({ loc: `${SITE_URL}/rd/${c.slug}/${p.slug}`, changefreq: 'daily', priority: 0.55 });
+      out.push({ loc: `${SITE_URL}/rd/${c.slug}/${p.slug}`, lastmod: today, changefreq: 'weekly', priority: 0.55 });
     }
   }
 
   for (const s of SUBCATEGORY_DEFS) {
     out.push({
       loc: `${SITE_URL}/explorar/${s.categorySlug}/${s.slug}`,
+      lastmod: today,
       changefreq: 'weekly',
       priority: 0.6,
+    });
+  }
+
+  for (const combo of subProvinceCombos) {
+    out.push({
+      loc: `${SITE_URL}/explorar/${combo.categorySlug}/${combo.subSlug}/${combo.provinceSlug}`,
+      lastmod: today,
+      changefreq: 'weekly',
+      priority: 0.5,
     });
   }
 

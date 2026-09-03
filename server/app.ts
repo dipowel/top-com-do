@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import { eq } from 'drizzle-orm';
@@ -9,6 +11,7 @@ import { ah } from './lib/asyncHandler';
 import { db } from './db';
 import { profiles as profilesTable } from '../shared/schema';
 import { sitemapUrls, renderSitemap } from '../shared/seo';
+import { renderPage } from './lib/renderPage';
 
 import health from './routes/health';
 import categories from './routes/categories';
@@ -74,6 +77,30 @@ export function createApp() {
   app.use('/api/cron', cron);
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
+
+  // Assets estáticos (en Vercel los sirve el CDN antes de llegar aquí; útil en `npm start`).
+  const clientDist = resolvePath(process.cwd(), 'client/dist');
+  if (existsSync(clientDist)) {
+    app.use(express.static(clientDist, { index: false, maxAge: '1y', immutable: true }));
+  }
+
+  // SEO: cada ruta HTML recibe su <title>/meta/canónico/JSON-LD/<h1> renderizados.
+  app.get(
+    '*',
+    ah(async (req, res) => {
+      const { html, status, cacheSeconds } = await renderPage(req.path);
+      res.status(status);
+      res.type('html');
+      const cc =
+        status === 200
+          ? `public, max-age=0, s-maxage=${cacheSeconds}, stale-while-revalidate=86400`
+          : 'public, max-age=0, s-maxage=60';
+      res.setHeader('Cache-Control', cc);
+      res.setHeader('CDN-Cache-Control', cc);
+      res.send(html);
+    }),
+  );
+
   app.use(errorHandler);
 
   return app;

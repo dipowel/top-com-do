@@ -1,11 +1,25 @@
 import { build } from 'esbuild';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 
 /**
- * Empaqueta el servidor Express en un único archivo dentro de `api/` para que
- * la función serverless de Vercel lo incluya sin depender del rastreo de
- * archivos fuera de `api/` (que fallaba con "Cannot find module '../server/app'").
- * Las dependencias de node_modules quedan externas: Vercel las copia por su cuenta.
+ * 1) Congela el HTML base (`client/dist/index.html`, ya con los assets con hash)
+ *    en `server/generated/pageShell.ts` para que el render en servidor pueda
+ *    inyectar <title>/meta/canónico/JSON-LD por ruta. `npm run build` corre
+ *    `vite build` ANTES que este script, así que el archivo ya existe.
+ * 2) Empaqueta el servidor Express en `api/_server.mjs` (Vercel solo rastrea
+ *    lo que hay dentro de `api/`). Las deps de node_modules quedan externas.
  */
+
+const shell = existsSync('client/dist/index.html')
+  ? readFileSync('client/dist/index.html', 'utf8')
+  : '';
+mkdirSync('server/generated', { recursive: true });
+writeFileSync(
+  'server/generated/pageShell.ts',
+  `/* AUTO-GENERADO por scripts/build-api.mjs — no editar a mano. */\nexport const PAGE_SHELL: string = ${JSON.stringify(shell)};\n`,
+);
+console.log(`[build-api] pageShell.ts (${shell.length} bytes de HTML base)`);
+
 await build({
   entryPoints: ['server/app.ts'],
   outfile: 'api/_server.mjs',
