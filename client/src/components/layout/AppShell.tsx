@@ -6,6 +6,7 @@ import Footer from './Footer';
 import PujarAhoraButton from './PujarAhoraButton';
 import BidWizard from '../bid/BidWizard';
 import { useAuth } from '../../hooks/useAuth';
+import { useAuctionAccess } from '../../hooks/useAuctionAccess';
 import type { ShellContext } from '../../hooks/useShell';
 
 function RefBanner() {
@@ -34,6 +35,7 @@ function RefBanner() {
 }
 
 export default function AppShell() {
+  const canBid = useAuctionAccess();
   const [bidOpen, setBidOpen] = useState(false);
   const [presetProfileId, setPresetProfileId] = useState<string | undefined>(undefined);
   const [presetCategory, setPresetCategory] = useState<string | undefined>(undefined);
@@ -56,7 +58,7 @@ export default function AppShell() {
         <Outlet context={ctx} />
         <Footer />
       </main>
-      <PujarAhoraButton onClick={() => openBid(undefined)} />
+      {canBid && <PujarAhoraButton onClick={() => openBid(undefined)} />}
       <BottomNav />
       {bidOpen && (
         <BidWizard

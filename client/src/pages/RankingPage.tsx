@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CategoryTabs from '../components/ranking/CategoryTabs';
-import ChampionMedal from '../components/ranking/ChampionMedal';
 import ProvinceChips from '../components/ranking/ProvinceChips';
 import LeaderCard from '../components/ranking/LeaderCard';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
 import { useShell } from '../hooks/useShell';
+import { useAuth } from '../hooks/useAuth';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
 import { formatDOP } from '../lib/format';
@@ -15,6 +15,59 @@ import { CATEGORY_SLUGS } from '@shared/categories';
 import { categoryLabel, categorySeo, homeSeo } from '@shared/seo';
 
 const MIN_BID = 100;
+
+const HOME_FEATURES: {
+  icon: string;
+  ring: string;
+  bg: string;
+  heading: ReactNode;
+  body: string;
+}[] = [
+  {
+    icon: '🏪',
+    ring: 'border-emerald-soft/40',
+    bg: 'bg-emerald-soft/10',
+    heading: (
+      <>
+        Registra tu negocio <span className="text-emerald-soft">GRATIS</span>.
+      </>
+    ),
+    body: 'Crea tu perfil en segundos y aparece en Top.com.do sin pagar nada.',
+  },
+  {
+    icon: '👑',
+    ring: 'border-gold/40',
+    bg: 'bg-gold/10',
+    heading: (
+      <>
+        Compite por ser #1 desde <span className="text-gold">RD$100</span>.
+      </>
+    ),
+    body: 'Haz tu puja, supera a tu competencia y aparece de primero en tu categoría.',
+  },
+  {
+    icon: '🥇',
+    ring: 'border-gold/40',
+    bg: 'bg-gold/10',
+    heading: (
+      <>
+        Un solo <span className="text-gold">líder</span> por categoría y provincia.
+      </>
+    ),
+    body: 'Solo hay un puesto #1. Tú puedes ser el líder en tu zona y categoría.',
+  },
+  {
+    icon: '💬',
+    ring: 'border-emerald-soft/40',
+    bg: 'bg-emerald-soft/10',
+    heading: (
+      <>
+        Recibe <span className="text-emerald-soft">clientes</span> por WhatsApp.
+      </>
+    ),
+    body: 'Los clientes te contactan al instante por WhatsApp o llamada.',
+  },
+];
 
 export default function RankingPage() {
   const params = useParams();
@@ -26,6 +79,7 @@ export default function RankingPage() {
 
   const { data, loading, error } = useRankings(cat, province);
   const { openBid } = useShell();
+  const { user } = useAuth();
   const canBid = useAuctionAccess();
   const [search, setSearch] = useState('');
 
@@ -57,116 +111,40 @@ export default function RankingPage() {
   return (
     <div className="space-y-4">
       {isHome ? (
-        <header aria-labelledby="hero-title" className="space-y-4 pt-1">
-          <div className="space-y-2.5">
-            <h1
-              id="hero-title"
-              className="text-[26px] font-extrabold leading-[1.15] tracking-tight sm:text-3xl"
-            >
-              <span className="text-gold">Publicidad efectiva:</span> domina el puesto{' '}
-              <span className="text-gold">#1</span> de tu categoría y consigue{' '}
-              <span className="text-gold">más clientes potenciales</span>.
-            </h1>
-            <p className="text-sm leading-relaxed text-white/65">
-              Solo hay un líder por provincia y categoría. Supera a tu competencia con tu puja y
-              recibe llamadas directas a tu{' '}
-              <span className="font-semibold text-emerald-soft">WhatsApp</span>.
-            </p>
-          </div>
+        <header aria-labelledby="hero-title" className="pt-1">
+          <h1 id="hero-title" className="sr-only">
+            Publicidad efectiva: directorio y ranking #1 de negocios en República Dominicana
+          </h1>
 
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            <section className="glass space-y-2 p-3.5">
-              <div className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-gold/40 bg-gold/10 text-sm"
-                >
-                  📢
-                </span>
-                <h2 className="text-[11px] font-bold uppercase tracking-widest text-gold/85">
-                  Para dueños de negocios
-                </h2>
-              </div>
-              <p className="text-[12.5px] leading-snug text-white/65">
-                Mira cuánto está pagando el #1. Haz una oferta mayor y sube al primer lugar.
-              </p>
-              <Link
-                to="/publicar"
-                className="inline-flex items-center gap-1 text-[12px] font-semibold text-gold underline decoration-gold/40 underline-offset-2 hover:decoration-gold"
-              >
-                Anuncia tu negocio <span aria-hidden>→</span>
-              </Link>
-            </section>
-
-            <section className="glass space-y-2 p-3.5">
-              <div className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-emerald-soft/40 bg-emerald-soft/10 text-sm"
-                >
-                  ⭐
-                </span>
-                <h2 className="text-[11px] font-bold uppercase tracking-widest text-emerald-soft/85">
-                  Para clientes
-                </h2>
-              </div>
-              <p className="text-[12.5px] leading-snug text-white/65">
-                Encuentra los mejores negocios verificados en tu provincia y contáctalos al instante
-                por WhatsApp o llamada.
-              </p>
-            </section>
-          </div>
-
-          <section
-            aria-label="Cómo funciona: el #1 ahora mismo"
-            className="glass space-y-3 border border-gold/20 p-3.5"
-          >
-            <h2 className="text-center text-[11px] font-bold uppercase tracking-widest text-white/50">
-              ¿Cómo funciona? El #1 ahora mismo
-            </h2>
-            <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-1.5 text-center sm:gap-2">
-              <div className="space-y-1">
-                <div className="text-[9.5px] font-bold uppercase tracking-wider text-gold/80">
-                  #1 actual
+          <section className="glass space-y-4 border border-gold/30 p-4 shadow-glow">
+            <div className="space-y-3.5">
+              {HOME_FEATURES.map((f, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-lg ${f.ring} ${f.bg}`}
+                  >
+                    {f.icon}
+                  </span>
+                  <div className="min-w-0 space-y-0.5 pt-0.5">
+                    <p className="text-[15px] font-extrabold leading-snug text-white">
+                      {f.heading}
+                    </p>
+                    <p className="text-[12.5px] leading-snug text-white/60">{f.body}</p>
+                  </div>
                 </div>
-                <div className="text-[15px] font-black tabular-nums text-gold sm:text-base">
-                  {loading && !data.length
-                    ? '…'
-                    : leader
-                      ? formatDOP(Number(leader.totalDop))
-                      : 'Libre'}
-                </div>
-                <div className="text-[10px] leading-tight text-white/45 break-words">
-                  {leader ? `👑 ${leader.profile.name}` : 'Nadie manda esta zona'}
-                </div>
-              </div>
-              <span aria-hidden className="self-center text-white/25">
-                →
-              </span>
-              <div className="space-y-1">
-                <div className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-soft/80">
-                  Tú pujas
-                </div>
-                <div className="text-[15px] font-black tabular-nums text-emerald-soft sm:text-base">
-                  {loading && !data.length ? '…' : formatDOP(toLead)}
-                </div>
-                <div className="text-[10px] leading-tight text-white/45">
-                  {leader ? 'Superas su oferta' : 'Tomas el #1 libre'}
-                </div>
-              </div>
-              <span aria-hidden className="self-center text-white/25">
-                →
-              </span>
-              <div className="space-y-1">
-                <div className="text-[9.5px] font-bold uppercase tracking-wider text-gold/80">
-                  Tú subes al #1
-                </div>
-                <div className="flex justify-center">
-                  <ChampionMedal className="!h-10 !w-10 sm:!h-12 sm:!w-12" />
-                </div>
-                <div className="text-[10px] leading-tight text-white/45">Eres el nuevo líder</div>
-              </div>
+              ))}
             </div>
+
+            <Link
+              to={user ? '/perfil' : '/login?registro=1'}
+              className="btn-gold flex w-full flex-col items-center gap-0.5 !py-3.5"
+            >
+              <span className="text-sm font-extrabold">⚡ Registra tu negocio GRATIS</span>
+              <span className="text-[11px] font-semibold opacity-80">
+                Empieza ahora y compite por el #1
+              </span>
+            </Link>
           </section>
         </header>
       ) : (
