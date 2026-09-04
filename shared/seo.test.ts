@@ -123,6 +123,11 @@ describe('seo · LocalBusiness', () => {
     expect(ld.telephone).toBe('+18095551234');
   });
 
+  it('antepone el +1 de RD cuando el teléfono guardado no lo trae', () => {
+    const ld = localBusinessLd({ ...base, whatsapp: '809-555-1234' });
+    expect(ld.telephone).toBe('+18095551234');
+  });
+
   it('omite aggregateRating cuando no hay reseñas', () => {
     expect(localBusinessLd(base, { average: 0, count: 0, distribution: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 } }).aggregateRating).toBeUndefined();
   });

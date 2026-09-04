@@ -7,6 +7,7 @@
 import { SITE_URL, SOCIAL_URLS, profileShareUrl } from './site';
 import { CATEGORY_DEFS, SUBCATEGORY_DEFS, subcategoryLabel } from './categories';
 import { PROVINCE_DEFS, NATIONAL_SLUG, provinceName } from './provinces';
+import { toE164 } from './phone';
 import type { ReviewSummary } from './types';
 
 export const RD = 'República Dominicana';
@@ -420,7 +421,7 @@ export function localBusinessLd(
 ): Record<string, unknown> {
   const provName = p.provinceName || (p.province ? provinceName(p.province) : '');
   const sameAs = [p.instagramUrl, p.websiteUrl].filter((u): u is string => Boolean(u && /^https?:\/\//.test(u)));
-  const phone = p.whatsapp ? p.whatsapp.replace(/[^\d+]/g, '') : '';
+  const phone = toE164(p.whatsapp);
   const ld: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': businessSchemaType(p.categorySlug),

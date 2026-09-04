@@ -1,8 +1,5 @@
-export function whatsappLink(number?: string | null, text?: string): string {
-  const clean = (number || '').replace(/[^\d]/g, '');
-  const q = text ? `?text=${encodeURIComponent(text)}` : '';
-  return `https://wa.me/${clean}${q}`;
-}
+/** Enlace de WhatsApp con el teléfono limpio y el "1" de RD antepuesto si falta. */
+export { whatsappLink } from '@shared/phone';
 
 export function avatarFallback(seed: string): string {
   return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundColor=1e293b,0f172a&textColor=d4af37`;

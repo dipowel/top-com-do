@@ -28,6 +28,7 @@ import {
   type SeoData,
 } from '../../shared/seo';
 import { SITE_URL } from '../../shared/site';
+import { whatsappLink } from '../../shared/phone';
 import { PAGE_SHELL } from '../generated/pageShell';
 
 export interface RenderResult {
@@ -283,7 +284,7 @@ async function resolve(pathname: string): Promise<Resolved> {
     const links: string[] = [];
     if (row.whatsapp)
       links.push(
-        `<a href="https://wa.me/${esc(row.whatsapp.replace(/[^\d]/g, ''))}" style="color:#34d399">WhatsApp</a>`,
+        `<a href="${esc(whatsappLink(row.whatsapp))}" style="color:#34d399">WhatsApp</a>`,
       );
     if (row.instagramUrl)
       links.push(`<a href="${esc(row.instagramUrl)}" style="color:#e8c874">Instagram</a>`);
