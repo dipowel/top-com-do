@@ -14,6 +14,7 @@ import { audit } from '../lib/audit';
 import { onBidVerified, approveReferral, rejectReferral, moveCredit } from '../lib/rewards';
 import { checkDethronements, notifyUser } from '../lib/notify';
 import { formatDOP } from '../../shared/fx';
+import { PROVINCE_SLUGS } from '../../shared/provinces';
 
 const r = Router();
 r.use(requireAdmin);
@@ -65,8 +66,13 @@ r.get(
         notes: bids.notes,
         createdAt: bids.createdAt,
         verifiedAt: bids.verifiedAt,
+        profileId: bids.profileId,
         profileName: profiles.name,
         profileHandle: profiles.handle,
+        province: profiles.province,
+        city: profiles.city,
+        address: profiles.address,
+        userId: bids.userId,
         bidderEmail: users.email,
         bidderName: users.displayName,
       })
@@ -134,6 +140,110 @@ r.post(
 
     await audit(req.user!.id, `bid.${status}`, 'bid', req.params.id, { notes });
     res.json({ bid: { ...updated[0], amountDop: Number(updated[0]!.amountDop) } });
+  }),
+);
+
+const adminEditBidSchema = z.object({
+  profileName: z.string().min(2).max(80).optional(),
+  amountDop: z.number().positive().max(10_000_000).optional(),
+  status: z.enum(['pending', 'verified', 'rejected']).optional(),
+  userEmail: z.string().email().max(200).optional(),
+  province: z.string().max(40).optional(), // '' = quitar
+  city: z.string().max(60).optional(),
+  address: z.string().max(200).optional(),
+});
+
+/**
+ * Corrección manual rápida desde el admin: arregla un dato mal ingresado por
+ * el cliente (nombre del negocio, monto, estado, correo o ubicación) sin
+ * pasar por el flujo normal. No reenvía las notificaciones de
+ * "puja verificada/rechazada" (eso ya lo cubre /bids/:id/verify); sí
+ * mantiene sincronizados el ranking (recalcula en vivo) y el caché de líder.
+ */
+r.patch(
+  '/bids/:id',
+  ah(async (req, res) => {
+    const body = adminEditBidSchema.parse(req.body);
+
+    const bid = (await db.select().from(bids).where(eq(bids.id, req.params.id)).limit(1))[0];
+    if (!bid) throw new HttpError(404, 'Puja no encontrada');
+
+    if (body.province && !PROVINCE_SLUGS.includes(body.province)) {
+      throw new HttpError(400, 'Provincia inválida');
+    }
+
+    if (body.userEmail) {
+      const email = body.userEmail.trim().toLowerCase();
+      const other = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+      if (other[0] && other[0].id !== bid.userId) {
+        throw new HttpError(409, 'Ese correo ya pertenece a otro usuario');
+      }
+      await db.update(users).set({ email }).where(eq(users.id, bid.userId));
+    }
+
+    const profilePatch: Record<string, unknown> = {};
+    if (body.profileName !== undefined) profilePatch.name = body.profileName;
+    if (body.province !== undefined) profilePatch.province = body.province || null;
+    if (body.city !== undefined) profilePatch.city = body.city || null;
+    if (body.address !== undefined) profilePatch.address = body.address || null;
+    if (Object.keys(profilePatch).length) {
+      await db.update(profiles).set(profilePatch).where(eq(profiles.id, bid.profileId));
+    }
+
+    const wasVerified = bid.status === 'verified';
+    const bidPatch: Record<string, unknown> = {};
+    if (body.amountDop !== undefined) {
+      bidPatch.amountDop = body.amountDop.toFixed(2);
+      if (bid.currency === 'DOP') bidPatch.amountOriginal = body.amountDop.toFixed(2);
+    }
+    if (body.status !== undefined) {
+      bidPatch.status = body.status;
+      bidPatch.verifiedAt = body.status === 'verified' ? new Date() : null;
+      bidPatch.verifiedByUserId = body.status === 'verified' ? req.user!.id : null;
+    }
+    if (Object.keys(bidPatch).length) {
+      await db.update(bids).set(bidPatch).where(eq(bids.id, bid.id));
+    }
+
+    const nowVerified = (body.status ?? bid.status) === 'verified';
+    if (nowVerified && !wasVerified) {
+      await onBidVerified(bid.id);
+    }
+    if (nowVerified && (body.amountDop !== undefined || body.status !== undefined)) {
+      await checkDethronements(bid.profileId);
+    }
+
+    await audit(req.user!.id, 'admin.bid.edit', 'bid', bid.id, { changes: body });
+
+    const rows = await db
+      .select({
+        id: bids.id,
+        amountDop: bids.amountDop,
+        currency: bids.currency,
+        amountOriginal: bids.amountOriginal,
+        method: bids.method,
+        status: bids.status,
+        reference: bids.reference,
+        notes: bids.notes,
+        createdAt: bids.createdAt,
+        verifiedAt: bids.verifiedAt,
+        profileId: bids.profileId,
+        profileName: profiles.name,
+        profileHandle: profiles.handle,
+        province: profiles.province,
+        city: profiles.city,
+        address: profiles.address,
+        userId: bids.userId,
+        bidderEmail: users.email,
+        bidderName: users.displayName,
+      })
+      .from(bids)
+      .innerJoin(profiles, eq(profiles.id, bids.profileId))
+      .innerJoin(users, eq(users.id, bids.userId))
+      .where(eq(bids.id, bid.id))
+      .limit(1);
+    const row = rows[0]!;
+    res.json({ ...row, amountDop: Number(row.amountDop), amountOriginal: Number(row.amountOriginal) });
   }),
 );
 

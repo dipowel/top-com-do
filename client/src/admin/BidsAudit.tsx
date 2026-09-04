@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { formatDOP } from '../lib/format';
+import EditBidModal from './EditBidModal';
 
 interface Row {
   id: string;
@@ -8,7 +9,12 @@ interface Row {
   method: string;
   status: string;
   createdAt: string;
+  profileId: string;
   profileName: string;
+  province: string | null;
+  city: string | null;
+  address: string | null;
+  userId: string;
   bidderEmail: string;
 }
 
@@ -25,6 +31,7 @@ export default function BidsAudit() {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
 
   const load = useCallback(() => {
     api<Row[]>(`/admin/bids${status ? `?status=${status}` : ''}`, { auth: true })
@@ -117,30 +124,49 @@ export default function BidsAudit() {
                 <td className="p-2 font-bold">{formatDOP(b.amountDop)}</td>
                 <td className="p-2">{b.status}</td>
                 <td className="p-2">
-                  {b.status === 'pending' && (
-                    <span className="flex gap-1">
-                      <button
-                        onClick={() => verify(b.id, 'verified')}
-                        disabled={busy === b.id}
-                        className="rounded border border-emerald/40 px-2 py-0.5 text-[10px] text-emerald-soft"
-                      >
-                        Verificar
-                      </button>
-                      <button
-                        onClick={() => verify(b.id, 'rejected')}
-                        disabled={busy === b.id}
-                        className="rounded border border-red-400/40 px-2 py-0.5 text-[10px] text-red-300"
-                      >
-                        Rechazar
-                      </button>
-                    </span>
-                  )}
+                  <span className="flex flex-wrap gap-1">
+                    {b.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => verify(b.id, 'verified')}
+                          disabled={busy === b.id}
+                          className="rounded border border-emerald/40 px-2 py-0.5 text-[10px] text-emerald-soft"
+                        >
+                          Verificar
+                        </button>
+                        <button
+                          onClick={() => verify(b.id, 'rejected')}
+                          disabled={busy === b.id}
+                          className="rounded border border-red-400/40 px-2 py-0.5 text-[10px] text-red-300"
+                        >
+                          Rechazar
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setEditing(b)}
+                      className="rounded border border-gold/40 px-2 py-0.5 text-[10px] text-gold"
+                    >
+                      ✎ Editar
+                    </button>
+                  </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <EditBidModal
+          bid={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
