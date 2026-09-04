@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CategoryTabs from '../components/ranking/CategoryTabs';
+import ChampionMedal from '../components/ranking/ChampionMedal';
 import ProvinceChips from '../components/ranking/ProvinceChips';
 import LeaderCard from '../components/ranking/LeaderCard';
 import Spinner from '../components/common/Spinner';
@@ -16,17 +17,20 @@ import { categoryLabel, categorySeo, homeSeo } from '@shared/seo';
 
 const MIN_BID = 100;
 
-const HOME_FEATURES: {
-  icon: string;
-  ring: string;
-  bg: string;
-  heading: ReactNode;
-  body: string;
-}[] = [
+function iconBadge(emoji: string, ring: string, bg: string): ReactNode {
+  return (
+    <span
+      aria-hidden
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-lg ${ring} ${bg}`}
+    >
+      {emoji}
+    </span>
+  );
+}
+
+const HOME_FEATURES: { icon: ReactNode; heading: ReactNode; body: string }[] = [
   {
-    icon: '🏪',
-    ring: 'border-emerald-soft/40',
-    bg: 'bg-emerald-soft/10',
+    icon: iconBadge('🏪', 'border-emerald-soft/40', 'bg-emerald-soft/10'),
     heading: (
       <>
         Registra tu negocio <span className="text-emerald-soft">GRATIS</span>.
@@ -35,9 +39,7 @@ const HOME_FEATURES: {
     body: 'Crea tu perfil en segundos y aparece en Top.com.do sin pagar nada.',
   },
   {
-    icon: '👑',
-    ring: 'border-gold/40',
-    bg: 'bg-gold/10',
+    icon: iconBadge('👑', 'border-gold/40', 'bg-gold/10'),
     heading: (
       <>
         Compite por ser #1 desde <span className="text-gold">RD$100</span>.
@@ -46,9 +48,8 @@ const HOME_FEATURES: {
     body: 'Haz tu puja, supera a tu competencia y aparece de primero en tu categoría.',
   },
   {
-    icon: '🥇',
-    ring: 'border-gold/40',
-    bg: 'bg-gold/10',
+    // Misma insignia que identifica al #1 en las tarjetas del ranking (identidad visual única).
+    icon: <ChampionMedal className="!h-11 !w-11 shrink-0" />,
     heading: (
       <>
         Un solo <span className="text-gold">líder</span> por categoría y provincia.
@@ -57,9 +58,7 @@ const HOME_FEATURES: {
     body: 'Solo hay un puesto #1. Tú puedes ser el líder en tu zona y categoría.',
   },
   {
-    icon: '💬',
-    ring: 'border-emerald-soft/40',
-    bg: 'bg-emerald-soft/10',
+    icon: iconBadge('💬', 'border-emerald-soft/40', 'bg-emerald-soft/10'),
     heading: (
       <>
         Recibe <span className="text-emerald-soft">clientes</span> por WhatsApp.
@@ -120,12 +119,7 @@ export default function RankingPage() {
             <div className="space-y-3.5">
               {HOME_FEATURES.map((f, i) => (
                 <div key={i} className="flex items-start gap-3">
-                  <span
-                    aria-hidden
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-lg ${f.ring} ${f.bg}`}
-                  >
-                    {f.icon}
-                  </span>
+                  {f.icon}
                   <div className="min-w-0 space-y-0.5 pt-0.5">
                     <p className="text-[15px] font-extrabold leading-snug text-white">
                       {f.heading}
