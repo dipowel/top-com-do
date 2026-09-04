@@ -17,6 +17,9 @@ import ProfileForm, {
   type ProfileFormValue,
 } from '../components/profile/ProfileForm';
 import { refShareUrl } from '@shared/site';
+import { categoryLabel } from '@shared/seo';
+import { provinceName } from '@shared/provinces';
+import { MIN_BID_DOP } from '@shared/bidding';
 import type { MyReferral } from '@shared/types';
 
 interface MyProfile {
@@ -67,6 +70,12 @@ export default function ProfilePage() {
   const [rank, setRank] = useState<MyRankEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState<MyProfile | null>(null);
+  const [justCreated, setJustCreated] = useState<{
+    id: string;
+    name: string;
+    categorySlug: string;
+    province: string;
+  } | null>(null);
 
   const loadExtras = useCallback(async () => {
     if (!user) return;
@@ -119,8 +128,17 @@ export default function ProfilePage() {
     setMsg(null);
     setBusy(true);
     try {
-      await api('/profiles', { method: 'POST', body: JSON.stringify(profileFormToPayload(form)), auth: true });
-      setMsg('✓ Negocio registrado. Ya aparece en el directorio.');
+      const created = await api<{ id: string }>('/profiles', {
+        method: 'POST',
+        body: JSON.stringify(profileFormToPayload(form)),
+        auth: true,
+      });
+      setJustCreated({
+        id: created.id,
+        name: form.name,
+        categorySlug: form.categorySlug,
+        province: form.province,
+      });
       setForm(emptyProfileForm);
       setShowBizForm(false);
       void refreshMe();
@@ -407,6 +425,39 @@ export default function ProfilePage() {
             void loadExtras();
           }}
         />
+      )}
+
+      {justCreated && (
+        <Modal title="🎉 ¡Bienvenido al directorio!" onClose={() => setJustCreated(null)}>
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-white/70">
+              <b className="text-white">{justCreated.name}</b> ya está publicado{' '}
+              <span className="text-emerald-soft">gratis</span> en Top.com.do
+              {justCreated.categorySlug && <> en {categoryLabel(justCreated.categorySlug)}</>}
+              {justCreated.province && <> · {provinceName(justCreated.province)}</>}.
+            </p>
+            <p className="text-xs text-white/50">
+              Solo un negocio es el #1 de tu categoría y provincia. Asegúralo ahora antes de que lo
+              tome otro.
+            </p>
+            <button
+              onClick={() => {
+                const p = justCreated;
+                setJustCreated(null);
+                openBid(p.id, p.categorySlug, p.province);
+              }}
+              className="btn-gold w-full !py-3.5 text-sm"
+            >
+              ⚡ Asegurar el puesto #1 ahora (desde {formatDOP(MIN_BID_DOP)})
+            </button>
+            <button
+              onClick={() => setJustCreated(null)}
+              className="block w-full text-xs text-white/50 underline"
+            >
+              Ir a mi panel / Ver mi directorio gratis
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
