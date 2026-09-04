@@ -4,6 +4,7 @@ import { CATEGORY_DEFS } from '@shared/categories';
 import { PROVINCE_DEFS } from '@shared/provinces';
 import { SOCIAL_LINKS } from '@shared/site';
 import { cleanName } from '@shared/seo';
+import { toE164 } from '@shared/phone';
 
 const ZONE_SLUGS = [
   'distrito-nacional',
@@ -127,6 +128,22 @@ export default function Footer() {
               </Link>
             )),
           )}
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/5 pt-4">
+        <div className="mb-2 text-xs font-bold uppercase tracking-widest text-white/40">
+          Contacto y Soporte
+        </div>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 text-xs text-white/60 sm:grid-cols-2">
+          <a href="mailto:topcomdo15@gmail.com" className="hover:text-gold">
+            ✉️ topcomdo15@gmail.com
+          </a>
+          <a href={`tel:${toE164('+1 (829) 649-7160')}`} className="hover:text-gold">
+            📞 +1 (829) 649-7160
+          </a>
+          <span>📍 Santo Domingo, República Dominicana</span>
+          <span>🕘 Lun. a Vie., 9:00 AM – 6:00 PM</span>
         </div>
       </div>
 
