@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import App from './App';
 import { AuthProvider } from './hooks/useAuth';
 import './styles/index.css';
@@ -12,5 +13,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <App />
       </AuthProvider>
     </BrowserRouter>
+    <Analytics />
   </React.StrictMode>,
 );
