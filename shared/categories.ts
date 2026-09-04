@@ -16,6 +16,7 @@ export const CATEGORY_DEFS: CategoryDef[] = [
     name: '🍗 Gastronomía y Comida',
     sortOrder: 1,
     subcategories: [
+      'Restaurantes',
       'Pica Pollos',
       'Comida Criolla',
       'Reposterías y Panaderías',

@@ -1,10 +1,14 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useRef, useState, type FormEvent } from 'react';
 import { useCategories } from '../../hooks/useCategories';
 import { fileToLogoDataUrl } from '../../lib/image';
 import { avatarFallback } from '../../lib/share';
 import { getCurrentPosition } from '../../lib/geo';
 import { subcategoriesFor } from '@shared/categories';
 import { PROVINCE_DEFS } from '@shared/provinces';
+
+// Leaflet pesa ~150 KB+: se carga solo cuando este formulario se abre (nunca en
+// las páginas de tráfico alto como el ranking/explorar).
+const LocationPicker = lazy(() => import('./LocationPicker'));
 
 export interface ProfileFormValue {
   name: string;
@@ -247,6 +251,22 @@ export default function ProfileForm({
           )}
         </div>
         {gpsError && <p className="mt-1 text-[11px] text-red-400">{gpsError}</p>}
+        <Suspense
+          fallback={
+            <div className="mt-2 flex h-56 items-center justify-center rounded-xl border border-white/10 text-xs text-white/40">
+              Cargando mapa…
+            </div>
+          }
+        >
+          <LocationPicker
+            latitude={value.latitude}
+            longitude={value.longitude}
+            onChange={(lat, lng) => set({ latitude: lat, longitude: lng })}
+          />
+        </Suspense>
+        <p className="mt-1.5 text-[11px] text-white/35">
+          Arrastra el pin o toca el mapa para marcar el punto exacto de tu local.
+        </p>
         <select
           className="input mt-2"
           value={value.province}

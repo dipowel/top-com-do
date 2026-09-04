@@ -17,6 +17,7 @@ describe('categories', () => {
 
   it('gastronomía tiene los rubros nuevos', () => {
     const g = CATEGORY_DEFS.find((c) => c.slug === 'gastronomia')!;
+    expect(g.subcategories[0]).toBe('Restaurantes');
     expect(g.subcategories).toContain('Liquor Stores y Drinks');
     expect(g.subcategories).toContain('Colmados Premium');
     expect(g.subcategories).toContain('Heladerías');
