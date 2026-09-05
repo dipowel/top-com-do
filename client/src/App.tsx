@@ -6,6 +6,7 @@ import Spinner from './components/common/Spinner';
 
 // La portada (RankingPage) va en el bundle inicial; el resto se carga bajo demanda.
 const ExplorePage = lazy(() => import('./pages/ExplorePage'));
+const DirectoryHubPage = lazy(() => import('./pages/DirectoryHubPage'));
 const MyBidsPage = lazy(() => import('./pages/MyBidsPage'));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/explorar/:categoria" element={<ExplorePage />} />
           <Route path="/explorar/:categoria/:sub" element={<ExplorePage />} />
           <Route path="/explorar/:categoria/:sub/:provincia" element={<ExplorePage />} />
+          <Route path="/directorio" element={<DirectoryHubPage />} />
           <Route path="/publicar" element={<PublicarPage />} />
           <Route path="/registrar-negocio" element={<RegisterBusinessPage />} />
           <Route path="/mis-pujas" element={<MyBidsPage />} />

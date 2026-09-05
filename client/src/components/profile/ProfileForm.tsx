@@ -5,6 +5,7 @@ import { avatarFallback } from '../../lib/share';
 import { getCurrentPosition } from '../../lib/geo';
 import { subcategoriesFor } from '@shared/categories';
 import { PROVINCE_DEFS } from '@shared/provinces';
+import { citiesForProvince } from '@shared/cities';
 
 // Leaflet pesa ~150 KB+: se carga solo cuando este formulario se abre (nunca en
 // las páginas de tráfico alto como el ranking/explorar).
@@ -290,10 +291,16 @@ export default function ProfileForm({
         />
         <input
           className="input mt-2"
-          placeholder="Ciudad / sector"
+          placeholder="Ciudad / municipio"
+          list="cities-list"
           value={value.city}
           onChange={(e) => set({ city: e.target.value })}
         />
+        <datalist id="cities-list">
+          {citiesForProvince(value.province).map((c) => (
+            <option key={c.slug} value={c.name} />
+          ))}
+        </datalist>
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}

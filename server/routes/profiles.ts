@@ -4,6 +4,7 @@ import { and, desc, eq, gte } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
 import { profileAvatarUrl } from '../../shared/site';
+import { canonicalCityName } from '../../shared/cities';
 import { profiles, categories, bids, users, reviews } from '../../shared/schema';
 import { rankingWindowStart } from '../../shared/bidding';
 import { ah } from '../lib/asyncHandler';
@@ -198,7 +199,7 @@ r.post(
         instagramUrl: body.instagramUrl,
         websiteUrl: body.websiteUrl,
         province: body.province,
-        city: body.city,
+        city: canonicalCityName(body.city),
         address: body.address,
         latitude: body.latitude?.toFixed(7),
         longitude: body.longitude?.toFixed(7),
@@ -271,7 +272,7 @@ r.patch(
     if (body.instagramUrl !== undefined) patch.instagramUrl = body.instagramUrl || null;
     if (body.websiteUrl !== undefined) patch.websiteUrl = body.websiteUrl || null;
     if (body.province !== undefined) patch.province = body.province || null;
-    if (body.city !== undefined) patch.city = body.city || null;
+    if (body.city !== undefined) patch.city = canonicalCityName(body.city) ?? null;
     if (body.address !== undefined) patch.address = body.address || null;
     if (body.latitude !== undefined) patch.latitude = body.latitude != null ? body.latitude.toFixed(7) : null;
     if (body.longitude !== undefined) patch.longitude = body.longitude != null ? body.longitude.toFixed(7) : null;

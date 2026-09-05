@@ -8,6 +8,7 @@ import {
   exploreSeo,
   publicarSeo,
   legalSeo,
+  directorioSeo,
   localBusinessLd,
   organizationLd,
   breadcrumbLd,
@@ -80,6 +81,12 @@ describe('seo · títulos y descripciones con geografía', () => {
   it('legalSeo da canónico por tipo', () => {
     expect(legalSeo('normas').canonical).toBe('https://www.top.com.do/normas');
     expect(legalSeo('terminos').title).toMatch(/Términos/);
+  });
+
+  it('directorioSeo: canónico propio + BreadcrumbList', () => {
+    const s = directorioSeo();
+    expect(s.canonical).toBe('https://www.top.com.do/directorio');
+    expect(s.jsonLd?.[0]['@type']).toBe('BreadcrumbList');
   });
 
   it('businessSchemaType mapea categoría → tipo Schema.org', () => {
@@ -200,6 +207,7 @@ describe('seo · sitemap', () => {
     const urls = sitemapUrls([{ id: 'p1', createdAt: '2026-01-02T00:00:00Z' }]);
     const locs = urls.map((u) => u.loc);
     expect(locs).toContain('https://www.top.com.do/');
+    expect(locs).toContain('https://www.top.com.do/directorio');
     expect(locs).toContain('https://www.top.com.do/rd/gastronomia');
     expect(locs).toContain('https://www.top.com.do/p/p1');
     expect(locs).toContain('https://www.top.com.do/terminos');

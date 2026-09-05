@@ -315,6 +315,24 @@ export function publicarSeo(): SeoData {
   };
 }
 
+/** Hub de directorio: enlaza categorías, provincias y sub-rubros (autoridad + rastreo). */
+export function directorioSeo(): SeoData {
+  const canonical = `${SITE_URL}/directorio`;
+  return {
+    title: 'Directorio de negocios de la República Dominicana por categoría y provincia · Top.com.do',
+    description:
+      'Explora el directorio completo de Top.com.do: negocios verificados de toda la República Dominicana organizados por categoría, sub-rubro y provincia. Encuentra el #1 de tu zona y contáctalo directo.',
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [
+      breadcrumbLd([
+        { name: 'Inicio', url: `${SITE_URL}/` },
+        { name: 'Directorio', url: canonical },
+      ]),
+    ],
+  };
+}
+
 /** Meta de las páginas legales (compartida por LegalLayout y el render en servidor). */
 export function legalSeo(kind: 'terminos' | 'privacidad' | 'normas'): SeoData {
   const map = {
@@ -581,6 +599,7 @@ export function sitemapUrls(
 
   const out: SitemapEntry[] = [
     { loc: `${SITE_URL}/`, changefreq: 'daily', priority: 1 },
+    { loc: `${SITE_URL}/directorio`, changefreq: 'weekly', priority: 0.8 },
     { loc: `${SITE_URL}/publicar`, changefreq: 'monthly', priority: 0.7 },
     { loc: `${SITE_URL}/explorar`, changefreq: 'daily', priority: 0.7 },
     { loc: `${SITE_URL}/terminos`, changefreq: 'yearly', priority: 0.3 },

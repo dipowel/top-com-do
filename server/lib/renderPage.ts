@@ -9,7 +9,12 @@ import { db } from '../db';
 import { profiles as P, categories as C } from '../../shared/schema';
 import { getRankings } from './rankings';
 import { reviewSummary } from './reviews';
-import { CATEGORY_SLUGS, subcategoryLabel } from '../../shared/categories';
+import {
+  CATEGORY_SLUGS,
+  REAL_CATEGORY_DEFS,
+  SUBCATEGORY_DEFS,
+  subcategoryLabel,
+} from '../../shared/categories';
 import { PROVINCE_SLUGS, NATIONAL_SLUG, provinceName } from '../../shared/provinces';
 import {
   homeSeo,
@@ -20,12 +25,14 @@ import {
   profileSeo,
   publicarSeo,
   legalSeo,
+  directorioSeo,
   organizationLd,
   websiteLd,
   categoryIntro,
   categoryFaqs,
   categoryLabel,
   categoryNoun,
+  cleanName,
   RD,
   type SeoData,
 } from '../../shared/seo';
@@ -291,6 +298,34 @@ async function resolve(pathname: string): Promise<Resolved> {
       cache: 86400,
       body: hero(esc(seo.title.split(' | ')[0]), seo.description),
     };
+  }
+
+  if (segs.length === 1 && head === 'directorio') {
+    const seo = directorioSeo();
+    const provs = PROVINCE_SLUGS.filter((s) => s !== NATIONAL_SLUG);
+    const li = (href: string, label: string) =>
+      `<li><a href="${esc(href)}" style="color:#e8c874">${esc(label)}</a></li>`;
+    const ulOpen = '<ul style="list-style:none;padding:0;margin:0 0 1rem;display:grid;gap:.3rem;font-size:.9rem">';
+    const h2 = (t: string) => `<h2 style="font-size:1rem;font-weight:800;margin:1.2rem 0 .4rem">${t}</h2>`;
+    const catBlock = REAL_CATEGORY_DEFS.map((c) => {
+      const subs = SUBCATEGORY_DEFS.filter((s) => s.categorySlug === c.slug)
+        .map((s) => li(`/explorar/${c.slug}/${s.slug}`, `${s.label} en RD`))
+        .join('');
+      const provLinks = provs.map((p) => li(`/rd/${c.slug}/${p}`, `${cleanName(c.name)} en ${provinceName(p)}`)).join('');
+      return h2(esc(cleanName(c.name))) + ulOpen + li(`/rd/${c.slug}`, `Ranking de ${cleanName(c.name)}`) + subs + provLinks + '</ul>';
+    }).join('');
+    const provBlock =
+      h2('Negocios por provincia') +
+      ulOpen +
+      provs.map((p) => li(`/rd/todo-rd/${p}`, `Negocios en ${provinceName(p)}`)).join('') +
+      '</ul>';
+    const body = hero(
+      'Directorio de negocios de la República Dominicana',
+      seo.description,
+      provBlock + catBlock,
+      crumbNav([{ name: 'Inicio', href: '/' }, { name: 'Directorio' }]),
+    );
+    return { seo, status: 200, cache: 3600, body };
   }
 
   if (segs.length === 1 && head === 'publicar') {

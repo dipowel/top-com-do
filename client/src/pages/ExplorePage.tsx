@@ -145,6 +145,12 @@ export default function ExplorePage() {
         hrefFor={(slug) => (slug === 'todo-rd' ? '/explorar' : `/explorar/${slug}`)}
       />
 
+      {!activeSub && (
+        <Link to="/directorio" className="block text-[11px] text-white/40 underline hover:text-white/70">
+          Ver el directorio completo por categoría y provincia →
+        </Link>
+      )}
+
       {subChips.length > 0 && (
         <nav aria-label="Filtrar por rubro" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
           <Link

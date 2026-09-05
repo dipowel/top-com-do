@@ -76,6 +76,11 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link to="/directorio" className="hover:text-gold">
+                Directorio completo
+              </Link>
+            </li>
+            <li>
               <Link to="/publicar" className="hover:text-gold">
                 Anunciar mi negocio
               </Link>
