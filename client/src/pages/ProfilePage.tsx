@@ -428,18 +428,23 @@ export default function ProfilePage() {
       )}
 
       {justCreated && (
-        <Modal title="🎉 ¡Bienvenido al directorio!" onClose={() => setJustCreated(null)}>
+        <Modal title="🎉 ¡Tu negocio ya está en Top!" onClose={() => setJustCreated(null)}>
           <div className="space-y-4 text-center">
             <p className="text-sm text-white/70">
-              <b className="text-white">{justCreated.name}</b> ya está publicado{' '}
-              <span className="text-emerald-soft">gratis</span> en Top.com.do
-              {justCreated.categorySlug && <> en {categoryLabel(justCreated.categorySlug)}</>}
-              {justCreated.province && <> · {provinceName(justCreated.province)}</>}.
+              <b className="text-white">{justCreated.name}</b> ya está en el directorio
+              {justCreated.categorySlug && <> de {categoryLabel(justCreated.categorySlug)}</>}
+              {justCreated.province && <> · {provinceName(justCreated.province)}</>}. Ahora tus
+              clientes pueden encontrarte.
             </p>
-            <p className="text-xs text-white/50">
-              Solo un negocio es el #1 de tu categoría y provincia. Asegúralo ahora antes de que lo
-              tome otro.
-            </p>
+            <div className="rounded-2xl border border-gold/25 bg-gold/[0.06] p-3 text-left">
+              <p className="text-[13px] font-semibold text-white">
+                ¿Quieres aparecer entre los primeros?
+              </p>
+              <p className="mt-0.5 text-xs text-white/55">
+                Activa tu puja desde {formatDOP(MIN_BID_DOP)} y compite por el #1 de tu categoría y
+                provincia.
+              </p>
+            </div>
             <button
               onClick={() => {
                 const p = justCreated;
@@ -448,13 +453,13 @@ export default function ProfilePage() {
               }}
               className="btn-gold w-full !py-3.5 text-sm"
             >
-              ⚡ Asegurar el puesto #1 ahora (desde {formatDOP(MIN_BID_DOP)})
+              ⚡ Activar mi puja ahora
             </button>
             <button
               onClick={() => setJustCreated(null)}
               className="block w-full text-xs text-white/50 underline"
             >
-              Ir a mi panel / Ver mi directorio gratis
+              Seguir gratis por ahora
             </button>
           </div>
         </Modal>

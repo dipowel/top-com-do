@@ -1,13 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CategoryTabs from '../components/ranking/CategoryTabs';
-import ChampionMedal from '../components/ranking/ChampionMedal';
 import ProvinceChips from '../components/ranking/ProvinceChips';
 import LeaderCard from '../components/ranking/LeaderCard';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
 import { useShell } from '../hooks/useShell';
-import { useAuth } from '../hooks/useAuth';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
 import { formatDOP } from '../lib/format';
@@ -16,57 +14,6 @@ import { CATEGORY_SLUGS } from '@shared/categories';
 import { categoryLabel, categorySeo, homeSeo } from '@shared/seo';
 
 const MIN_BID = 100;
-
-function iconBadge(emoji: string, ring: string, bg: string): ReactNode {
-  return (
-    <span
-      aria-hidden
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-lg ${ring} ${bg}`}
-    >
-      {emoji}
-    </span>
-  );
-}
-
-const HOME_FEATURES: { icon: ReactNode; heading: ReactNode; body: string }[] = [
-  {
-    icon: iconBadge('🏪', 'border-emerald-soft/40', 'bg-emerald-soft/10'),
-    heading: (
-      <>
-        Registra tu negocio <span className="text-emerald-soft">GRATIS</span>.
-      </>
-    ),
-    body: 'Crea tu perfil en segundos y aparece en Top.com.do sin pagar nada.',
-  },
-  {
-    icon: iconBadge('👑', 'border-gold/40', 'bg-gold/10'),
-    heading: (
-      <>
-        Compite por ser #1 desde <span className="text-gold">RD$100</span>.
-      </>
-    ),
-    body: 'Haz tu puja, supera a tu competencia y aparece de primero en tu categoría.',
-  },
-  {
-    // Misma insignia que identifica al #1 en las tarjetas del ranking (identidad visual única).
-    icon: <ChampionMedal className="!h-11 !w-11 shrink-0" />,
-    heading: (
-      <>
-        Un solo <span className="text-gold">líder</span> por categoría y provincia.
-      </>
-    ),
-    body: 'Solo hay un puesto #1. Tú puedes ser el líder en tu zona y categoría.',
-  },
-  {
-    icon: iconBadge('💬', 'border-emerald-soft/40', 'bg-emerald-soft/10'),
-    heading: (
-      <>
-        Recibe <span className="text-emerald-soft">clientes</span> por WhatsApp.
-      </>
-    ),
-    body: 'Los clientes te contactan al instante por WhatsApp o llamada.',
-  },
-];
 
 export default function RankingPage() {
   const params = useParams();
@@ -78,7 +25,6 @@ export default function RankingPage() {
 
   const { data, loading, error } = useRankings(cat, province);
   const { openBid } = useShell();
-  const { user } = useAuth();
   const canBid = useAuctionAccess();
   const [search, setSearch] = useState('');
 
@@ -110,36 +56,23 @@ export default function RankingPage() {
   return (
     <div className="space-y-4">
       {isHome ? (
-        <header aria-labelledby="hero-title" className="pt-1">
-          <h1 id="hero-title" className="sr-only">
-            Publicidad efectiva: directorio y ranking #1 de negocios en República Dominicana
+        <header aria-labelledby="hero-title" className="space-y-3 pt-1">
+          <h1
+            id="hero-title"
+            className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl"
+          >
+            El ranking <span className="text-gold">#1</span> de negocios de la República Dominicana
           </h1>
-
-          <section className="glass space-y-4 border border-gold/30 p-4 shadow-glow">
-            <div className="space-y-3.5">
-              {HOME_FEATURES.map((f, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  {f.icon}
-                  <div className="min-w-0 space-y-0.5 pt-0.5">
-                    <p className="text-[15px] font-extrabold leading-snug text-white">
-                      {f.heading}
-                    </p>
-                    <p className="text-[12.5px] leading-snug text-white/60">{f.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <Link
-              to={user ? '/perfil' : '/login?registro=1'}
-              className="btn-gold flex w-full flex-col items-center gap-0.5 !py-3.5"
-            >
-              <span className="text-sm font-extrabold">⚡ Registra tu negocio GRATIS</span>
-              <span className="text-[11px] font-semibold opacity-80">
-                Empieza ahora y compite por el #1
-              </span>
-            </Link>
-          </section>
+          <p className="text-sm leading-relaxed text-white/60">
+            Un solo líder por categoría y provincia. Compite por el primer lugar desde
+            <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
+          </p>
+          <Link
+            to="/explorar"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white/70 underline decoration-white/30 underline-offset-2 hover:text-white hover:decoration-white/60"
+          >
+            🔎 ¿Solo quieres aparecer en el directorio? Explóralo gratis <span aria-hidden>→</span>
+          </Link>
         </header>
       ) : (
         <div>

@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import CategoryTabs from '../components/ranking/CategoryTabs';
 import { useShell } from '../hooks/useShell';
+import { useAuth } from '../hooks/useAuth';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
 import { avatarFallback } from '../lib/share';
@@ -42,6 +43,7 @@ export default function ExplorePage() {
   const [profiles, setProfiles] = useState<P[]>([]);
   const [q, setQ] = useState(sp.get('q') ?? '');
   const { openBid } = useShell();
+  const { user } = useAuth();
   const canBid = useAuctionAccess();
 
   useEffect(() => {
@@ -95,6 +97,27 @@ export default function ExplorePage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-extrabold">{h1}</h1>
+
+      {!canBid && (
+        <section className="glass flex flex-col gap-2 border border-gold/25 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-extrabold text-white">
+              ¿Tienes un negocio? Aparece <span className="text-emerald-soft">gratis</span>
+            </h2>
+            <p className="mt-0.5 text-xs text-white/55">
+              Regístralo en el directorio y deja que tus clientes te encuentren. Sin costo, en
+              minutos.
+            </p>
+          </div>
+          <Link
+            to={user ? '/perfil' : '/login?registro=1'}
+            className="btn-gold shrink-0 whitespace-nowrap !py-2.5 text-xs"
+          >
+            Registrar mi negocio gratis
+          </Link>
+        </section>
+      )}
+
       <input
         className="input"
         placeholder="Buscar marca o persona…"
