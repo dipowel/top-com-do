@@ -198,7 +198,7 @@ export default function BidWizard({
                   onClick={() => chooseExisting(p)}
                   className="flex w-full items-center gap-2 rounded-xl border border-white/10 p-2 text-left text-sm hover:bg-white/5"
                 >
-                  <img src={p.avatarUrl || avatarFallback(p.name)} className="h-8 w-8 rounded-lg" alt="" />
+                  <img src={p.avatarUrl || avatarFallback(p.name)} width={32} height={32} loading="lazy" decoding="async" className="h-8 w-8 rounded-lg" alt="" />
                   <span className="flex-1">
                     <span className="font-semibold">{p.name}</span>{' '}
                     <span className="text-white/40">@{p.handle}</span>

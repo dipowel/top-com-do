@@ -40,6 +40,8 @@ export default function ViralCard({ entry, onClose }: { entry: RankingEntry; onC
           <img
             crossOrigin="anonymous"
             src={p.avatarUrl || avatarFallback(p.name)}
+            width={64}
+            height={64}
             className="h-16 w-16 rounded-xl object-cover"
             alt=""
           />

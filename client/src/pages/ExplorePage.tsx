@@ -206,6 +206,10 @@ export default function ExplorePage() {
             <Link to={`/p/${p.id}`}>
               <img
                 src={p.avatarUrl || avatarFallback(p.name)}
+                width={64}
+                height={64}
+                loading="lazy"
+                decoding="async"
                 className="mb-2 h-16 w-16 rounded-xl object-cover"
                 alt={p.name}
               />

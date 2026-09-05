@@ -26,7 +26,7 @@ export default function FavoritesPage() {
       )}
       {list.map((p) => (
         <div key={p.id} className="glass flex items-center gap-3 p-3">
-          <img src={p.avatarUrl || avatarFallback(p.name)} className="h-11 w-11 rounded-xl" alt="" />
+          <img src={p.avatarUrl || avatarFallback(p.name)} width={44} height={44} loading="lazy" decoding="async" className="h-11 w-11 rounded-xl" alt="" />
           <Link to={`/p/${p.id}`} className="flex-1 font-semibold">
             {p.name}
           </Link>

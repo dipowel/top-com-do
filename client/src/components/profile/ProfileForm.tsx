@@ -103,6 +103,9 @@ export default function ProfileForm({
       <div className="flex items-center gap-3">
         <img
           src={value.avatarUrl || avatarFallback(value.name || 'Nuevo')}
+          width={64}
+          height={64}
+          decoding="async"
           className="h-16 w-16 rounded-xl object-cover"
           alt=""
         />

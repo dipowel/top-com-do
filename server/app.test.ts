@@ -47,6 +47,11 @@ describe('API base', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /api/profiles/:id/avatar responde (404 sin logo / 500 sin DB), nunca cuelga', async () => {
+    const res = await request(app).get('/api/profiles/00000000-0000-0000-0000-000000000000/avatar');
+    expect([404, 500]).toContain(res.status);
+  });
+
   it('ruta desconocida bajo /api → 404 JSON', async () => {
     const res = await request(app).get('/api/no-existe');
     expect(res.status).toBe(404);

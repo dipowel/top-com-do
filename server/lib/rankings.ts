@@ -2,6 +2,7 @@ import { and, eq, gt, gte, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { bids, profiles, categories } from '../../shared/schema';
 import { isRealProvince, provinceName } from '../../shared/provinces';
+import { profileAvatarUrl } from '../../shared/site';
 import { rankingWindowStart } from '../../shared/bidding';
 import type { RankingEntry } from '../../shared/types';
 
@@ -71,7 +72,7 @@ export async function getRankings(
       id: r.id,
       name: r.name,
       handle: r.handle,
-      avatarUrl: r.avatarUrl,
+      avatarUrl: profileAvatarUrl(r.id, r.avatarUrl),
       bio: r.bio,
       tagline: r.tagline,
       subcategory: r.subcategory,

@@ -100,8 +100,12 @@ export default function ProfileDetailPage() {
         <div className="flex items-center gap-3">
           <img
             src={profile.avatarUrl || avatarFallback(profile.name)}
+            width={64}
+            height={64}
+            decoding="async"
+            fetchPriority="high"
             className="h-16 w-16 rounded-xl object-cover"
-            alt=""
+            alt={profile.name}
           />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-extrabold">{profile.name}</h1>

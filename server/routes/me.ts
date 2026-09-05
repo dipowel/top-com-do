@@ -13,6 +13,7 @@ import {
   notifications,
   reviews,
 } from '../../shared/schema';
+import { profileAvatarUrl } from '../../shared/site';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
@@ -66,7 +67,7 @@ r.get(
       .innerJoin(profiles, eq(profiles.id, reviews.profileId))
       .where(eq(reviews.userId, req.user!.id))
       .orderBy(desc(reviews.createdAt));
-    res.json(rows);
+    res.json(rows.map((x) => ({ ...x, profileAvatar: profileAvatarUrl(x.profileId, x.profileAvatar) })));
   }),
 );
 
@@ -274,6 +275,7 @@ r.get(
     res.json(
       rows.map((x) => ({
         ...x,
+        profileAvatar: profileAvatarUrl(x.profileId, x.profileAvatar),
         amountDop: Number(x.amountDop),
         amountOriginal: Number(x.amountOriginal),
       })),
@@ -298,7 +300,7 @@ r.get(
       .innerJoin(profiles, eq(profiles.id, favorites.profileId))
       .where(eq(favorites.userId, req.user!.id))
       .orderBy(desc(favorites.createdAt));
-    res.json(rows);
+    res.json(rows.map((x) => ({ ...x, avatarUrl: profileAvatarUrl(x.id, x.avatarUrl) })));
   }),
 );
 

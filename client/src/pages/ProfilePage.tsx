@@ -168,7 +168,7 @@ export default function ProfilePage() {
       ) : (
         favorites.map((f) => (
           <div key={f.id} className="flex items-center gap-3">
-            <img src={f.avatarUrl || avatarFallback(f.name)} className="h-9 w-9 rounded-lg" alt="" />
+            <img src={f.avatarUrl || avatarFallback(f.name)} width={36} height={36} loading="lazy" decoding="async" className="h-9 w-9 rounded-lg" alt="" />
             <Link to={`/p/${f.id}`} className="flex-1 truncate text-sm">
               {f.name}
             </Link>
@@ -286,6 +286,10 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <img
                     src={p.avatarUrl || avatarFallback(p.name)}
+                    width={40}
+                    height={40}
+                    loading="lazy"
+                    decoding="async"
                     className="h-10 w-10 rounded-lg"
                     alt=""
                   />

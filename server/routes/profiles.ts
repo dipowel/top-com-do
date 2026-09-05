@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import { Router } from 'express';
 import { and, desc, eq, gte } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
+import { profileAvatarUrl } from '../../shared/site';
 import { profiles, categories, bids, users, reviews } from '../../shared/schema';
 import { rankingWindowStart } from '../../shared/bidding';
 import { ah } from '../lib/asyncHandler';
@@ -73,11 +75,51 @@ r.get(
     res.json(
       rows.map((x) => ({
         ...x,
+        avatarUrl: profileAvatarUrl(x.id, x.avatarUrl),
         provinceName: x.province ? provinceName(x.province) : null,
         latitude: numOrNull(x.latitude),
         longitude: numOrNull(x.longitude),
       })),
     );
+  }),
+);
+
+/**
+ * Logo/avatar del negocio servido como imagen real y cacheable. La BD lo guarda
+ * como data URI base64; aquí se decodifica una vez y se sirve con caché de 1 año,
+ * de modo que sea usable en Open Graph y datos estructurados (que exigen http(s)).
+ */
+r.get(
+  '/:id/avatar',
+  ah(async (req, res) => {
+    const rows = await db
+      .select({ avatarUrl: profiles.avatarUrl })
+      .from(profiles)
+      .where(eq(profiles.id, req.params.id))
+      .limit(1);
+    const raw = rows[0]?.avatarUrl;
+    if (!raw) throw new HttpError(404, 'Sin logo');
+    // Anula el `no-store` global de la API: esta imagen es inmutable.
+    const cacheable = (v: string) => {
+      res.setHeader('Cache-Control', v);
+      res.setHeader('CDN-Cache-Control', v);
+      res.setHeader('Vercel-CDN-Cache-Control', v);
+      res.removeHeader('Pragma');
+      res.removeHeader('Expires');
+    };
+    if (/^https?:\/\//.test(raw)) {
+      cacheable('public, max-age=86400');
+      return res.redirect(302, raw);
+    }
+    const m = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(raw);
+    if (!m) throw new HttpError(404, 'Logo inválido');
+    const buf = Buffer.from(m[2], 'base64');
+    const etag = `"${createHash('sha1').update(buf).digest('hex')}"`;
+    cacheable('public, max-age=31536000, immutable');
+    res.setHeader('ETag', etag);
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
+    res.type(m[1]);
+    return res.send(buf);
   }),
 );
 
@@ -198,6 +240,7 @@ r.get(
     if (!rows[0]) throw new HttpError(404, 'Perfil no encontrado');
     res.json({
       ...rows[0],
+      avatarUrl: profileAvatarUrl(rows[0].id, rows[0].avatarUrl),
       provinceName: rows[0].province ? provinceName(rows[0].province) : null,
       latitude: numOrNull(rows[0].latitude),
       longitude: numOrNull(rows[0].longitude),
@@ -232,7 +275,10 @@ r.patch(
     if (body.address !== undefined) patch.address = body.address || null;
     if (body.latitude !== undefined) patch.latitude = body.latitude != null ? body.latitude.toFixed(7) : null;
     if (body.longitude !== undefined) patch.longitude = body.longitude != null ? body.longitude.toFixed(7) : null;
-    if (body.avatarUrl !== undefined) patch.avatarUrl = body.avatarUrl || null;
+    // Ignora la URL del endpoint (`/api/profiles/:id/avatar`) que la lectura pública
+    // devuelve: solo un data URI nuevo cuenta como cambio de logo.
+    if (body.avatarUrl !== undefined && !/\/api\/profiles\/[^/]+\/avatar$/.test(body.avatarUrl))
+      patch.avatarUrl = body.avatarUrl || null;
     if (body.categorySlug) {
       const cat = await db.select().from(categories).where(eq(categories.slug, body.categorySlug)).limit(1);
       if (!cat[0]) throw new HttpError(400, 'Categoría inválida');
