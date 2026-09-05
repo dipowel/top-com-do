@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import express from 'express';
 import cors from 'cors';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 import { noStore } from './middleware/noStore';
 import { errorHandler } from './middleware/errorHandler';
@@ -55,38 +55,68 @@ export function createApp() {
   app.get(
     '/sitemap.xml',
     ah(async (_req, res) => {
+      const day = (v: unknown): string | undefined =>
+        v ? new Date(v as string | Date).toISOString().slice(0, 10) : undefined;
+      const lastmod = sql<string | null>`max(${profilesTable.createdAt})`;
+
       const rows = await db
         .select({ id: profilesTable.id, createdAt: profilesTable.createdAt })
         .from(profilesTable)
         .where(eq(profilesTable.isActive, true))
         .orderBy(profilesTable.createdAt);
 
-      // Combos sub-rubro × provincia CON negocios reales (evita thin content).
-      let combos: { categorySlug: string; subSlug: string; provinceSlug: string }[] = [];
+      // Landings hiperlocales: SOLO las combinaciones con negocios reales (evita thin content).
+      let subProvince: { categorySlug: string; subSlug: string; provinceSlug: string; lastmod?: string }[] = [];
+      let catProvince: { categorySlug: string; provinceSlug: string; lastmod?: string }[] = [];
+      let provinces: { provinceSlug: string; lastmod?: string }[] = [];
       try {
-        const grp = await db
-          .selectDistinct({
-            categorySlug: categoriesTable.slug,
-            subcategory: profilesTable.subcategory,
-            province: profilesTable.province,
-          })
-          .from(profilesTable)
-          .innerJoin(categoriesTable, eq(categoriesTable.id, profilesTable.categoryId))
-          .where(eq(profilesTable.isActive, true));
-        combos = grp
+        const [subGrp, catGrp, provGrp] = await Promise.all([
+          db
+            .select({
+              categorySlug: categoriesTable.slug,
+              subcategory: profilesTable.subcategory,
+              province: profilesTable.province,
+              lastmod,
+            })
+            .from(profilesTable)
+            .innerJoin(categoriesTable, eq(categoriesTable.id, profilesTable.categoryId))
+            .where(eq(profilesTable.isActive, true))
+            .groupBy(categoriesTable.slug, profilesTable.subcategory, profilesTable.province),
+          db
+            .select({ categorySlug: categoriesTable.slug, province: profilesTable.province, lastmod })
+            .from(profilesTable)
+            .innerJoin(categoriesTable, eq(categoriesTable.id, profilesTable.categoryId))
+            .where(eq(profilesTable.isActive, true))
+            .groupBy(categoriesTable.slug, profilesTable.province),
+          db
+            .select({ province: profilesTable.province, lastmod })
+            .from(profilesTable)
+            .where(eq(profilesTable.isActive, true))
+            .groupBy(profilesTable.province),
+        ]);
+        subProvince = subGrp
           .filter((g) => g.subcategory && isRealProvince(g.province))
           .map((g) => ({
             categorySlug: g.categorySlug,
             subSlug: subSlug(g.subcategory as string),
             provinceSlug: g.province as string,
+            lastmod: day(g.lastmod),
           }));
+        catProvince = catGrp
+          .filter((g) => isRealProvince(g.province))
+          .map((g) => ({ categorySlug: g.categorySlug, provinceSlug: g.province as string, lastmod: day(g.lastmod) }));
+        provinces = provGrp
+          .filter((g) => isRealProvince(g.province))
+          .map((g) => ({ provinceSlug: g.province as string, lastmod: day(g.lastmod) }));
       } catch {
-        combos = [];
+        subProvince = [];
+        catProvince = [];
+        provinces = [];
       }
 
       res.type('application/xml');
       res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-      res.send(renderSitemap(sitemapUrls(rows, combos)));
+      res.send(renderSitemap(sitemapUrls(rows, subProvince, catProvince, provinces)));
     }),
   );
 
@@ -115,7 +145,7 @@ export function createApp() {
   app.get(
     '*',
     ah(async (req, res) => {
-      const { html, status, cacheSeconds } = await renderPage(req.path);
+      const { html, status, cacheSeconds, noindex } = await renderPage(req.path);
       res.status(status);
       res.type('html');
       const cc =
@@ -124,6 +154,7 @@ export function createApp() {
           : 'public, max-age=0, s-maxage=60';
       res.setHeader('Cache-Control', cc);
       res.setHeader('CDN-Cache-Control', cc);
+      if (noindex) res.setHeader('X-Robots-Tag', 'noindex, follow');
       res.send(html);
     }),
   );

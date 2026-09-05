@@ -16,11 +16,24 @@ describe('renderPage · metadatos por ruta', () => {
     expect(r.html).not.toContain('noindex');
   });
 
-  it('categoría × provincia', async () => {
-    const r = await renderPage('/rd/gastronomia/santiago');
-    expect(r.status).toBe(200);
-    expect(r.html).toContain('Los mejores Gastronomía y Comida en Santiago');
-    expect(r.html).toContain('href="https://www.top.com.do/rd/gastronomia/santiago"');
+  it('categoría × provincia: título gramatical + canónico geolocalizado', () => {
+    return renderPage('/rd/gastronomia/santiago').then((r) => {
+      expect(r.status).toBe(200);
+      expect(r.html).toContain('Los mejores restaurantes en Santiago');
+      expect(r.html).toContain('href="https://www.top.com.do/rd/gastronomia/santiago"');
+    });
+  });
+
+  it('categoría × provincia sin negocios → noindex (evita thin content)', async () => {
+    // En test la BD no responde: la lista queda vacía → debe marcarse noindex.
+    const r = await renderPage('/rd/gastronomia/pedernales');
+    expect(r.noindex).toBe(true);
+    expect(r.html).toContain('noindex');
+  });
+
+  it('/explorar/:cat canoniza hacia el ranking /rd/:cat', async () => {
+    const r = await renderPage('/explorar/salud');
+    expect(r.html).toContain('<link rel="canonical" href="https://www.top.com.do/rd/salud" />');
   });
 
   it('/publicar lleva FAQPage y título de intención', async () => {

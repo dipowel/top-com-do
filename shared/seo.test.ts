@@ -29,9 +29,9 @@ describe('seo · títulos y descripciones con geografía', () => {
     expect(s.jsonLd?.[0]).toMatchObject({ '@type': 'Organization' });
   });
 
-  it('categoría + provincia produce título y canónico geolocalizados', () => {
+  it('categoría + provincia: título gramatical (plural) y canónico geolocalizado', () => {
     const s = categorySeo({ categorySlug: 'gastronomia', provinceSlug: 'santiago' });
-    expect(s.title).toBe('Los mejores Gastronomía y Comida en Santiago | Top.com.do');
+    expect(s.title).toBe('Mejores restaurantes en Santiago · Top.com.do');
     expect(s.canonical).toBe('https://www.top.com.do/rd/gastronomia/santiago');
     expect(s.description).toMatch(/Santiago/);
   });
@@ -39,17 +39,17 @@ describe('seo · títulos y descripciones con geografía', () => {
   it('categoría sin provincia usa República Dominicana', () => {
     const s = categorySeo({ categorySlug: 'automotriz' });
     expect(s.canonical).toBe('https://www.top.com.do/rd/automotriz');
-    expect(s.title).toMatch(/en República Dominicana/);
+    expect(s.title).toBe('Mejores talleres en República Dominicana · Top.com.do');
   });
 
-  it('explorar por categoría tiene canónico propio', () => {
-    expect(exploreSeo('salud').canonical).toBe('https://www.top.com.do/explorar/salud');
+  it('explorar por categoría canoniza hacia el ranking; explorar raíz mantiene su canónico', () => {
+    expect(exploreSeo('salud').canonical).toBe('https://www.top.com.do/rd/salud');
     expect(exploreSeo(null).canonical).toBe('https://www.top.com.do/explorar');
   });
 
-  it('subcategoría genera "Mejor {rubro} en RD" y canónico propio', () => {
+  it('subcategoría: título en plural "Mejores {rubro} en RD" y canónico propio', () => {
     const s = subcategorySeo({ categorySlug: 'gastronomia', subSlug: 'liquor-stores-y-drinks' });
-    expect(s.title).toBe('Mejor Liquor Stores y Drinks en República Dominicana | Top.com.do');
+    expect(s.title).toBe('Mejores Liquor Stores y Drinks en República Dominicana · Top.com.do');
     expect(s.canonical).toBe('https://www.top.com.do/explorar/gastronomia/liquor-stores-y-drinks');
   });
 
@@ -59,7 +59,7 @@ describe('seo · títulos y descripciones con geografía', () => {
       subSlug: 'gomeras-y-alineacion',
       provinceSlug: 'santo-domingo',
     });
-    expect(s.title).toBe('Mejor Gomeras y Alineación en Santo Domingo | Top.com.do');
+    expect(s.title).toBe('Mejores Gomeras y Alineación en Santo Domingo · Top.com.do');
     expect(s.canonical).toBe(
       'https://www.top.com.do/explorar/automotriz/gomeras-y-alineacion/santo-domingo',
     );
@@ -143,37 +143,44 @@ describe('seo · LocalBusiness', () => {
 
   it('profileSeo devuelve título con negocio + zona', () => {
     const s = profileSeo(base);
-    expect(s.title).toBe('Pica Pollo El Rey — Pica Pollos en Santiago de los Caballeros | Top.com.do');
+    expect(s.title).toBe('Pica Pollo El Rey — Pica Pollos en Santiago de los Caballeros · Top.com.do');
     expect(s.jsonLd?.[0]['@type']).toBe('LocalBusiness');
   });
 });
 
 describe('seo · sitemap', () => {
-  it('incluye portada, landings categoría×provincia y fichas', () => {
+  it('incluye portada, categorías, explorar y fichas; NO genera cat×provincia a ciegas', () => {
     const urls = sitemapUrls([{ id: 'p1', createdAt: '2026-01-02T00:00:00Z' }]);
     const locs = urls.map((u) => u.loc);
     expect(locs).toContain('https://www.top.com.do/');
-    expect(locs).toContain('https://www.top.com.do/rd/gastronomia/santiago');
+    expect(locs).toContain('https://www.top.com.do/rd/gastronomia');
     expect(locs).toContain('https://www.top.com.do/p/p1');
     expect(locs).toContain('https://www.top.com.do/terminos');
-    expect(locs).toContain('https://www.top.com.do/explorar/gastronomia/liquor-stores-y-drinks');
-    expect(locs).toContain('https://www.top.com.do/explorar/mascotas/clinicas-veterinarias');
-    expect(locs).toContain(
-      'https://www.top.com.do/explorar/automotriz/gasolineras-y-estaciones-de-servicio',
-    );
-    expect(locs).toContain('https://www.top.com.do/explorar/inmobiliaria/inmobiliarias-y-alquileres');
     expect(locs).toContain('https://www.top.com.do/publicar');
+    // Sin datos pasados: nada de landings hiperlocales ni /explorar/:cat a secas.
+    expect(locs).not.toContain('https://www.top.com.do/rd/gastronomia/santiago');
+    expect(locs).not.toContain('https://www.top.com.do/explorar/salud');
+    expect(locs).not.toContain('https://www.top.com.do/explorar/gastronomia/liquor-stores-y-drinks');
     expect(locs).not.toContain('https://www.top.com.do/rd/todo-rd');
   });
 
-  it('incluye combos sub-rubro × provincia cuando se pasan', () => {
+  it('incluye landings hiperlocales SOLO cuando se pasan combos con datos', () => {
     const urls = sitemapUrls(
       [],
-      [{ categorySlug: 'automotriz', subSlug: 'gomeras-y-alineacion', provinceSlug: 'santiago' }],
+      [{ categorySlug: 'automotriz', subSlug: 'gomeras-y-alineacion', provinceSlug: 'santiago', lastmod: '2026-02-01' }],
+      [{ categorySlug: 'gastronomia', provinceSlug: 'santiago', lastmod: '2026-03-01' }],
+      [{ provinceSlug: 'santiago', lastmod: '2026-03-02' }],
     );
-    expect(urls.map((u) => u.loc)).toContain(
-      'https://www.top.com.do/explorar/automotriz/gomeras-y-alineacion/santiago',
-    );
+    const byLoc = new Map(urls.map((u) => [u.loc, u]));
+    expect(byLoc.has('https://www.top.com.do/explorar/automotriz/gomeras-y-alineacion')).toBe(true);
+    expect(byLoc.get('https://www.top.com.do/explorar/automotriz/gomeras-y-alineacion/santiago')?.lastmod).toBe('2026-02-01');
+    expect(byLoc.get('https://www.top.com.do/rd/gastronomia/santiago')?.lastmod).toBe('2026-03-01');
+    expect(byLoc.get('https://www.top.com.do/rd/todo-rd/santiago')?.lastmod).toBe('2026-03-02');
+  });
+
+  it('las páginas de estructura pura no llevan lastmod (frescura honesta)', () => {
+    const home = sitemapUrls().find((u) => u.loc === 'https://www.top.com.do/');
+    expect(home?.lastmod).toBeUndefined();
   });
 
   it('renderiza XML válido', () => {

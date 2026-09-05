@@ -5,14 +5,38 @@
  * `useSeo` y el servidor para `GET /sitemap.xml`.
  */
 import { SITE_URL, SOCIAL_URLS, profileShareUrl } from './site';
-import { CATEGORY_DEFS, SUBCATEGORY_DEFS, subcategoryLabel } from './categories';
-import { PROVINCE_DEFS, NATIONAL_SLUG, provinceName } from './provinces';
+import { CATEGORY_DEFS, subcategoryLabel } from './categories';
+import { NATIONAL_SLUG, provinceName } from './provinces';
 import { toE164 } from './phone';
 import type { ReviewSummary } from './types';
 
 export const RD = 'República Dominicana';
 const LOGO_URL = `${SITE_URL}/logo.png`;
 const OG_IMAGE = `${SITE_URL}/og.png`;
+
+/**
+ * Sustantivo plural corto y natural para encabezar rankings ("Los mejores ___").
+ * `categoryLabel` ("Gastronomía y Comida") es femenino singular y produce títulos
+ * agramaticales; esto mantiene el español correcto y el título bajo ~60 caracteres.
+ */
+const CATEGORY_NOUN: Record<string, string> = {
+  gastronomia: 'restaurantes',
+  automotriz: 'talleres',
+  tecnologia: 'tiendas de tecnología',
+  hogar: 'ferreterías',
+  'moda-belleza': 'salones de belleza',
+  salud: 'centros de salud',
+  servicios: 'servicios profesionales',
+  inmobiliaria: 'inmobiliarias',
+  politica: 'figuras políticas',
+  ocio: 'discotecas y bares',
+  educacion: 'academias',
+  mascotas: 'veterinarias',
+};
+
+export function categoryNoun(slug?: string | null): string {
+  return (slug && CATEGORY_NOUN[slug]) || 'negocios';
+}
 
 export interface SeoData {
   title: string;
@@ -64,9 +88,9 @@ export function businessSchemaType(slug?: string | null): string {
   return (slug && SCHEMA_TYPE_BY_CATEGORY[slug]) || 'LocalBusiness';
 }
 
-/** Frase única de intro local por categoría (para el <h1>/<p> renderizado en servidor). */
+/** Párrafo de intro local por categoría (para el <h1>/<p> renderizado en servidor). */
 export function categoryIntro(categorySlug: string | null | undefined, zone: string): string {
-  const cat = (categoryLabel(categorySlug) || 'negocios').toLowerCase();
+  const noun = categoryNoun(categorySlug);
   const ex: Record<string, string> = {
     gastronomia: 'restaurantes, pica pollos, reposterías y cafeterías',
     automotriz: 'talleres, gomeras, repuestos y rent a car',
@@ -82,7 +106,11 @@ export function categoryIntro(categorySlug: string | null | undefined, zone: str
     politica: 'figuras, candidatos, alcaldías y movimientos',
   };
   const tail = categorySlug && ex[categorySlug] ? ` — ${ex[categorySlug]}` : '';
-  return `Encuentra los mejores ${cat} en ${zone}${tail}. Ranking verificado con reseñas reales, ubicación y contacto directo por WhatsApp, actualizado en vivo en Top.com.do.`;
+  return (
+    `Ranking verificado de ${noun} en ${zone}${tail}. ` +
+    'El orden responde en vivo a la reputación y a las pujas de los últimos 7 días: ' +
+    'compara por reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp en Top.com.do.'
+  );
 }
 
 // ---------------- Meta por tipo de página ----------------
@@ -100,12 +128,13 @@ export function homeSeo(): SeoData {
 
 export function exploreSeo(categorySlug?: string | null, query?: string | null): SeoData {
   const cat = categoryLabel(categorySlug);
-  const path = categorySlug && cat ? `/explorar/${categorySlug}` : '/explorar';
-  if (cat) {
+  if (categorySlug && cat) {
+    // El directorio por categoría (`/explorar/:cat`) y el ranking (`/rd/:cat`) cubren
+    // la misma intención; se canoniza hacia el ranking para no competir contra sí mismos.
     return {
-      title: `${cat} en República Dominicana — Explorar negocios | Top.com.do`,
-      description: `Explora negocios de ${cat} en toda la República Dominicana. Perfiles verificados con reseñas reales, ubicación y contacto directo por WhatsApp en Top.com.do.`,
-      canonical: `${SITE_URL}${path}`,
+      title: `Directorio de ${cat} en República Dominicana · Top.com.do`,
+      description: `Directorio completo de negocios de ${cat} en la República Dominicana. Perfiles verificados con reseñas reales, ubicación y contacto directo por WhatsApp en Top.com.do.`,
+      canonical: `${SITE_URL}/rd/${categorySlug}`,
       image: OG_IMAGE,
     };
   }
@@ -126,7 +155,8 @@ export function categorySeo(opts: {
   items?: { id: string; name: string }[];
 }): SeoData {
   const isAllCats = !opts.categorySlug || opts.categorySlug === 'todo-rd';
-  const cat = isAllCats ? 'negocios' : categoryLabel(opts.categorySlug) || 'negocios';
+  const noun = isAllCats ? 'negocios' : categoryNoun(opts.categorySlug);
+  const catLabel = isAllCats ? 'Negocios' : categoryLabel(opts.categorySlug) || 'Negocios';
   const isProv = opts.provinceSlug && opts.provinceSlug !== NATIONAL_SLUG;
   const zone = isProv ? provinceName(opts.provinceSlug!) || RD : RD;
   const path = isProv
@@ -135,17 +165,17 @@ export function categorySeo(opts: {
   const canonical = `${SITE_URL}${path}`;
   const crumbs = breadcrumbLd([
     { name: 'Inicio', url: `${SITE_URL}/` },
-    { name: cat, url: `${SITE_URL}/rd/${opts.categorySlug}` },
+    { name: catLabel, url: `${SITE_URL}/rd/${opts.categorySlug}` },
     ...(isProv ? [{ name: zone, url: canonical }] : []),
   ]);
   return {
-    title: `Los mejores ${cat} en ${zone} | Top.com.do`,
-    description: `Ranking verificado de ${cat} en ${zone}${isProv ? `, ${RD}` : ''}. Compara negocios por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo. Actualizado en vivo en Top.com.do.`,
+    title: `Mejores ${noun} en ${zone} · Top.com.do`,
+    description: `Ranking verificado de ${noun} en ${zone}${isProv ? `, ${RD}` : ''}. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.`,
     canonical,
     image: OG_IMAGE,
     jsonLd: [
       ...(opts.items && opts.items.length
-        ? [itemListLd(opts.items, canonical, `${cat} en ${zone}`)]
+        ? [itemListLd(opts.items, canonical, `Mejores ${noun} en ${zone}`)]
         : []),
       crumbs,
     ],
@@ -167,13 +197,13 @@ export function subcategorySeo(opts: {
     { name: sub, url: canonical },
   ]);
   return {
-    title: `Mejor ${sub} en ${RD} | Top.com.do`,
+    title: `Mejores ${sub} en ${RD} · Top.com.do`,
     description: `Directorio verificado de ${sub} en la ${RD}. Compara por reputación y reseñas reales, mira ubicación y contacta directo por WhatsApp. Actualizado en vivo en Top.com.do.`,
     canonical,
     image: OG_IMAGE,
     jsonLd: [
       ...(opts.items && opts.items.length
-        ? [itemListLd(opts.items, canonical, `Mejor ${sub} en ${RD}`)]
+        ? [itemListLd(opts.items, canonical, `Mejores ${sub} en ${RD}`)]
         : []),
       crumbs,
     ],
@@ -198,13 +228,13 @@ export function subcategoryProvinceSeo(opts: {
     { name: prov, url: canonical },
   ]);
   return {
-    title: `Mejor ${sub} en ${prov} | Top.com.do`,
+    title: `Mejores ${sub} en ${prov} · Top.com.do`,
     description: `${sub} en ${prov}, ${RD}: directorio verificado con reseñas reales, ubicación y contacto directo por WhatsApp. Encuentra el mejor y contáctalo al instante en Top.com.do.`,
     canonical,
     image: OG_IMAGE,
     jsonLd: [
       ...(opts.items && opts.items.length
-        ? [itemListLd(opts.items, canonical, `Mejor ${sub} en ${prov}`)]
+        ? [itemListLd(opts.items, canonical, `Mejores ${sub} en ${prov}`)]
         : []),
       crumbs,
     ],
@@ -327,7 +357,7 @@ export function profileSeo(p: ProfileSeoInput, summary?: ReviewSummary | null): 
     { name: p.name, url: profileShareUrl(p.id) },
   ]);
   return {
-    title: `${p.name} — ${sector} en ${zone} | Top.com.do`,
+    title: `${p.name} — ${sector} en ${zone} · Top.com.do`,
     description: description.slice(0, 300),
     canonical: profileShareUrl(p.id),
     image: p.avatarUrl && /^https?:\/\//.test(p.avatarUrl) ? p.avatarUrl : OG_IMAGE,
@@ -465,47 +495,71 @@ export interface SitemapEntry {
   priority?: number;
 }
 
-/** Todas las rutas indexables: portada, explorar, landings categoría×provincia y fichas. */
+export interface GeoCombo {
+  categorySlug?: string;
+  subSlug?: string;
+  provinceSlug: string;
+  lastmod?: string;
+}
+
+/**
+ * Rutas indexables. Las landings hiperlocales (`/rd/:cat/:prov`, `/rd/todo-rd/:prov`,
+ * `/explorar/:cat/:sub(/:prov)`) NO se generan a ciegas: solo entran las combinaciones
+ * que el servidor confirma con negocios reales (evita cientos de páginas vacías). El
+ * `lastmod` se reserva para URLs con datos; las páginas de estructura pura lo omiten.
+ */
 export function sitemapUrls(
   profiles: { id: string; createdAt?: string | Date | null }[] = [],
-  subProvinceCombos: { categorySlug: string; subSlug: string; provinceSlug: string }[] = [],
+  subProvinceCombos: GeoCombo[] = [],
+  catProvinceCombos: GeoCombo[] = [],
+  provinceCombos: GeoCombo[] = [],
 ): SitemapEntry[] {
   const cats = CATEGORY_DEFS.filter((c) => c.slug !== 'todo-rd');
-  const provs = PROVINCE_DEFS.filter((p) => p.slug !== NATIONAL_SLUG);
-  const today = new Date().toISOString().slice(0, 10);
 
   const out: SitemapEntry[] = [
-    { loc: `${SITE_URL}/`, lastmod: today, changefreq: 'daily', priority: 1 },
-    { loc: `${SITE_URL}/publicar`, lastmod: today, changefreq: 'monthly', priority: 0.8 },
-    { loc: `${SITE_URL}/explorar`, lastmod: today, changefreq: 'daily', priority: 0.8 },
+    { loc: `${SITE_URL}/`, changefreq: 'daily', priority: 1 },
+    { loc: `${SITE_URL}/publicar`, changefreq: 'monthly', priority: 0.7 },
+    { loc: `${SITE_URL}/explorar`, changefreq: 'daily', priority: 0.7 },
     { loc: `${SITE_URL}/terminos`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/privacidad`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/normas`, changefreq: 'yearly', priority: 0.3 },
   ];
 
   for (const c of cats) {
-    out.push({ loc: `${SITE_URL}/rd/${c.slug}`, lastmod: today, changefreq: 'weekly', priority: 0.7 });
-    out.push({ loc: `${SITE_URL}/explorar/${c.slug}`, lastmod: today, changefreq: 'weekly', priority: 0.5 });
-    for (const p of provs) {
-      out.push({ loc: `${SITE_URL}/rd/${c.slug}/${p.slug}`, lastmod: today, changefreq: 'weekly', priority: 0.55 });
-    }
+    out.push({ loc: `${SITE_URL}/rd/${c.slug}`, changefreq: 'weekly', priority: 0.7 });
   }
 
-  for (const s of SUBCATEGORY_DEFS) {
+  // Subcategoría nacional: se deriva de las combinaciones con datos (dedupe).
+  const seenNatSub = new Set<string>();
+  for (const combo of subProvinceCombos) {
+    const key = `${combo.categorySlug}/${combo.subSlug}`;
+    if (!seenNatSub.has(key)) {
+      seenNatSub.add(key);
+      out.push({ loc: `${SITE_URL}/explorar/${key}`, changefreq: 'weekly', priority: 0.55 });
+    }
     out.push({
-      loc: `${SITE_URL}/explorar/${s.categorySlug}/${s.slug}`,
-      lastmod: today,
+      loc: `${SITE_URL}/explorar/${key}/${combo.provinceSlug}`,
+      lastmod: combo.lastmod,
+      changefreq: 'weekly',
+      priority: 0.5,
+    });
+  }
+
+  for (const combo of catProvinceCombos) {
+    out.push({
+      loc: `${SITE_URL}/rd/${combo.categorySlug}/${combo.provinceSlug}`,
+      lastmod: combo.lastmod,
       changefreq: 'weekly',
       priority: 0.6,
     });
   }
 
-  for (const combo of subProvinceCombos) {
+  for (const combo of provinceCombos) {
     out.push({
-      loc: `${SITE_URL}/explorar/${combo.categorySlug}/${combo.subSlug}/${combo.provinceSlug}`,
-      lastmod: today,
+      loc: `${SITE_URL}/rd/todo-rd/${combo.provinceSlug}`,
+      lastmod: combo.lastmod,
       changefreq: 'weekly',
-      priority: 0.5,
+      priority: 0.55,
     });
   }
 

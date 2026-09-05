@@ -13,7 +13,7 @@ import {
   subcategoryLabel,
 } from '@shared/categories';
 import { PROVINCE_DEFS, PROVINCE_SLUGS, NATIONAL_SLUG, provinceName } from '@shared/provinces';
-import { exploreSeo, subcategorySeo, subcategoryProvinceSeo } from '@shared/seo';
+import { categoryLabel, exploreSeo, subcategorySeo, subcategoryProvinceSeo } from '@shared/seo';
 
 const FEATURED_PROVINCE_SLUGS = ['distrito-nacional', 'santo-domingo', 'santiago', 'la-altagracia', 'la-vega'];
 const FEATURED_PROVINCES = FEATURED_PROVINCE_SLUGS.map((s) => PROVINCE_DEFS.find((p) => p.slug === s)!).filter(Boolean);
@@ -89,10 +89,12 @@ export default function ExplorePage() {
 
   const h1 =
     activeSub && prov
-      ? `Mejor ${subLabel} en ${provinceName(prov)}`
+      ? `Los mejores ${subLabel} en ${provinceName(prov)}`
       : activeSub
-        ? `Mejor ${subLabel} en República Dominicana`
-        : 'Explorar negocios en República Dominicana';
+        ? `Los mejores ${subLabel} en República Dominicana`
+        : cat !== 'todo-rd'
+          ? `Directorio de ${categoryLabel(cat) || 'negocios'} en República Dominicana`
+          : 'Explorar negocios en República Dominicana';
 
   return (
     <div className="space-y-4">

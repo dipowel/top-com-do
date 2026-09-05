@@ -10,5 +10,6 @@ Disallow: /notificaciones
 Disallow: /*?ref=
 Disallow: /*?pujar=
 Disallow: /*?pago=
+Disallow: /*?q=
 
 Sitemap: https://www.top.com.do/sitemap.xml

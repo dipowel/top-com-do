@@ -24,6 +24,7 @@ import {
   websiteLd,
   categoryIntro,
   categoryLabel,
+  categoryNoun,
   RD,
   type SeoData,
 } from '../../shared/seo';
@@ -35,6 +36,8 @@ export interface RenderResult {
   html: string;
   status: number;
   cacheSeconds: number;
+  /** true → la respuesta debe llevar además la cabecera `X-Robots-Tag: noindex`. */
+  noindex: boolean;
 }
 
 const HERO_STYLE =
@@ -320,12 +323,14 @@ async function resolve(pathname: string): Promise<Resolved> {
       provinceSlug: prov,
       items: items.map((i) => ({ id: i.id, name: i.name })),
     });
+    // Sin negocios reales en esa zona: no exponer una página vacía al índice.
+    const empty = items.length === 0;
     return {
-      seo,
+      seo: empty ? { ...seo, noindex: true } : seo,
       status: 200,
-      cache: 900,
+      cache: empty ? 300 : 900,
       body: listBody(
-        `Los mejores ${allCats ? 'negocios' : categoryLabel(cat) || 'negocios'} en ${zone}`,
+        `Los mejores ${allCats ? 'negocios' : categoryNoun(cat)} en ${zone}`,
         categoryIntro(allCats ? null : cat, zone),
         items,
       ),
@@ -363,11 +368,12 @@ async function resolve(pathname: string): Promise<Resolved> {
         subSlug: sub,
         items: items.map((i) => ({ id: i.id, name: i.name })),
       });
+      const empty = items.length === 0;
       return {
-        seo,
+        seo: empty ? { ...seo, noindex: true } : seo,
         status: 200,
-        cache: 900,
-        body: listBody(`Mejor ${subLabel} en ${RD}`, seo.description, items),
+        cache: empty ? 300 : 900,
+        body: listBody(`Los mejores ${subLabel} en ${RD}`, seo.description, items),
       };
     }
     const prov = segs[3];
@@ -382,7 +388,7 @@ async function resolve(pathname: string): Promise<Resolved> {
         },
         status: 200,
         cache: 300,
-        body: listBody(`Mejor ${subLabel} en ${provinceName(prov)}`, '', []),
+        body: listBody(`Los mejores ${subLabel} en ${provinceName(prov)}`, '', []),
       };
     }
     const seo = subcategoryProvinceSeo({
@@ -395,7 +401,7 @@ async function resolve(pathname: string): Promise<Resolved> {
       seo,
       status: 200,
       cache: 900,
-      body: listBody(`Mejor ${subLabel} en ${provinceName(prov)}`, seo.description, items),
+      body: listBody(`Los mejores ${subLabel} en ${provinceName(prov)}`, seo.description, items),
     };
   }
 
@@ -456,10 +462,7 @@ function buildHtml(seo: SeoData, body: string): string {
   html = setMeta(html, 'name', 'twitter:description', seo.description);
   html = setMeta(html, 'name', 'twitter:image', img);
   if (seo.noindex) {
-    html = html.replace(
-      '<meta charset="UTF-8" />',
-      '<meta charset="UTF-8" />\n    <meta name="robots" content="noindex,follow" />',
-    );
+    html = setMeta(html, 'name', 'robots', 'noindex,follow');
   }
   html = html.replace(/<!--LD-->[\s\S]*?<!--\/LD-->/, `<!--LD-->\n    ${ld}\n    <!--/LD-->`);
   html = html.replace(/<!--SSR-->[\s\S]*?<!--\/SSR-->/, `<!--SSR-->\n      ${body}\n      <!--/SSR-->`);
@@ -469,12 +472,13 @@ function buildHtml(seo: SeoData, body: string): string {
 export async function renderPage(pathname: string): Promise<RenderResult> {
   try {
     const { seo, status, cache, body } = await resolve(pathname);
-    return { html: buildHtml(seo, body), status, cacheSeconds: cache };
+    return { html: buildHtml(seo, body), status, cacheSeconds: cache, noindex: !!seo.noindex };
   } catch {
     return {
       html: buildHtml({ ...homeSeo(), noindex: true }, homeBody()),
       status: 200,
       cacheSeconds: 60,
+      noindex: true,
     };
   }
 }

@@ -11,7 +11,7 @@ import { useSeo } from '../hooks/useSeo';
 import { formatDOP } from '../lib/format';
 import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
 import { CATEGORY_SLUGS } from '@shared/categories';
-import { categoryLabel, categorySeo, homeSeo } from '@shared/seo';
+import { categoryNoun, categorySeo, homeSeo } from '@shared/seo';
 
 const MIN_BID = 100;
 
@@ -38,7 +38,7 @@ export default function RankingPage() {
   const toLead = leader ? Number(leader.totalDop) + MIN_BID : MIN_BID;
   const isNational = province === 'todo-rd';
   const zona = isNational ? 'Todo RD' : provinceName(province);
-  const catName = cat === 'todo-rd' ? 'negocios' : categoryLabel(cat) || 'negocios';
+  const catName = cat === 'todo-rd' ? 'negocios' : categoryNoun(cat);
 
   useSeo(
     cat === 'todo-rd' && isNational
