@@ -1,11 +1,13 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
+import type { Auth, GoogleAuthProvider } from 'firebase/auth';
 
 /**
  * Config web de Firebase (proyecto genuine-xray-5dckx).
  * NO es secreta: la config web se incrusta en el cliente por diseño; la
  * seguridad la dan los "Authorized domains" + Security Rules de Firebase.
  * Las variables VITE_FIREBASE_* la sobreescriben si están definidas.
+ *
+ * El SDK de Firebase Auth (~170 KB) se carga con import() dinámico DESPUÉS del
+ * primer render: el visitante anónimo y los bots nunca bloquean el LCP con él.
  */
 const FALLBACK = {
   apiKey: 'AIzaSyAkX68nJeE1gIL9wVqzUiXMC53BGU7CDcY',
@@ -27,6 +29,26 @@ const config = {
 
 export const firebaseReady = Boolean(config.apiKey && config.projectId && config.appId);
 
-export const firebaseApp: FirebaseApp | null = firebaseReady ? initializeApp(config) : null;
-export const auth: Auth | null = firebaseApp ? getAuth(firebaseApp) : null;
-export const googleProvider = new GoogleAuthProvider();
+/** Instancia ya resuelta, para lecturas síncronas rápidas (`currentUser`) una vez cargada. */
+export let authInstance: Auth | null = null;
+
+let authPromise: Promise<Auth | null> | null = null;
+
+/** Carga (una sola vez) el SDK de Firebase Auth e inicializa la app. */
+export function loadAuth(): Promise<Auth | null> {
+  if (!firebaseReady) return Promise.resolve(null);
+  authPromise ??= (async () => {
+    const [{ initializeApp }, { getAuth }] = await Promise.all([
+      import('firebase/app'),
+      import('firebase/auth'),
+    ]);
+    authInstance = getAuth(initializeApp(config));
+    return authInstance;
+  })();
+  return authPromise;
+}
+
+export async function loadGoogleProvider(): Promise<GoogleAuthProvider> {
+  const { GoogleAuthProvider } = await import('firebase/auth');
+  return new GoogleAuthProvider();
+}

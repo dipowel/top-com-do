@@ -1,14 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile,
-  signOut,
-  type User,
-} from 'firebase/auth';
-import { auth, googleProvider, firebaseReady } from '../lib/firebase';
+import type { User } from 'firebase/auth';
+import { loadAuth, loadGoogleProvider, firebaseReady } from '../lib/firebase';
 import { api } from '../lib/api';
 import { isAdminEmail } from '../lib/admin';
 import { extractRefCode, normalizeRefCode } from '@shared/referral';
@@ -66,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function refreshMe() {
+    const auth = await loadAuth();
     if (!auth?.currentUser) {
       setMe(null);
       return;
@@ -89,22 +82,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
-    // El navbar y las rutas protegidas dependen de ESTE listener de Firebase,
-    // no de /api/me: la sesión se refleja aunque el backend tarde o falle.
-    return onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      setLoading(false);
-      if (u) {
-        await refreshMe();
-      } else {
-        setMe(null);
-        setMeError(null);
-      }
-    });
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
+    // El SDK de Firebase Auth se descarga aquí, DESPUÉS del primer render. El
+    // navbar y las rutas protegidas dependen de ESTE listener, no de /api/me.
+    loadAuth()
+      .then(async (auth) => {
+        if (cancelled) return;
+        if (!auth) {
+          setLoading(false);
+          return;
+        }
+        const { onAuthStateChanged } = await import('firebase/auth');
+        if (cancelled) return;
+        unsub = onAuthStateChanged(auth, async (u) => {
+          setUser(u);
+          setLoading(false);
+          if (u) {
+            await refreshMe();
+          } else {
+            setMe(null);
+            setMeError(null);
+          }
+        });
+      })
+      .catch(() => setLoading(false));
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, []);
 
   // Aplica el código de referido en cuanto hay sesión (usa el estado en memoria,
@@ -149,12 +155,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     ready: firebaseReady,
     loginGoogle: async () => {
-      await signInWithPopup(auth!, googleProvider);
+      const [auth, provider, { signInWithPopup }] = await Promise.all([
+        loadAuth(),
+        loadGoogleProvider(),
+        import('firebase/auth'),
+      ]);
+      await signInWithPopup(auth!, provider);
     },
     loginEmail: async (email, pass) => {
+      const [auth, { signInWithEmailAndPassword }] = await Promise.all([
+        loadAuth(),
+        import('firebase/auth'),
+      ]);
       await signInWithEmailAndPassword(auth!, email, pass);
     },
     registerEmail: async (email, pass, name) => {
+      const [auth, { createUserWithEmailAndPassword, updateProfile }] = await Promise.all([
+        loadAuth(),
+        import('firebase/auth'),
+      ]);
       const cred = await createUserWithEmailAndPassword(auth!, email, pass);
       if (name?.trim()) {
         await updateProfile(cred.user, { displayName: name.trim() });
@@ -162,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     logout: async () => {
+      const [auth, { signOut }] = await Promise.all([loadAuth(), import('firebase/auth')]);
       await signOut(auth!);
       setMe(null);
       setMeError(null);

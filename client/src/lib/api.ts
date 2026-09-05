@@ -1,8 +1,11 @@
-import { auth } from './firebase';
+import { loadAuth } from './firebase';
 
 const BASE = import.meta.env.VITE_API_BASE || '/api';
 
 async function authHeader(): Promise<Record<string, string>> {
+  // `{ auth: true }` solo se usa cuando ya hay sesión, así que Firebase ya se
+  // cargó vía useAuth y loadAuth() devuelve la promesa memoizada al instante.
+  const auth = await loadAuth();
   const u = auth?.currentUser;
   if (!u) return {};
   const token = await u.getIdToken();
