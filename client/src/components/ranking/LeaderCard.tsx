@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { RankingEntry } from '@shared/types';
 import { formatDOP } from '../../lib/format';
@@ -8,7 +8,9 @@ import { PositionBadge, CrownBadge } from './PositionBadge';
 import ChampionMedal from './ChampionMedal';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useAuth } from '../../hooks/useAuth';
-import ViralCard from '../share/ViralCard';
+
+// html-to-image (~pesado) solo se carga al abrir la tarjeta para compartir.
+const ViralCard = lazy(() => import('../share/ViralCard'));
 
 export default function LeaderCard({
   entry,
@@ -142,7 +144,11 @@ export default function LeaderCard({
         </div>
       </div>
 
-      {share && <ViralCard entry={entry} onClose={() => setShare(false)} />}
+      {share && (
+        <Suspense fallback={null}>
+          <ViralCard entry={entry} onClose={() => setShare(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

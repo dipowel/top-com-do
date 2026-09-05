@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { eq, sql } from 'drizzle-orm';
 
 import { noStore } from './middleware/noStore';
@@ -31,6 +32,7 @@ export function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
+  app.use(compression());
   app.use(
     cors({
       origin: [
