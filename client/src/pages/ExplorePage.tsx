@@ -14,6 +14,7 @@ import {
 } from '@shared/categories';
 import { PROVINCE_DEFS, PROVINCE_SLUGS, NATIONAL_SLUG, provinceName } from '@shared/provinces';
 import { categoryLabel, exploreSeo, subcategorySeo, subcategoryProvinceSeo } from '@shared/seo';
+import Breadcrumbs, { type Crumb } from '../components/common/Breadcrumbs';
 
 const FEATURED_PROVINCE_SLUGS = ['distrito-nacional', 'santo-domingo', 'santiago', 'la-altagracia', 'la-vega'];
 const FEATURED_PROVINCES = FEATURED_PROVINCE_SLUGS.map((s) => PROVINCE_DEFS.find((p) => p.slug === s)!).filter(Boolean);
@@ -24,6 +25,9 @@ interface P {
   handle: string;
   avatarUrl: string | null;
   categoryName: string;
+  categorySlug: string;
+  province: string | null;
+  city: string | null;
 }
 
 export default function ExplorePage() {
@@ -65,20 +69,20 @@ export default function ExplorePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
+  const seoItems = profiles.slice(0, 20).map((p) => ({
+    id: p.id,
+    name: p.name,
+    image: p.avatarUrl,
+    city: p.city,
+    province: p.province,
+    categorySlug: p.categorySlug,
+  }));
+
   useSeo(
     activeSub && prov
-      ? subcategoryProvinceSeo({
-          categorySlug: cat,
-          subSlug: activeSub,
-          provinceSlug: prov,
-          items: profiles.slice(0, 20).map((p) => ({ id: p.id, name: p.name })),
-        })
+      ? subcategoryProvinceSeo({ categorySlug: cat, subSlug: activeSub, provinceSlug: prov, items: seoItems })
       : activeSub
-        ? subcategorySeo({
-            categorySlug: cat,
-            subSlug: activeSub,
-            items: profiles.slice(0, 20).map((p) => ({ id: p.id, name: p.name })),
-          })
+        ? subcategorySeo({ categorySlug: cat, subSlug: activeSub, items: seoItems })
         : exploreSeo(cat === 'todo-rd' ? null : cat, q),
   );
 
@@ -96,8 +100,18 @@ export default function ExplorePage() {
           ? `Directorio de ${categoryLabel(cat) || 'negocios'} en República Dominicana`
           : 'Explorar negocios en República Dominicana';
 
+  const crumbs: Crumb[] = activeSub
+    ? [
+        { name: 'Inicio', to: '/' },
+        { name: categoryLabel(cat) || 'Negocios', to: `/rd/${cat}` },
+        { name: subLabel, to: `/explorar/${cat}/${activeSub}` },
+        ...(prov ? [{ name: provinceName(prov) }] : []),
+      ]
+    : [];
+
   return (
     <div className="space-y-4">
+      {crumbs.length > 0 && <Breadcrumbs items={crumbs} />}
       <h1 className="text-xl font-extrabold">{h1}</h1>
 
       {!canBid && (

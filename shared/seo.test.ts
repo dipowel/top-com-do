@@ -13,6 +13,9 @@ import {
   breadcrumbLd,
   faqPageLd,
   businessSchemaType,
+  categoryNoun,
+  categoryFaqs,
+  itemListLd,
   sitemapUrls,
   renderSitemap,
 } from './seo';
@@ -84,6 +87,50 @@ describe('seo · títulos y descripciones con geografía', () => {
     expect(businessSchemaType('inmobiliaria')).toBe('RealEstateAgent');
     expect(businessSchemaType('desconocida')).toBe('LocalBusiness');
     expect(businessSchemaType(null)).toBe('LocalBusiness');
+  });
+
+  it('categoryNoun da plurales cortos y gramaticales; fallback "negocios"', () => {
+    expect(categoryNoun('gastronomia')).toBe('restaurantes');
+    expect(categoryNoun('automotriz')).toBe('talleres');
+    expect(categoryNoun('desconocida')).toBe('negocios');
+    expect(categoryNoun(null)).toBe('negocios');
+  });
+
+  it('categoryFaqs devuelve 3 preguntas contextualizadas por zona', () => {
+    const f = categoryFaqs('gastronomia', 'Santiago');
+    expect(f).toHaveLength(3);
+    expect(f[0].q).toContain('restaurantes');
+    expect(f[0].q).toContain('Santiago');
+  });
+
+  it('categorySeo con items lleva ItemList (con LocalBusiness) + FAQPage', () => {
+    const s = categorySeo({
+      categorySlug: 'gastronomia',
+      provinceSlug: 'santiago',
+      items: [{ id: 'a', name: 'Pica Pollo El Rey', province: 'santiago', categorySlug: 'gastronomia' }],
+    });
+    const list = s.jsonLd?.find((o) => o['@type'] === 'ItemList') as Record<string, unknown>;
+    expect(list).toBeTruthy();
+    const first = (list.itemListElement as Record<string, unknown>[])[0];
+    expect((first.item as Record<string, unknown>)['@type']).toBe('Restaurant');
+    expect(s.jsonLd?.some((o) => o['@type'] === 'FAQPage')).toBe(true);
+  });
+
+  it('itemListLd embebe objetos LocalBusiness con dirección', () => {
+    const ld = itemListLd(
+      [{ id: 'x', name: 'Taller Central', province: 'santo-domingo', city: 'Santo Domingo Este', categorySlug: 'automotriz' }],
+      'https://www.top.com.do/rd/automotriz/santo-domingo',
+    );
+    const item = (ld.itemListElement as Record<string, unknown>[])[0].item as Record<string, unknown>;
+    expect(item['@type']).toBe('AutoRepair');
+    expect((item.address as Record<string, unknown>).addressRegion).toBe('Santo Domingo');
+    expect((item.address as Record<string, unknown>).addressLocality).toBe('Santo Domingo Este');
+  });
+
+  it('organizationLd incluye NAP (contactPoint + address)', () => {
+    const o = organizationLd();
+    expect((o.contactPoint as Record<string, unknown>).telephone).toBe('+18296497160');
+    expect((o.address as Record<string, unknown>).addressLocality).toBe('Santo Domingo');
   });
 
   it('breadcrumbLd y faqPageLd tienen la forma correcta', () => {

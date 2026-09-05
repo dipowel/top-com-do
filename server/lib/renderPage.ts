@@ -23,12 +23,13 @@ import {
   organizationLd,
   websiteLd,
   categoryIntro,
+  categoryFaqs,
   categoryLabel,
   categoryNoun,
   RD,
   type SeoData,
 } from '../../shared/seo';
-import { SITE_URL } from '../../shared/site';
+import { SITE_URL, profileAvatarUrl } from '../../shared/site';
 import { whatsappLink } from '../../shared/phone';
 import { PAGE_SHELL } from '../generated/pageShell';
 
@@ -64,9 +65,22 @@ interface Resolved {
 
 // ---------------- bodies (#ssr-hero) ----------------
 
-function hero(h1Html: string, pText: string, extra = ''): string {
+type Crumb = { name: string; href?: string };
+
+function crumbNav(items: Crumb[]): string {
+  if (items.length < 2) return '';
+  const parts = items.map((c, i) =>
+    c.href && i < items.length - 1
+      ? `<a href="${esc(c.href)}" style="color:#9aa4b2">${esc(c.name)}</a>`
+      : `<span style="color:#cfd6e2">${esc(c.name)}</span>`,
+  );
+  return `<nav aria-label="Ruta de navegación" style="font-size:.75rem;color:#6b7482;margin:0 0 .5rem">${parts.join(' › ')}</nav>`;
+}
+
+function hero(h1Html: string, pText: string, extra = '', crumbsHtml = ''): string {
   return (
     `<div id="ssr-hero" style="${HERO_STYLE}">` +
+    crumbsHtml +
     `<h1 style="${H1_STYLE}">${h1Html}</h1>` +
     `<p style="${P_STYLE}">${esc(pText)}</p>` +
     extra +
@@ -83,10 +97,22 @@ function homeBody(): string {
   );
 }
 
+interface SsrItem {
+  id: string;
+  name: string;
+  sub?: string | null;
+  image?: string | null;
+  city?: string | null;
+  province?: string | null;
+  categorySlug?: string | null;
+}
+
 function listBody(
   heading: string,
   intro: string,
-  items: { id: string; name: string; sub?: string | null }[],
+  items: SsrItem[],
+  crumbs: Crumb[] = [],
+  faqs: { q: string; a: string }[] = [],
 ): string {
   const lis = items
     .map(
@@ -99,15 +125,33 @@ function listBody(
   const ul = items.length
     ? `<ul style="list-style:none;padding:0;margin:0;display:grid;gap:.4rem;font-size:.9rem">${lis}</ul>`
     : '';
-  return hero(esc(heading), intro, ul);
+  const faqHtml = faqs.length
+    ? `<section style="margin-top:1.2rem"><h2 style="font-size:1rem;font-weight:800;margin:0 0 .5rem">Preguntas frecuentes</h2>` +
+      faqs
+        .map(
+          (f) =>
+            `<p style="margin:.5rem 0"><strong style="color:#cfd6e2">${esc(f.q)}</strong><br>` +
+            `<span style="color:#9aa4b2">${esc(f.a)}</span></p>`,
+        )
+        .join('') +
+      `</section>`
+    : '';
+  return hero(esc(heading), intro, ul + faqHtml, crumbNav(crumbs));
 }
 
 // ---------------- data ----------------
 
-async function catItems(
-  cat: string,
-  prov: string | null,
-): Promise<{ id: string; name: string; sub?: string | null }[]> {
+const ITEM_COLUMNS = {
+  id: P.id,
+  name: P.name,
+  sub: P.subcategory,
+  image: P.avatarUrl,
+  city: P.city,
+  province: P.province,
+  categorySlug: C.slug,
+};
+
+async function catItems(cat: string, prov: string | null): Promise<SsrItem[]> {
   try {
     const r = await getRankings(cat, prov ?? undefined, 24);
     if (r.length)
@@ -115,13 +159,17 @@ async function catItems(
         id: e.profile.id,
         name: e.profile.name,
         sub: e.profile.subcategory ?? null,
+        image: profileAvatarUrl(e.profile.id, e.profile.avatarUrl),
+        city: e.profile.city,
+        province: e.profile.province,
+        categorySlug: e.profile.categorySlug,
       }));
   } catch {
     /* sigue al fallback */
   }
   try {
     const rows = await db
-      .select({ id: P.id, name: P.name, sub: P.subcategory })
+      .select(ITEM_COLUMNS)
       .from(P)
       .innerJoin(C, eq(C.id, P.categoryId))
       .where(
@@ -129,20 +177,16 @@ async function catItems(
       )
       .orderBy(desc(P.createdAt))
       .limit(24);
-    return rows.map((x) => ({ id: x.id, name: x.name, sub: x.sub }));
+    return rows.map((x) => ({ ...x, image: profileAvatarUrl(x.id, x.image) }));
   } catch {
     return [];
   }
 }
 
-async function subItems(
-  cat: string,
-  subLabel: string,
-  prov: string | null,
-): Promise<{ id: string; name: string; sub?: string | null }[]> {
+async function subItems(cat: string, subLabel: string, prov: string | null): Promise<SsrItem[]> {
   try {
     const rows = await db
-      .select({ id: P.id, name: P.name, sub: P.subcategory })
+      .select(ITEM_COLUMNS)
       .from(P)
       .innerJoin(C, eq(C.id, P.categoryId))
       .where(
@@ -155,7 +199,7 @@ async function subItems(
       )
       .orderBy(desc(P.createdAt))
       .limit(24);
-    return rows.map((x) => ({ id: x.id, name: x.name, sub: x.sub }));
+    return rows.map((x) => ({ ...x, image: profileAvatarUrl(x.id, x.image) }));
   } catch {
     return [];
   }
@@ -190,6 +234,7 @@ async function loadProfile(id: string) {
     if (!row) return null;
     return {
       ...row,
+      avatarUrl: profileAvatarUrl(row.id, row.avatarUrl),
       latitude: row.latitude != null ? Number(row.latitude) : null,
       longitude: row.longitude != null ? Number(row.longitude) : null,
       provinceName: row.province ? provinceName(row.province) : null,
@@ -298,11 +343,21 @@ async function resolve(pathname: string): Promise<Resolved> {
     const extra = links.length
       ? `<p style="font-size:.9rem">${links.join(' · ')}</p>`
       : '';
+    const crumbs: Crumb[] = [
+      { name: 'Inicio', href: '/' },
+      ...(row.categorySlug
+        ? [{ name: categoryLabel(row.categorySlug) || row.categoryName, href: `/rd/${row.categorySlug}` }]
+        : []),
+      ...(row.provinceName && row.province
+        ? [{ name: row.provinceName, href: `/rd/${row.categorySlug}/${row.province}` }]
+        : []),
+      { name: row.name },
+    ];
     return {
       seo,
       status: 200,
       cache: 300,
-      body: hero(esc(row.name), seo.description, extra),
+      body: hero(esc(row.name), seo.description, extra, crumbNav(crumbs)),
     };
   }
 
@@ -321,7 +376,7 @@ async function resolve(pathname: string): Promise<Resolved> {
     const seo = categorySeo({
       categorySlug: cat,
       provinceSlug: prov,
-      items: items.map((i) => ({ id: i.id, name: i.name })),
+      items,
     });
     // Sin negocios reales en esa zona: no exponer una página vacía al índice.
     const empty = items.length === 0;
@@ -333,6 +388,12 @@ async function resolve(pathname: string): Promise<Resolved> {
         `Los mejores ${allCats ? 'negocios' : categoryNoun(cat)} en ${zone}`,
         categoryIntro(allCats ? null : cat, zone),
         items,
+        [
+          { name: 'Inicio', href: '/' },
+          ...(allCats ? [] : [{ name: categoryLabel(cat), href: `/rd/${cat}` }]),
+          ...(prov ? [{ name: zone }] : []),
+        ],
+        empty ? [] : categoryFaqs(allCats ? null : cat, zone),
       ),
     };
   }
@@ -366,14 +427,18 @@ async function resolve(pathname: string): Promise<Resolved> {
       const seo = subcategorySeo({
         categorySlug: cat,
         subSlug: sub,
-        items: items.map((i) => ({ id: i.id, name: i.name })),
+        items,
       });
       const empty = items.length === 0;
       return {
         seo: empty ? { ...seo, noindex: true } : seo,
         status: 200,
         cache: empty ? 300 : 900,
-        body: listBody(`Los mejores ${subLabel} en ${RD}`, seo.description, items),
+        body: listBody(`Los mejores ${subLabel} en ${RD}`, seo.description, items, [
+          { name: 'Inicio', href: '/' },
+          { name: categoryLabel(cat), href: `/rd/${cat}` },
+          { name: subLabel },
+        ]),
       };
     }
     const prov = segs[3];
@@ -395,13 +460,18 @@ async function resolve(pathname: string): Promise<Resolved> {
       categorySlug: cat,
       subSlug: sub,
       provinceSlug: prov,
-      items: items.map((i) => ({ id: i.id, name: i.name })),
+      items,
     });
     return {
       seo,
       status: 200,
       cache: 900,
-      body: listBody(`Los mejores ${subLabel} en ${provinceName(prov)}`, seo.description, items),
+      body: listBody(`Los mejores ${subLabel} en ${provinceName(prov)}`, seo.description, items, [
+        { name: 'Inicio', href: '/' },
+        { name: categoryLabel(cat), href: `/rd/${cat}` },
+        { name: subLabel, href: `/explorar/${cat}/${sub}` },
+        { name: provinceName(prov) },
+      ]),
     };
   }
 

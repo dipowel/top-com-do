@@ -113,6 +113,31 @@ export function categoryIntro(categorySlug: string | null | undefined, zone: str
   );
 }
 
+/**
+ * FAQ genuina por categoría/zona: alimenta el JSON-LD `FAQPage` y el bloque
+ * visible del ranking. Se emite solo en páginas con negocios reales (no thin).
+ */
+export function categoryFaqs(
+  categorySlug: string | null | undefined,
+  zone: string,
+): { q: string; a: string }[] {
+  const noun = categoryNoun(categorySlug);
+  return [
+    {
+      q: `¿Cuáles son los mejores ${noun} en ${zone}?`,
+      a: `Son los que lideran el ranking verificado de Top.com.do en ${zone}: se ordenan por la visibilidad acumulada de los últimos 7 días y por reseñas reales de clientes, y el listado se actualiza en vivo.`,
+    },
+    {
+      q: '¿Cómo se decide el orden del ranking?',
+      a: 'Suma de pujas verificadas de los últimos 7 días combinada con la reputación de reseñas. No hay acuerdos comerciales ni posiciones fijas: cualquier negocio puede llegar al #1.',
+    },
+    {
+      q: `¿Cómo aparezco entre los primeros ${noun} en ${zone}?`,
+      a: 'Registra tu negocio gratis en el directorio y activa una puja desde RD$100 para competir por el primer lugar de tu categoría y provincia.',
+    },
+  ];
+}
+
 // ---------------- Meta por tipo de página ----------------
 
 export function homeSeo(): SeoData {
@@ -152,7 +177,7 @@ export function exploreSeo(categorySlug?: string | null, query?: string | null):
 export function categorySeo(opts: {
   categorySlug: string;
   provinceSlug?: string | null;
-  items?: { id: string; name: string }[];
+  items?: ListItemInput[];
 }): SeoData {
   const isAllCats = !opts.categorySlug || opts.categorySlug === 'todo-rd';
   const noun = isAllCats ? 'negocios' : categoryNoun(opts.categorySlug);
@@ -175,7 +200,10 @@ export function categorySeo(opts: {
     image: OG_IMAGE,
     jsonLd: [
       ...(opts.items && opts.items.length
-        ? [itemListLd(opts.items, canonical, `Mejores ${noun} en ${zone}`)]
+        ? [
+            itemListLd(opts.items, canonical, `Mejores ${noun} en ${zone}`),
+            faqPageLd(categoryFaqs(opts.categorySlug, zone)),
+          ]
         : []),
       crumbs,
     ],
@@ -186,7 +214,7 @@ export function categorySeo(opts: {
 export function subcategorySeo(opts: {
   categorySlug: string;
   subSlug: string;
-  items?: { id: string; name: string }[];
+  items?: ListItemInput[];
 }): SeoData {
   const sub = subcategoryLabel(opts.categorySlug, opts.subSlug) || categoryLabel(opts.categorySlug);
   const cat = categoryLabel(opts.categorySlug) || 'Negocios';
@@ -215,7 +243,7 @@ export function subcategoryProvinceSeo(opts: {
   categorySlug: string;
   subSlug: string;
   provinceSlug: string;
-  items?: { id: string; name: string }[];
+  items?: ListItemInput[];
 }): SeoData {
   const sub = subcategoryLabel(opts.categorySlug, opts.subSlug) || categoryLabel(opts.categorySlug);
   const cat = categoryLabel(opts.categorySlug) || 'Negocios';
@@ -375,11 +403,20 @@ export function organizationLd(): Record<string, unknown> {
     alternateName: 'Top RD',
     slogan: 'Publicidad efectiva y directorio de negocios en la República Dominicana',
     url: `${SITE_URL}/`,
-    logo: LOGO_URL,
+    logo: { '@type': 'ImageObject', url: LOGO_URL, width: 560, height: 127 },
     image: OG_IMAGE,
     description:
       'Directorio de autoridad y subastas de visibilidad de la República Dominicana.',
     areaServed: { '@type': 'Country', name: RD },
+    address: { '@type': 'PostalAddress', addressLocality: 'Santo Domingo', addressCountry: 'DO' },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: '+18296497160',
+      email: 'topcomdo15@gmail.com',
+      contactType: 'customer support',
+      areaServed: 'DO',
+      availableLanguage: 'Spanish',
+    },
     sameAs: SOCIAL_URLS,
   };
 }
@@ -391,7 +428,11 @@ export function websiteLd(): Record<string, unknown> {
     name: 'Top.com.do',
     url: `${SITE_URL}/`,
     inLanguage: 'es-DO',
-    publisher: { '@type': 'Organization', name: 'Top.com.do', logo: LOGO_URL },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Top.com.do',
+      logo: { '@type': 'ImageObject', url: LOGO_URL, width: 560, height: 127 },
+    },
     potentialAction: {
       '@type': 'SearchAction',
       target: `${SITE_URL}/explorar?q={search_term_string}`,
@@ -425,8 +466,17 @@ export function faqPageLd(qas: { q: string; a: string }[]): Record<string, unkno
   };
 }
 
+export interface ListItemInput {
+  id: string;
+  name: string;
+  image?: string | null;
+  city?: string | null;
+  province?: string | null;
+  categorySlug?: string | null;
+}
+
 export function itemListLd(
-  items: { id: string; name: string }[],
+  items: ListItemInput[],
   url: string,
   name?: string,
 ): Record<string, unknown> {
@@ -436,12 +486,25 @@ export function itemListLd(
     ...(name ? { name } : {}),
     url,
     numberOfItems: items.length,
-    itemListElement: items.map((it, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      url: profileShareUrl(it.id),
-      name: it.name,
-    })),
+    itemListElement: items.map((it, i) => {
+      const provName = it.province ? provinceName(it.province) : '';
+      const biz: Record<string, unknown> = {
+        '@type': businessSchemaType(it.categorySlug),
+        '@id': profileShareUrl(it.id),
+        name: it.name,
+        url: profileShareUrl(it.id),
+      };
+      if (it.image && /^https?:\/\//.test(it.image)) biz.image = it.image;
+      if (provName || it.city) {
+        biz.address = {
+          '@type': 'PostalAddress',
+          addressCountry: 'DO',
+          ...(provName ? { addressRegion: provName } : {}),
+          ...(it.city ? { addressLocality: it.city } : {}),
+        };
+      }
+      return { '@type': 'ListItem', position: i + 1, item: biz };
+    }),
   };
 }
 

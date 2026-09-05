@@ -11,7 +11,8 @@ import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
 import { useSeo } from '../hooks/useSeo';
 import ProfileReviews from '../components/reviews/ProfileReviews';
-import { profileSeo } from '@shared/seo';
+import { categoryLabel, profileSeo } from '@shared/seo';
+import Breadcrumbs, { type Crumb } from '../components/common/Breadcrumbs';
 import type { ReviewSummary } from '@shared/types';
 
 interface Detail {
@@ -83,8 +84,18 @@ export default function ProfileDetailPage() {
   const total = bids.reduce((s, b) => s + Number(b.amountDop), 0);
   const isOwner = Boolean(me && profile.ownerUserId === me.id);
 
+  const crumbs: Crumb[] = [
+    { name: 'Inicio', to: '/' },
+    { name: categoryLabel(profile.categorySlug) || profile.categoryName, to: `/rd/${profile.categorySlug}` },
+    ...(profile.provinceName && profile.province
+      ? [{ name: profile.provinceName, to: `/rd/${profile.categorySlug}/${profile.province}` }]
+      : []),
+    { name: profile.name },
+  ];
+
   return (
     <div className="space-y-4">
+      <Breadcrumbs items={crumbs} />
       <div className="glass p-4">
         <div className="flex items-center gap-3">
           <img

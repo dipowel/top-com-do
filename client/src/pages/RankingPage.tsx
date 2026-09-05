@@ -11,7 +11,8 @@ import { useSeo } from '../hooks/useSeo';
 import { formatDOP } from '../lib/format';
 import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
 import { CATEGORY_SLUGS } from '@shared/categories';
-import { categoryNoun, categorySeo, homeSeo } from '@shared/seo';
+import { categoryLabel, categoryNoun, categoryFaqs, categorySeo, homeSeo } from '@shared/seo';
+import Breadcrumbs, { type Crumb } from '../components/common/Breadcrumbs';
 
 const MIN_BID = 100;
 
@@ -46,12 +47,28 @@ export default function RankingPage() {
       : categorySeo({
           categorySlug: cat,
           provinceSlug: province,
-          items: data.slice(0, 20).map((e) => ({ id: e.profile.id, name: e.profile.name })),
+          items: data.slice(0, 20).map((e) => ({
+            id: e.profile.id,
+            name: e.profile.name,
+            image: e.profile.avatarUrl,
+            city: e.profile.city,
+            province: e.profile.province,
+            categorySlug: e.profile.categorySlug,
+          })),
         }),
   );
 
   const isHome = cat === 'todo-rd' && isNational;
   const h1 = `Los mejores ${catName} en ${isNational ? 'República Dominicana' : zona}`;
+
+  const crumbs: Crumb[] = isHome
+    ? []
+    : [
+        { name: 'Inicio', to: '/' },
+        ...(cat !== 'todo-rd' ? [{ name: categoryLabel(cat), to: `/rd/${cat}` }] : []),
+        ...(!isNational ? [{ name: zona }] : []),
+      ];
+  const faqs = !isHome && data.length ? categoryFaqs(cat === 'todo-rd' ? null : cat, isNational ? 'República Dominicana' : zona) : [];
 
   return (
     <div className="space-y-4">
@@ -75,7 +92,8 @@ export default function RankingPage() {
           </Link>
         </header>
       ) : (
-        <div>
+        <div className="space-y-1.5">
+          <Breadcrumbs items={crumbs} />
           <h1 className="text-xl font-extrabold">{h1}</h1>
           <p className="text-xs text-white/45">
             El negocio en el puesto #1 de cada categoría y provincia es el líder verificado y más
@@ -199,6 +217,20 @@ export default function RankingPage() {
           />
         ))}
       </div>
+
+      {faqs.length > 0 && (
+        <section className="glass space-y-3 p-4">
+          <h2 className="text-sm font-extrabold text-white">Preguntas frecuentes</h2>
+          <dl className="space-y-3">
+            {faqs.map((f) => (
+              <div key={f.q}>
+                <dt className="text-xs font-bold text-white/80">{f.q}</dt>
+                <dd className="mt-0.5 text-xs leading-relaxed text-white/50">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
     </div>
   );
 }
