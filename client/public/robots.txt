@@ -3,6 +3,7 @@ Allow: /
 Disallow: /admin
 Disallow: /login
 Disallow: /perfil
+Disallow: /registrar-negocio
 Disallow: /mis-pujas
 Disallow: /favoritos
 Disallow: /notificaciones

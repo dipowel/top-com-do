@@ -7,6 +7,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import ProfilePage from './pages/ProfilePage';
 import ProfileDetailPage from './pages/ProfileDetailPage';
 import PublicarPage from './pages/PublicarPage';
+import RegisterBusinessPage from './pages/RegisterBusinessPage';
 import LoginPage from './pages/LoginPage';
 import NotificationsPage from './pages/NotificationsPage';
 import TerminosPage from './pages/legal/TerminosPage';
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/explorar/:categoria/:sub" element={<ExplorePage />} />
         <Route path="/explorar/:categoria/:sub/:provincia" element={<ExplorePage />} />
         <Route path="/publicar" element={<PublicarPage />} />
+        <Route path="/registrar-negocio" element={<RegisterBusinessPage />} />
         <Route path="/mis-pujas" element={<MyBidsPage />} />
         <Route path="/favoritos" element={<FavoritesPage />} />
         <Route path="/perfil" element={<ProfilePage />} />

@@ -110,7 +110,7 @@ export default function ExplorePage() {
             </p>
           </div>
           <Link
-            to={user ? '/perfil' : '/login?registro=1'}
+            to={user ? '/registrar-negocio' : '/login?registro=1&next=%2Fregistrar-negocio'}
             className="btn-gold shrink-0 whitespace-nowrap !py-2.5 text-xs"
           >
             Registrar mi negocio gratis

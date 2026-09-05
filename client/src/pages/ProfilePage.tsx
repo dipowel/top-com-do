@@ -16,10 +16,8 @@ import ProfileForm, {
   profileToFormValue,
   type ProfileFormValue,
 } from '../components/profile/ProfileForm';
+import BusinessCreatedModal from '../components/profile/BusinessCreatedModal';
 import { refShareUrl } from '@shared/site';
-import { categoryLabel } from '@shared/seo';
-import { provinceName } from '@shared/provinces';
-import { MIN_BID_DOP } from '@shared/bidding';
 import type { MyReferral } from '@shared/types';
 
 interface MyProfile {
@@ -428,41 +426,15 @@ export default function ProfilePage() {
       )}
 
       {justCreated && (
-        <Modal title="🎉 ¡Tu negocio ya está en Top!" onClose={() => setJustCreated(null)}>
-          <div className="space-y-4 text-center">
-            <p className="text-sm text-white/70">
-              <b className="text-white">{justCreated.name}</b> ya está en el directorio
-              {justCreated.categorySlug && <> de {categoryLabel(justCreated.categorySlug)}</>}
-              {justCreated.province && <> · {provinceName(justCreated.province)}</>}. Ahora tus
-              clientes pueden encontrarte.
-            </p>
-            <div className="rounded-2xl border border-gold/25 bg-gold/[0.06] p-3 text-left">
-              <p className="text-[13px] font-semibold text-white">
-                ¿Quieres aparecer entre los primeros?
-              </p>
-              <p className="mt-0.5 text-xs text-white/55">
-                Activa tu puja desde {formatDOP(MIN_BID_DOP)} y compite por el #1 de tu categoría y
-                provincia.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                const p = justCreated;
-                setJustCreated(null);
-                openBid(p.id, p.categorySlug, p.province);
-              }}
-              className="btn-gold w-full !py-3.5 text-sm"
-            >
-              ⚡ Activar mi puja ahora
-            </button>
-            <button
-              onClick={() => setJustCreated(null)}
-              className="block w-full text-xs text-white/50 underline"
-            >
-              Seguir gratis por ahora
-            </button>
-          </div>
-        </Modal>
+        <BusinessCreatedModal
+          business={justCreated}
+          onActivateBid={() => {
+            const p = justCreated;
+            setJustCreated(null);
+            openBid(p.id, p.categorySlug, p.province);
+          }}
+          onDismiss={() => setJustCreated(null)}
+        />
       )}
     </div>
   );

@@ -261,7 +261,9 @@ async function resolve(pathname: string): Promise<Resolved> {
 
   if (
     head &&
-    ['login', 'perfil', 'mis-pujas', 'favoritos', 'notificaciones', 'admin'].includes(head)
+    ['login', 'perfil', 'registrar-negocio', 'mis-pujas', 'favoritos', 'notificaciones', 'admin'].includes(
+      head,
+    )
   ) {
     return {
       seo: { ...homeSeo(), canonical: `${SITE_URL}/${segs.join('/')}`, noindex: true },
