@@ -1,16 +1,15 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CategoryTabs from '../components/ranking/CategoryTabs';
 import ProvinceChips from '../components/ranking/ProvinceChips';
 import LeaderCard from '../components/ranking/LeaderCard';
-import RankingModeToggle, { type RankingMode } from '../components/ranking/RankingModeToggle';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
 import { useNearbyRankings } from '../hooks/useNearbyRankings';
 import { useShell } from '../hooks/useShell';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
-import { getCurrentPosition, type Coords, type GeoError } from '../lib/geo';
+import { getCurrentPosition, type Coords } from '../lib/geo';
 import { formatDOP } from '../lib/format';
 import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
 import { CATEGORY_SLUGS } from '@shared/categories';
@@ -34,33 +33,36 @@ export default function RankingPage() {
   const [search, setSearch] = useState('');
 
   // Modo "Cerca de mí": estado 100 % de cliente. No toca la URL ni el SEO.
-  const [mode, setMode] = useState<RankingMode>('global');
+  const [mode, setMode] = useState<'global' | 'nearby'>('global');
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoBusy, setGeoBusy] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoFailed, setGeoFailed] = useState(false);
   const nearby = useNearbyRankings(mode === 'nearby' ? coords : null, cat, province);
 
-  const handleMode = useCallback(
-    async (m: RankingMode) => {
-      setGeoError(null);
-      if (m === 'global' || coords) {
-        setMode(m);
-        return;
-      }
-      setGeoBusy(true);
-      try {
-        const c = await getCurrentPosition({ maximumAge: 60_000, timeout: 10_000 });
-        setCoords(c);
-        setMode('nearby');
-      } catch (e) {
-        setGeoError((e as GeoError).message || 'No se pudo obtener tu ubicación.');
-        setMode('global');
-      } finally {
-        setGeoBusy(false);
-      }
-    },
-    [coords],
-  );
+  // Cualquier cambio de ruta (provincia, categoría, botón atrás) sale del modo cercano.
+  useEffect(() => {
+    setMode('global');
+    setGeoFailed(false);
+  }, [cat, province]);
+
+  const activateNearby = useCallback(async () => {
+    setGeoFailed(false);
+    if (coords) {
+      setMode('nearby');
+      return;
+    }
+    setGeoBusy(true);
+    try {
+      const c = await getCurrentPosition({ maximumAge: 60_000, timeout: 10_000 });
+      setCoords(c);
+      setMode('nearby');
+    } catch {
+      setGeoFailed(true); // aviso sutil, sin banner
+      setMode('global');
+    } finally {
+      setGeoBusy(false);
+    }
+  }, [coords]);
 
   const nearbyActive = mode === 'nearby';
   const isNearbyList = nearbyActive && nearby.data.length > 0;
@@ -139,35 +141,22 @@ export default function RankingPage() {
         </div>
       )}
 
-      {/* Modo de ranking: económico vs. puja + proximidad */}
-      <RankingModeToggle mode={mode} onChange={handleMode} busy={geoBusy} />
-      {geoError && (
-        <div className="glass flex flex-col gap-2 border border-[#f7b924]/30 p-3 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
-          <span>{geoError}</span>
-          <button
-            onClick={() => handleMode('nearby')}
-            className="btn-ghost shrink-0 whitespace-nowrap !py-1.5 text-[11px]"
-          >
-            Intentar nuevamente
-          </button>
-        </div>
-      )}
-      {nearbyActive && nearby.error && (
-        <div className="glass flex flex-col gap-2 border border-red-400/30 p-3 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
-          <span>No pudimos cargar los negocios cercanos.</span>
-          <button
-            onClick={() => nearby.reload()}
-            className="btn-ghost shrink-0 whitespace-nowrap !py-1.5 text-[11px]"
-          >
-            Reintentar
-          </button>
-        </div>
-      )}
-
-      {/* Provincia (chips + "Más") */}
+      {/* Provincia (chips + "Cerca de mí" + "Más") */}
       <nav aria-label="Filtrar por provincia">
-        <ProvinceChips value={province} hrefFor={(p) => rankingHref(cat, p)} />
+        <ProvinceChips
+          value={province}
+          hrefFor={(p) => rankingHref(cat, p)}
+          nearbyActive={nearbyActive}
+          nearbyBusy={geoBusy}
+          onNearby={activateNearby}
+        />
       </nav>
+      {geoFailed && (
+        <p className="-mt-1 text-[11px] text-white/40">
+          No pudimos acceder a tu ubicación. Actívala en los ajustes del navegador para ver negocios
+          cerca de ti.
+        </p>
+      )}
 
       {/* Búsqueda rápida */}
       <form
@@ -255,10 +244,12 @@ export default function RankingPage() {
           Aún no hay pujas activas en {zona}. ¡La posición #1 está libre!
         </div>
       )}
-      {nearbyActive && !nearby.loading && !nearby.error && !nearby.data.length && !!data.length && (
+      {nearbyActive && !nearby.loading && !isNearbyList && !!data.length && (
         <div className="glass p-3 text-xs text-white/50">
-          Ningún negocio cercano tiene ubicación registrada todavía. Te mostramos el ranking de{' '}
-          {zona}.
+          {nearby.error
+            ? 'No pudimos cargar los negocios cercanos. '
+            : 'Ningún negocio cercano tiene ubicación registrada todavía. '}
+          Te mostramos el ranking de {zona}.
         </div>
       )}
 

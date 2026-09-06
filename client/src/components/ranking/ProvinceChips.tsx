@@ -21,10 +21,19 @@ const chipClass = (active: boolean) =>
 export default function ProvinceChips({
   value,
   hrefFor,
+  nearbyActive = false,
+  nearbyBusy = false,
+  onNearby,
 }: {
   value: string;
   /** URL destino de cada provincia (anclas reales, rastreables). */
   hrefFor: (slug: string) => string;
+  /** El modo "Cerca de mí" está activo (ninguna provincia se ve seleccionada). */
+  nearbyActive?: boolean;
+  /** Se está pidiendo la ubicación al navegador. */
+  nearbyBusy?: boolean;
+  /** Click en el chip "📍 Cerca de mí". Si no se pasa, el chip no se renderiza. */
+  onNearby?: () => void;
 }) {
   const navigate = useNavigate();
   const featured = FEATURED.map((slug) => PROVINCE_DEFS.find((p) => p.slug === slug)).filter(
@@ -32,21 +41,41 @@ export default function ProvinceChips({
   );
   const rest = PROVINCE_DEFS.filter((p) => !FEATURED.includes(p.slug));
   const activeInRest = rest.find((p) => p.slug === value);
+  const provActive = (slug: string) => !nearbyActive && value === slug;
+
+  const [first, ...others] = featured;
 
   return (
     <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 py-1">
-      {featured.map((p) => (
-        <Link key={p.slug} to={hrefFor(p.slug)} className={chipClass(value === p.slug)}>
-          {p.slug === 'todo-rd' ? p.name : `📍 ${p.name}`}
+      {first && (
+        <Link to={hrefFor(first.slug)} className={chipClass(provActive(first.slug))}>
+          {first.name}
+        </Link>
+      )}
+
+      {onNearby && (
+        <button
+          type="button"
+          onClick={onNearby}
+          aria-pressed={nearbyActive}
+          className={chipClass(nearbyActive)}
+        >
+          {nearbyBusy ? '⏳ Ubicando…' : '📍 Cerca de mí'}
+        </button>
+      )}
+
+      {others.map((p) => (
+        <Link key={p.slug} to={hrefFor(p.slug)} className={chipClass(provActive(p.slug))}>
+          {`📍 ${p.name}`}
         </Link>
       ))}
 
-      <div className={`relative ${chipClass(Boolean(activeInRest))}`}>
+      <div className={`relative ${chipClass(!nearbyActive && Boolean(activeInRest))}`}>
         <span className="pointer-events-none">
-          {activeInRest ? `📍 ${activeInRest.name}` : 'Más'} ▾
+          {activeInRest && !nearbyActive ? `📍 ${activeInRest.name}` : 'Más'} ▾
         </span>
         <select
-          value={activeInRest ? value : ''}
+          value={activeInRest && !nearbyActive ? value : ''}
           onChange={(e) => e.target.value && navigate(hrefFor(e.target.value))}
           aria-label="Más provincias"
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
