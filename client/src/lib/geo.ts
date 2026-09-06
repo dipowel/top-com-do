@@ -3,11 +3,24 @@ export interface Coords {
   longitude: number;
 }
 
-/** Pide la ubicación GPS del dispositivo (requiere HTTPS y permiso del usuario). */
-export function getCurrentPosition(): Promise<Coords> {
+export type GeoErrorCode = 'denied' | 'unavailable' | 'timeout' | 'unsupported';
+
+export interface GeoError extends Error {
+  code: GeoErrorCode;
+}
+
+const DEFAULT_OPTS: PositionOptions = { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 };
+
+/**
+ * Pide la ubicación GPS del dispositivo (requiere HTTPS y permiso del usuario).
+ * Solo debe llamarse tras una acción explícita del usuario, nunca al cargar.
+ * El `Error` que rechaza lleva `.code` para distinguir el estado en la UI.
+ */
+export function getCurrentPosition(opts: PositionOptions = {}): Promise<Coords> {
+  const options = { ...DEFAULT_OPTS, ...opts };
   return new Promise((resolve, reject) => {
-    if (!('geolocation' in navigator)) {
-      reject(new Error('Tu dispositivo no permite geolocalización'));
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      reject(fail('unsupported', 'Tu dispositivo no permite geolocalización'));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -17,15 +30,26 @@ export function getCurrentPosition(): Promise<Coords> {
           longitude: Math.round(pos.coords.longitude * 1e7) / 1e7,
         }),
       (err) => {
-        const msg =
-          err.code === err.PERMISSION_DENIED
-            ? 'Permiso de ubicación denegado. Actívalo en los ajustes del navegador.'
-            : 'No se pudo obtener tu ubicación. Intenta de nuevo.';
-        reject(new Error(msg));
+        if (err.code === err.PERMISSION_DENIED) {
+          reject(
+            fail(
+              'denied',
+              'Permiso de ubicación denegado. Actívalo en los ajustes del navegador.',
+            ),
+          );
+        } else if (err.code === err.TIMEOUT) {
+          reject(fail('timeout', 'La ubicación tardó demasiado. Intenta de nuevo.'));
+        } else {
+          reject(fail('unavailable', 'No se pudo obtener tu ubicación. Intenta de nuevo.'));
+        }
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+      options,
     );
   });
+}
+
+function fail(code: GeoErrorCode, message: string): GeoError {
+  return Object.assign(new Error(message), { code });
 }
 
 /** Ver el punto en el mapa de Google. */

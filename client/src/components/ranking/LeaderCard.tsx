@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { RankingEntry } from '@shared/types';
+import { formatDistance } from '@shared/nearby';
 import { formatDOP } from '../../lib/format';
 import { whatsappLink, avatarFallback } from '../../lib/share';
 import { googleDirectionsUrl } from '../../lib/geo';
@@ -17,6 +18,7 @@ export default function LeaderCard({
   onBid,
   recoverAmount,
   canBid = false,
+  distanceKm,
 }: {
   entry: RankingEntry;
   onBid: (profileId: string) => void;
@@ -24,6 +26,8 @@ export default function LeaderCard({
   recoverAmount?: number;
   /** Si el usuario es comerciante/participante: muestra el botón de puja. */
   canBid?: boolean;
+  /** Solo en modo "Cerca de mí": distancia real (km) devuelta por la API. */
+  distanceKm?: number;
 }) {
   const { user } = useAuth();
   const { ids, toggle } = useFavorites();
@@ -61,6 +65,13 @@ export default function LeaderCard({
           {p.tagline ? (
             <div className="truncate text-xs text-white/60">{p.tagline}</div>
           ) : null}
+          {distanceKm != null && (
+            <div className="mt-0.5">
+              <span className="inline-flex items-center rounded-full border border-[#f7b924]/40 bg-[#f7b924]/10 px-2 py-0.5 text-[11px] font-semibold text-[#f7b924]">
+                📍 A {formatDistance(distanceKm)}
+              </span>
+            </div>
+          )}
           <div className="truncate text-[11px] text-white/40">
             {p.subcategory ? `${p.subcategory} · ` : ''}
             {p.categoryName}

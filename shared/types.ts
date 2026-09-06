@@ -27,6 +27,16 @@ export interface RankingEntry {
   profile: RankingProfile;
 }
 
+/** Entrada del modo "Cerca de mí": ranking económico + distancia real y score híbrido. */
+export interface NearbyRankingEntry extends RankingEntry {
+  distanceMeters: number;
+  distanceKm: number;
+  /** Solo para depuración/observabilidad — la UI nunca muestra estos valores. */
+  bidScore: number;
+  proximityScore: number;
+  finalScore: number;
+}
+
 export interface MeResponse {
   id: string;
   email: string;

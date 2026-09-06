@@ -59,4 +59,9 @@ describe('renderPage · metadatos por ruta', () => {
     expect(r.status).toBe(200);
     expect(r.html).toContain('noindex');
   });
+
+  it('el modo "Cerca de mí" no filtra al SSR: sin nearby/lat/cerca-de-mi en el HTML', async () => {
+    const r = await renderPage('/rd/gastronomia/santiago');
+    expect(r.html).not.toMatch(/nearby|cerca-de-mi|[?&]lat=/i);
+  });
 });

@@ -1,17 +1,21 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CategoryTabs from '../components/ranking/CategoryTabs';
 import ProvinceChips from '../components/ranking/ProvinceChips';
 import LeaderCard from '../components/ranking/LeaderCard';
+import RankingModeToggle, { type RankingMode } from '../components/ranking/RankingModeToggle';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
+import { useNearbyRankings } from '../hooks/useNearbyRankings';
 import { useShell } from '../hooks/useShell';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
+import { getCurrentPosition, type Coords, type GeoError } from '../lib/geo';
 import { formatDOP } from '../lib/format';
 import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
 import { CATEGORY_SLUGS } from '@shared/categories';
 import { categoryLabel, categoryNoun, categoryFaqs, categorySeo, homeSeo } from '@shared/seo';
+import type { NearbyRankingEntry } from '@shared/types';
 import Breadcrumbs, { type Crumb } from '../components/common/Breadcrumbs';
 
 const MIN_BID = 100;
@@ -28,6 +32,39 @@ export default function RankingPage() {
   const { openBid } = useShell();
   const canBid = useAuctionAccess();
   const [search, setSearch] = useState('');
+
+  // Modo "Cerca de mí": estado 100 % de cliente. No toca la URL ni el SEO.
+  const [mode, setMode] = useState<RankingMode>('global');
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const nearby = useNearbyRankings(mode === 'nearby' ? coords : null, cat, province);
+
+  const handleMode = useCallback(
+    async (m: RankingMode) => {
+      setGeoError(null);
+      if (m === 'global' || coords) {
+        setMode(m);
+        return;
+      }
+      setGeoBusy(true);
+      try {
+        const c = await getCurrentPosition({ maximumAge: 60_000, timeout: 10_000 });
+        setCoords(c);
+        setMode('nearby');
+      } catch (e) {
+        setGeoError((e as GeoError).message || 'No se pudo obtener tu ubicación.');
+        setMode('global');
+      } finally {
+        setGeoBusy(false);
+      }
+    },
+    [coords],
+  );
+
+  const nearbyActive = mode === 'nearby';
+  const isNearbyList = nearbyActive && nearby.data.length > 0;
+  const visible = isNearbyList ? nearby.data : data;
 
   function rankingHref(nextCat: string, nextProv: string): string {
     if (nextCat === 'todo-rd' && nextProv === 'todo-rd') return '/';
@@ -99,6 +136,31 @@ export default function RankingPage() {
             El negocio en el puesto #1 de cada categoría y provincia es el líder verificado y más
             cercano · datos en vivo
           </p>
+        </div>
+      )}
+
+      {/* Modo de ranking: económico vs. puja + proximidad */}
+      <RankingModeToggle mode={mode} onChange={handleMode} busy={geoBusy} />
+      {geoError && (
+        <div className="glass flex flex-col gap-2 border border-[#f7b924]/30 p-3 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
+          <span>{geoError}</span>
+          <button
+            onClick={() => handleMode('nearby')}
+            className="btn-ghost shrink-0 whitespace-nowrap !py-1.5 text-[11px]"
+          >
+            Intentar nuevamente
+          </button>
+        </div>
+      )}
+      {nearbyActive && nearby.error && (
+        <div className="glass flex flex-col gap-2 border border-red-400/30 p-3 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
+          <span>No pudimos cargar los negocios cercanos.</span>
+          <button
+            onClick={() => nearby.reload()}
+            className="btn-ghost shrink-0 whitespace-nowrap !py-1.5 text-[11px]"
+          >
+            Reintentar
+          </button>
         </div>
       )}
 
@@ -184,6 +246,7 @@ export default function RankingPage() {
       )}
 
       {loading && !data.length && <Spinner />}
+      {nearbyActive && nearby.loading && !nearby.data.length && <Spinner />}
       {error && (
         <div className="glass p-3 text-xs text-red-300">No se pudo cargar el ranking: {error}</div>
       )}
@@ -192,26 +255,41 @@ export default function RankingPage() {
           Aún no hay pujas activas en {zona}. ¡La posición #1 está libre!
         </div>
       )}
+      {nearbyActive && !nearby.loading && !nearby.error && !nearby.data.length && !!data.length && (
+        <div className="glass p-3 text-xs text-white/50">
+          Ningún negocio cercano tiene ubicación registrada todavía. Te mostramos el ranking de{' '}
+          {zona}.
+        </div>
+      )}
 
-      {!!data.length && (
+      {!!visible.length && (
         <div className="flex items-center justify-between pt-1">
-          <h2 className="text-sm font-bold text-white/85">Ranking en {zona}</h2>
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-soft">
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-soft" /> En vivo
-          </span>
+          <h2 className="text-sm font-bold text-white/85">
+            {isNearbyList ? 'Negocios cerca de ti' : `Ranking en ${zona}`}
+          </h2>
+          {isNearbyList ? (
+            <span className="text-[11px] font-semibold text-[#f7b924]">
+              ordenado por puja y cercanía
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-soft">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-soft" /> En vivo
+            </span>
+          )}
         </div>
       )}
 
       <div className="space-y-2.5">
-        {data.map((e) => (
+        {visible.map((e) => (
           <LeaderCard
             key={e.profile.id}
             entry={e}
             canBid={canBid}
             onBid={(pid) => openBid(pid, cat, province)}
+            distanceKm={isNearbyList ? (e as NearbyRankingEntry).distanceKm : undefined}
             recoverAmount={
-              e.position === 2 && data[0]
-                ? Math.max(Number(data[0].totalDop) - Number(e.totalDop) + 100, 100)
+              !isNearbyList && e.position === 2 && visible[0]
+                ? Math.max(Number(visible[0].totalDop) - Number(e.totalDop) + 100, 100)
                 : undefined
             }
           />

@@ -16,6 +16,31 @@ describe('API base', () => {
     if (res.status === 200) expect(Array.isArray(res.body)).toBe(true);
   });
 
+  it('GET /api/rankings/nearby sin coordenadas → 400', async () => {
+    const res = await request(app).get('/api/rankings/nearby');
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /api/rankings/nearby con coordenadas fuera de rango → 400', async () => {
+    const res = await request(app).get('/api/rankings/nearby?lat=91&lon=0');
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /api/rankings/nearby con coordenadas válidas → JSON (200) o 500 sin DB; no-store', async () => {
+    const res = await request(app).get('/api/rankings/nearby?lat=18.48&lon=-69.93');
+    expect([200, 500]).toContain(res.status);
+    expect(res.headers['cache-control']).toContain('no-store');
+    if (res.status === 200) {
+      expect(Array.isArray(res.body)).toBe(true);
+      for (const e of res.body) {
+        expect(typeof e.distanceKm).toBe('number');
+        expect(e.distanceKm).toBeGreaterThanOrEqual(0);
+        expect(e.finalScore).toBeGreaterThanOrEqual(0);
+        expect(e.finalScore).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
   it('POST /api/bids sin token → 401', async () => {
     const res = await request(app).post('/api/bids').send({ profileId: 'x', method: 'credit', amount: 10 });
     expect(res.status).toBe(401);
