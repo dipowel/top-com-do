@@ -4,7 +4,7 @@ export default function TerminosPage() {
   return (
     <LegalLayout
       title="Términos de Servicio"
-      description="Términos de Servicio de Top.com.do: cómo funcionan las pujas por el puesto #1, pagos con Dodo Payments, no reembolsos y ley aplicable en la República Dominicana."
+      description="Términos de Servicio de Top.com.do: cómo funcionan las pujas por el puesto #1, pagos con la pasarela AZUL, no reembolsos y ley aplicable en la República Dominicana."
       path="/terminos"
     >
       <p>
@@ -47,10 +47,13 @@ export default function TerminosPage() {
 
       <h2>3. Pagos</h2>
       <p>
-        Los pagos se procesan a través de <strong>Dodo Payments</strong>, que actúa como
-        procesador y <em>merchant of record</em>. Top.com.do <strong>no almacena datos de tarjetas
-        </strong>. También puede usarse el saldo acumulado por el programa de referidos como medio
-        de pago de una puja.
+        Los pagos con tarjeta se procesan a través de <strong>AZUL</strong> (Servicios Digitales
+        Populares, S.R.L.), procesador autorizado por las marcas Visa y Mastercard, con
+        autenticación <strong>3D Secure</strong>. Top.com.do <strong>no almacena ni ve los datos de
+        tarjetas</strong>. También puede usarse el saldo acumulado por el programa de referidos como
+        medio de pago de una puja. Consulta la <a href="/seguridad-pagos">Política de Seguridad de
+        Pagos</a>, la <a href="/devoluciones">Política de Devoluciones</a> y la{' '}
+        <a href="/entrega">Política de Entrega</a>.
       </p>
 
       <h2>4. Cuentas y conducta</h2>

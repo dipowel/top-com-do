@@ -83,6 +83,15 @@ describe('seo · títulos y descripciones con geografía', () => {
     expect(legalSeo('terminos').title).toMatch(/Términos/);
   });
 
+  it('legalSeo cubre las páginas de cumplimiento de AZUL', () => {
+    expect(legalSeo('devoluciones').canonical).toBe('https://www.top.com.do/devoluciones');
+    expect(legalSeo('entrega').canonical).toBe('https://www.top.com.do/entrega');
+    expect(legalSeo('seguridad-pagos').canonical).toBe('https://www.top.com.do/seguridad-pagos');
+    expect(legalSeo('seguridad-pagos').description).toMatch(/PCI-DSS/);
+    expect(legalSeo('contacto').canonical).toBe('https://www.top.com.do/contacto');
+    expect(legalSeo('terminos').description).not.toMatch(/Dodo/);
+  });
+
   it('directorioSeo: canónico propio + BreadcrumbList', () => {
     const s = directorioSeo();
     expect(s.canonical).toBe('https://www.top.com.do/directorio');
@@ -211,6 +220,11 @@ describe('seo · sitemap', () => {
     expect(locs).toContain('https://www.top.com.do/rd/gastronomia');
     expect(locs).toContain('https://www.top.com.do/p/p1');
     expect(locs).toContain('https://www.top.com.do/terminos');
+    expect(locs).toContain('https://www.top.com.do/seguridad-pagos');
+    expect(locs).toContain('https://www.top.com.do/devoluciones');
+    expect(locs).toContain('https://www.top.com.do/entrega');
+    expect(locs).toContain('https://www.top.com.do/contacto');
+    expect(locs).not.toContain('https://www.top.com.do/recibo');
     expect(locs).toContain('https://www.top.com.do/publicar');
     // Sin datos pasados: nada de landings hiperlocales ni /explorar/:cat a secas.
     expect(locs).not.toContain('https://www.top.com.do/rd/gastronomia/santiago');

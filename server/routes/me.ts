@@ -283,6 +283,53 @@ r.get(
   }),
 );
 
+/** Una puja propia como comprobante de pago (recibo digital). */
+r.get(
+  '/bids/:id',
+  ah(async (req, res) => {
+    const rows = await db
+      .select({
+        id: bids.id,
+        amountDop: bids.amountDop,
+        currency: bids.currency,
+        method: bids.method,
+        status: bids.status,
+        reference: bids.reference,
+        createdAt: bids.createdAt,
+        verifiedAt: bids.verifiedAt,
+        profileId: profiles.id,
+        profileName: profiles.name,
+        profileHandle: profiles.handle,
+      })
+      .from(bids)
+      .innerJoin(profiles, eq(profiles.id, bids.profileId))
+      .where(and(eq(bids.id, req.params.id), eq(bids.userId, req.user!.id)))
+      .limit(1);
+    const b = rows[0];
+    if (!b) throw new HttpError(404, 'Comprobante no encontrado');
+
+    const d = new Date(b.createdAt);
+    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const orderNumber = `TOP-${ymd}-${b.id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+
+    res.json({
+      orderNumber,
+      createdAt: b.createdAt,
+      verifiedAt: b.verifiedAt,
+      status: b.status,
+      method: b.method,
+      gateway: 'AZUL',
+      reference: b.reference,
+      amountDop: Number(b.amountDop),
+      currency: b.currency,
+      concept: `Puja por visibilidad en el ranking — ${b.profileName}`,
+      profileId: b.profileId,
+      profileName: b.profileName,
+      profileHandle: b.profileHandle,
+    });
+  }),
+);
+
 r.get(
   '/favorites',
   ah(async (req, res) => {

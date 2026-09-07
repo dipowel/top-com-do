@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { CATEGORY_DEFS } from '@shared/categories';
 import { PROVINCE_DEFS } from '@shared/provinces';
 import { SOCIAL_LINKS } from '@shared/site';
+import { COMPANY } from '@shared/company';
 import { cleanName } from '@shared/seo';
-import { toE164 } from '@shared/phone';
+import SecurityBadges from '../common/SecurityBadges';
 
 const ZONE_SLUGS = [
   'distrito-nacional',
@@ -140,19 +141,31 @@ export default function Footer() {
         <div className="mb-2 text-xs font-bold uppercase tracking-widest text-white/40">
           Contacto y Soporte
         </div>
-        <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 text-xs text-white/60 sm:grid-cols-2">
-          <a href="mailto:topcomdo15@gmail.com" className="hover:text-gold">
-            ✉️ topcomdo15@gmail.com
-          </a>
-          <a href={`tel:${toE164('+1 (829) 649-7160')}`} className="hover:text-gold">
-            📞 +1 (829) 649-7160
-          </a>
-          <span>📍 Santo Domingo, República Dominicana</span>
-          <span>🕘 Lun. a Vie., 9:00 AM – 6:00 PM</span>
+        <div className="space-y-1.5 text-xs text-white/60">
+          <div className="text-white/75">
+            {COMPANY.legalName} · {COMPANY.taxIdLabel}: {COMPANY.taxId}
+          </div>
+          <div>📍 {COMPANY.address.full}</div>
+          <div className="flex flex-wrap gap-x-6 gap-y-1">
+            <a href={`mailto:${COMPANY.supportEmail}`} className="hover:text-gold">
+              ✉️ {COMPANY.supportEmail}
+            </a>
+            <a href={`tel:${COMPANY.phone}`} className="hover:text-gold">
+              📞 {COMPANY.phoneDisplay}
+            </a>
+            <span>🕘 {COMPANY.hours}</span>
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 space-y-2 border-t border-white/5 py-4 text-center text-[11px] text-white/35">
+      <div className="mt-6 flex flex-col items-center gap-3 border-t border-white/5 pt-5">
+        <SecurityBadges />
+        <p className="text-center text-[10px] text-white/35">
+          Pagos procesados de forma segura por {COMPANY.paymentGatewayLegal} con 3D Secure y PCI-DSS.
+        </p>
+      </div>
+
+      <div className="mt-4 space-y-2 border-t border-white/5 py-4 text-center text-[11px] text-white/35">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
           <Link to="/terminos" className="hover:text-gold">
             Términos de Servicio
@@ -163,9 +176,22 @@ export default function Footer() {
           <Link to="/normas" className="hover:text-gold">
             Normas
           </Link>
+          <Link to="/devoluciones" className="hover:text-gold">
+            Devoluciones
+          </Link>
+          <Link to="/entrega" className="hover:text-gold">
+            Entrega
+          </Link>
+          <Link to="/seguridad-pagos" className="hover:text-gold">
+            Seguridad de pagos
+          </Link>
+          <Link to="/contacto" className="hover:text-gold">
+            Contacto
+          </Link>
         </div>
         <div>
-          © {new Date().getFullYear()} Top.com.do · Marca registrada en ONAPI · República Dominicana
+          © {new Date().getFullYear()} {COMPANY.legalName} · {COMPANY.brand} · Marca registrada en
+          ONAPI · {COMPANY.address.city}, RD
         </div>
       </div>
     </footer>

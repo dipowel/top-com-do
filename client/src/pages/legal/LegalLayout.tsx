@@ -42,6 +42,10 @@ export default function LegalLayout({
           <Link to="/terminos">Términos</Link>
           <Link to="/privacidad">Privacidad</Link>
           <Link to="/normas">Normas</Link>
+          <Link to="/devoluciones">Devoluciones</Link>
+          <Link to="/entrega">Entrega</Link>
+          <Link to="/seguridad-pagos">Seguridad de pagos</Link>
+          <Link to="/contacto">Contacto</Link>
           <Link to="/">Volver al inicio</Link>
         </div>
       </footer>

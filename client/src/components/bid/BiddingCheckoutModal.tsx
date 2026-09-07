@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from '../common/Modal';
+import SecurityBadges from '../common/SecurityBadges';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDOP } from '../../lib/format';
@@ -7,7 +8,7 @@ import { formatDOP } from '../../lib/format';
 /**
  * Checkout de una puja (subasta dinámica): el usuario oferta un monto libre que
  * debe superar al #1 de su categoría × provincia, acepta los términos y paga con
- * Dodo Payments (o con saldo por referidos si alcanza).
+ * tarjeta a través de la pasarela AZUL (o con saldo por referidos si alcanza).
  */
 export default function BiddingCheckoutModal({
   profileId,
@@ -168,15 +169,19 @@ export default function BiddingCheckoutModal({
           <span>
             He leído y acepto los{' '}
             <a href="/terminos" target="_blank" rel="noopener noreferrer" className="underline">
-              Términos de Servicio
+              Términos
             </a>
             , la{' '}
             <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="underline">
-              Política de Privacidad
-            </a>{' '}
-            y las{' '}
+              Privacidad
+            </a>
+            , las{' '}
             <a href="/normas" target="_blank" rel="noopener noreferrer" className="underline">
               Normas
+            </a>{' '}
+            y la{' '}
+            <a href="/devoluciones" target="_blank" rel="noopener noreferrer" className="underline">
+              Política de Devoluciones
             </a>{' '}
             de top.com.do.
           </span>
@@ -189,7 +194,7 @@ export default function BiddingCheckoutModal({
           disabled={!accepted || belowMin || loading !== null}
           className="btn-gold w-full"
         >
-          {loading === 'dodo' ? 'Redirigiendo…' : 'Pagar con Dodo Payments'}
+          {loading === 'dodo' ? 'Redirigiendo…' : '💳 Pagar con tarjeta (AZUL)'}
         </button>
 
         {credit > 0 && (
@@ -206,10 +211,17 @@ export default function BiddingCheckoutModal({
           </button>
         )}
 
-        <p className="text-center text-[10px] text-white/30">
-          El pago se procesa de forma segura por Dodo Payments. Las pujas por el #1 son
-          definitivas y no reembolsables una vez procesadas.
-        </p>
+        <div className="flex flex-col items-center gap-1.5 pt-1">
+          <SecurityBadges variant="compact" />
+          <p className="text-center text-[10px] text-white/30">
+            El pago se procesa de forma segura por AZUL bajo 3D Secure y PCI-DSS. Las pujas por el #1
+            son definitivas y no reembolsables una vez procesadas (ver{' '}
+            <a href="/devoluciones" target="_blank" rel="noopener noreferrer" className="underline">
+              Devoluciones
+            </a>
+            ).
+          </p>
+        </div>
       </div>
     </Modal>
   );

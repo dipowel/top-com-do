@@ -334,11 +334,20 @@ export function directorioSeo(): SeoData {
 }
 
 /** Meta de las páginas legales (compartida por LegalLayout y el render en servidor). */
-export function legalSeo(kind: 'terminos' | 'privacidad' | 'normas'): SeoData {
+export type LegalKind =
+  | 'terminos'
+  | 'privacidad'
+  | 'normas'
+  | 'devoluciones'
+  | 'entrega'
+  | 'seguridad-pagos'
+  | 'contacto';
+
+export function legalSeo(kind: LegalKind): SeoData {
   const map = {
     terminos: {
       t: 'Términos y Condiciones',
-      d: 'Términos de uso de Top.com.do: cómo funcionan las pujas por el puesto #1, los pagos con Dodo Payments y la política de no reembolsos.',
+      d: 'Términos de uso de Top.com.do: cómo funcionan las pujas por el puesto #1, los pagos con la pasarela AZUL y la política de no reembolsos.',
     },
     privacidad: {
       t: 'Política de Privacidad',
@@ -347,6 +356,22 @@ export function legalSeo(kind: 'terminos' | 'privacidad' | 'normas'): SeoData {
     normas: {
       t: 'Normas de la comunidad',
       d: 'Cómo funciona el ranking de Top.com.do: ventana móvil de 7 días, pujas verificadas y reglas para negocios y reseñas.',
+    },
+    devoluciones: {
+      t: 'Devoluciones, Reembolsos y Cancelaciones',
+      d: 'Derechos del tarjetahabiente, plazos y condiciones para reembolsos y cancelaciones de pagos en Top.com.do, procesados por la pasarela AZUL.',
+    },
+    entrega: {
+      t: 'Política de Entrega',
+      d: 'Cómo y cuándo se entrega el servicio de Top.com.do: directorio y pujas por visibilidad, un servicio 100% digital de activación inmediata.',
+    },
+    'seguridad-pagos': {
+      t: 'Seguridad para la Transmisión de Datos de Tarjetas',
+      d: 'Cifrado SSL/TLS y AES-256, cumplimiento PCI-DSS y procesamiento seguro por la pasarela AZUL con autenticación 3D Secure (Visa Secure y Mastercard ID Check).',
+    },
+    contacto: {
+      t: 'Contacto y datos del comercio',
+      d: 'Datos de contacto y dirección permanente del comercio en la República Dominicana: correo de soporte, teléfono y dirección física.',
     },
   } as const;
   const m = map[kind];
@@ -605,6 +630,10 @@ export function sitemapUrls(
     { loc: `${SITE_URL}/terminos`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/privacidad`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/normas`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/devoluciones`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/entrega`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/seguridad-pagos`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/contacto`, changefreq: 'yearly', priority: 0.3 },
   ];
 
   for (const c of cats) {

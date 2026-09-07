@@ -290,7 +290,16 @@ async function resolve(pathname: string): Promise<Resolved> {
 
   const head = segs[0];
 
-  if (segs.length === 1 && (head === 'terminos' || head === 'privacidad' || head === 'normas')) {
+  if (
+    segs.length === 1 &&
+    (head === 'terminos' ||
+      head === 'privacidad' ||
+      head === 'normas' ||
+      head === 'devoluciones' ||
+      head === 'entrega' ||
+      head === 'seguridad-pagos' ||
+      head === 'contacto')
+  ) {
     const seo = legalSeo(head);
     return {
       seo,
@@ -344,7 +353,7 @@ async function resolve(pathname: string): Promise<Resolved> {
 
   if (
     head &&
-    ['login', 'perfil', 'registrar-negocio', 'mis-pujas', 'favoritos', 'notificaciones', 'admin'].includes(
+    ['login', 'perfil', 'registrar-negocio', 'mis-pujas', 'favoritos', 'notificaciones', 'admin', 'recibo'].includes(
       head,
     )
   ) {

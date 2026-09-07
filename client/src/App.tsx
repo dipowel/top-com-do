@@ -18,6 +18,11 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const TerminosPage = lazy(() => import('./pages/legal/TerminosPage'));
 const PrivacidadPage = lazy(() => import('./pages/legal/PrivacidadPage'));
 const NormasPage = lazy(() => import('./pages/legal/NormasPage'));
+const DevolucionesPage = lazy(() => import('./pages/legal/DevolucionesPage'));
+const EntregaPage = lazy(() => import('./pages/legal/EntregaPage'));
+const SeguridadPagosPage = lazy(() => import('./pages/legal/SeguridadPagosPage'));
+const ContactoPage = lazy(() => import('./pages/legal/ContactoPage'));
+const ReciboPage = lazy(() => import('./pages/ReciboPage'));
 const AdminLayout = lazy(() => import('./admin/AdminLayout'));
 
 export default function App() {
@@ -44,6 +49,12 @@ export default function App() {
           <Route path="/terminos" element={<TerminosPage />} />
           <Route path="/privacidad" element={<PrivacidadPage />} />
           <Route path="/normas" element={<NormasPage />} />
+          <Route path="/devoluciones" element={<DevolucionesPage />} />
+          <Route path="/entrega" element={<EntregaPage />} />
+          <Route path="/seguridad-pagos" element={<SeguridadPagosPage />} />
+          <Route path="/contacto" element={<ContactoPage />} />
+          <Route path="/recibo" element={<ReciboPage />} />
+          <Route path="/recibo/:bidId" element={<ReciboPage />} />
         </Route>
         <Route path="/admin/*" element={<AdminLayout />} />
         <Route path="*" element={<Navigate to="/" replace />} />

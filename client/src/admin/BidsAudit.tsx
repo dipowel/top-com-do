@@ -20,7 +20,7 @@ interface Row {
 
 const FILTERS = ['', 'pending', 'verified', 'rejected'];
 const METHOD: Record<string, string> = {
-  dodo: 'Dodo Payments',
+  dodo: 'Tarjeta (AZUL)',
   credit: 'Saldo',
   bank_transfer: 'Transferencia',
   paypal: 'PayPal',
@@ -95,7 +95,7 @@ export default function BidsAudit() {
           disabled={busy === 'reconcile'}
           className="btn-ghost ml-auto !py-1 text-xs"
         >
-          {busy === 'reconcile' ? 'Reconciliando…' : '🔄 Reconciliar pagos Dodo'}
+          {busy === 'reconcile' ? 'Reconciliando…' : '🔄 Reconciliar pagos con tarjeta'}
         </button>
       </div>
 

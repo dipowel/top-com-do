@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" role="img" aria-label="Visa Secure">
+  <rect width="160" height="120" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+  <g fill="#1434CB" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <text x="80" y="52" font-size="34" text-anchor="middle" letter-spacing="2">VISA</text>
+  </g>
+  <rect x="26" y="66" width="108" height="30" rx="5" fill="#1434CB"/>
+  <text x="80" y="87" font-size="17" text-anchor="middle" fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif" font-weight="700" letter-spacing="3">SECURE</text>
+</svg>

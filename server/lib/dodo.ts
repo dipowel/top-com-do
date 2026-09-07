@@ -77,7 +77,7 @@ export async function createCheckout(
       profile_id: input.profileId,
       round_id: input.roundId,
     },
-    return_url: `${SITE_URL}/mis-pujas?pago=procesando`,
+    return_url: `${SITE_URL}/recibo/${input.bidId}?pago=procesando`,
   };
 
   const res = await fetch(`${dodoBaseUrl()}/checkouts`, {

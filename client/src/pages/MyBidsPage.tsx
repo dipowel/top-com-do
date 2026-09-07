@@ -13,7 +13,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 const METHOD: Record<string, string> = {
-  dodo: 'Dodo Payments',
+  dodo: 'Tarjeta (AZUL)',
   credit: 'Saldo',
   bank_transfer: 'Transferencia',
   paypal: 'PayPal',
@@ -76,7 +76,7 @@ export default function MyBidsPage() {
 
       {procesando && (
         <div className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-xs text-gold">
-          Estamos confirmando tu pago con Dodo Payments… Esta página se actualiza sola.
+          Estamos confirmando tu pago con AZUL… Esta página se actualiza sola.
         </div>
       )}
 
@@ -97,6 +97,9 @@ export default function MyBidsPage() {
             </span>
             <span className="font-bold text-white">{formatDOP(b.amountDop)}</span>
           </div>
+          <Link to={`/recibo/${b.id}`} className="mt-1 inline-block text-[11px] text-gold underline">
+            Ver comprobante
+          </Link>
           {b.status === 'pending' && b.method === 'dodo' && (
             <div className="mt-2 space-y-1.5 rounded-lg bg-white/5 p-2">
               <p className="text-[11px] text-white/50">

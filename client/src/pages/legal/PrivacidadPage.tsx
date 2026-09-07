@@ -4,7 +4,7 @@ export default function PrivacidadPage() {
   return (
     <LegalLayout
       title="Política de Privacidad"
-      description="Cómo Top.com.do recopila y protege tus datos, y cómo Dodo Payments procesa los pagos cifrados. Derechos conforme a la Ley 172-13 de la República Dominicana."
+      description="Cómo Top.com.do recopila y protege tus datos, y cómo la pasarela AZUL procesa los pagos cifrados. Derechos conforme a la Ley 172-13 de la República Dominicana."
       path="/privacidad"
     >
       <p>
@@ -25,7 +25,8 @@ export default function PrivacidadPage() {
         </li>
         <li>
           <strong>Pujas:</strong> monto, fecha, método y estado. Los datos de pago (tarjeta) los
-          maneja exclusivamente Dodo Payments; nosotros no los vemos ni los guardamos.
+          maneja exclusivamente la pasarela <strong>AZUL</strong>; nosotros no los vemos ni los
+          guardamos.
         </li>
         <li>
           <strong>Reseñas y antifraude:</strong> tu calificación y comentario, y un{' '}
@@ -47,17 +48,19 @@ export default function PrivacidadPage() {
 
       <h2>3. Pagos</h2>
       <p>
-        Las transacciones se procesan de forma <strong>cifrada mediante Dodo Payments</strong>,
-        que actúa como <em>merchant of record</em>. Top.com.do{' '}
+        Las transacciones con tarjeta se procesan de forma <strong>cifrada mediante AZUL</strong>{' '}
+        (Servicios Digitales Populares, S.R.L.), procesador autorizado por Visa y Mastercard, con
+        autenticación 3D Secure. Top.com.do{' '}
         <strong>no almacena números de tarjeta ni credenciales bancarias</strong>. Consulta la
-        política de privacidad de Dodo Payments para el tratamiento que realiza el procesador.
+        política de privacidad de AZUL para el tratamiento que realiza el procesador y nuestra{' '}
+        <a href="/seguridad-pagos">Política de Seguridad de Pagos</a>.
       </p>
 
       <h2>4. Con quién se comparten</h2>
       <ul>
         <li>Proveedores de infraestructura: Vercel (hosting) y Supabase (base de datos).</li>
         <li>Autenticación: Firebase (Google).</li>
-        <li>Pagos: Dodo Payments.</li>
+        <li>Pagos con tarjeta: AZUL (Servicios Digitales Populares, S.R.L.).</li>
         <li>Autoridades, cuando exista una obligación legal.</li>
       </ul>
       <p>No vendemos datos personales.</p>

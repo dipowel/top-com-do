@@ -94,8 +94,8 @@ r.post(
     } catch (err) {
       await db.delete(bids).where(eq(bids.id, bid.id));
       const detail = (err as Error).message;
-      console.error('[checkout] Dodo falló:', detail);
-      throw new HttpError(502, `No se pudo iniciar el pago con Dodo Payments — ${detail}`);
+      console.error('[checkout] pasarela falló:', detail);
+      throw new HttpError(502, `No se pudo iniciar el pago con AZUL — ${detail}`);
     }
   }),
 );

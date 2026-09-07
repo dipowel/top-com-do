@@ -64,4 +64,17 @@ describe('renderPage · metadatos por ruta', () => {
     const r = await renderPage('/rd/gastronomia/santiago');
     expect(r.html).not.toMatch(/nearby|cerca-de-mi|[?&]lat=/i);
   });
+
+  it('/seguridad-pagos: página legal indexable con su título', async () => {
+    const r = await renderPage('/seguridad-pagos');
+    expect(r.status).toBe(200);
+    expect(r.noindex).toBe(false);
+    expect(r.html).toContain('Seguridad para la Transmisión de Datos de Tarjetas');
+    expect(r.html).toContain('<link rel="canonical" href="https://www.top.com.do/seguridad-pagos" />');
+  });
+
+  it('/recibo y /recibo/:id → noindex (comprobante privado)', async () => {
+    expect((await renderPage('/recibo')).noindex).toBe(true);
+    expect((await renderPage('/recibo/abc123')).noindex).toBe(true);
+  });
 });
