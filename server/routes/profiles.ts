@@ -236,7 +236,7 @@ r.get(
       .select(profileColumns)
       .from(profiles)
       .innerJoin(categories, eq(categories.id, profiles.categoryId))
-      .where(eq(profiles.id, req.params.id))
+      .where(and(eq(profiles.id, req.params.id), eq(profiles.isActive, true)))
       .limit(1);
     if (!rows[0]) throw new HttpError(404, 'Perfil no encontrado');
     res.json({

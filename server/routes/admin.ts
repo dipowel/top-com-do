@@ -3,7 +3,7 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { rankingWindowStart, RANKING_WINDOW_DAYS } from '../../shared/bidding';
 import { z } from 'zod';
 import { db } from '../db';
-import { bids, profiles, users, auditLog, referrals, reviews } from '../../shared/schema';
+import { bids, profiles, categories, users, auditLog, referrals, reviews } from '../../shared/schema';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
@@ -14,7 +14,8 @@ import { audit } from '../lib/audit';
 import { onBidVerified, approveReferral, rejectReferral, moveCredit } from '../lib/rewards';
 import { checkDethronements, notifyUser } from '../lib/notify';
 import { formatDOP } from '../../shared/fx';
-import { PROVINCE_SLUGS } from '../../shared/provinces';
+import { PROVINCE_SLUGS, provinceName } from '../../shared/provinces';
+import { canonicalCityName } from '../../shared/cities';
 
 const r = Router();
 r.use(requireAdmin);
@@ -244,6 +245,168 @@ r.patch(
       .limit(1);
     const row = rows[0]!;
     res.json({ ...row, amountDop: Number(row.amountDop), amountOriginal: Number(row.amountOriginal) });
+  }),
+);
+
+// ---------------- Negocios / directorio ----------------
+
+/** Lista de negocios registrados (gratis o de pago) para moderación. */
+r.get(
+  '/profiles',
+  ah(async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const status = typeof req.query.status === 'string' ? req.query.status : 'all';
+    const limit = Math.min(Math.max(Number(req.query.limit) || 300, 1), 500);
+    const since = rankingWindowStart();
+    const owner = alias(users, 'owner');
+    const activeBidTotal = sql<string>`(
+      select coalesce(sum(${bids.amountDop}), 0) from ${bids}
+      where ${bids.profileId} = ${profiles.id}
+        and ${bids.status} = 'verified' and ${bids.verifiedAt} >= ${since}
+    )`;
+
+    const rows = await db
+      .select({
+        id: profiles.id,
+        name: profiles.name,
+        handle: profiles.handle,
+        tagline: profiles.tagline,
+        bio: profiles.bio,
+        categorySlug: categories.slug,
+        categoryName: categories.name,
+        province: profiles.province,
+        city: profiles.city,
+        whatsapp: profiles.whatsapp,
+        instagramUrl: profiles.instagramUrl,
+        latitude: profiles.latitude,
+        longitude: profiles.longitude,
+        isActive: profiles.isActive,
+        createdAt: profiles.createdAt,
+        ownerEmail: owner.email,
+        activeBidTotal,
+      })
+      .from(profiles)
+      .innerJoin(categories, eq(categories.id, profiles.categoryId))
+      .leftJoin(owner, eq(owner.id, profiles.ownerUserId))
+      .where(
+        and(
+          q
+            ? sql`(${profiles.name} ilike ${`%${q}%`} or ${profiles.handle} ilike ${`%${q}%`})`
+            : undefined,
+          status === 'active' ? eq(profiles.isActive, true) : undefined,
+          status === 'inactive' ? eq(profiles.isActive, false) : undefined,
+        ),
+      )
+      .orderBy(desc(profiles.createdAt))
+      .limit(limit);
+
+    let out = rows.map((x) => ({
+      ...x,
+      latitude: x.latitude != null ? Number(x.latitude) : null,
+      longitude: x.longitude != null ? Number(x.longitude) : null,
+      activeBidTotal: Number(x.activeBidTotal),
+      isPaid: Number(x.activeBidTotal) > 0,
+      provinceName: x.province ? provinceName(x.province) : null,
+    }));
+    if (status === 'paid') out = out.filter((x) => x.isPaid);
+    if (status === 'free') out = out.filter((x) => !x.isPaid);
+    res.json(out);
+  }),
+);
+
+const adminEditProfileSchema = z.object({
+  name: z.string().min(2).max(80).optional(),
+  tagline: z.string().max(60).optional(),
+  bio: z.string().max(400).optional(),
+  categorySlug: z.string().min(1).optional(),
+  province: z.string().max(40).optional(), // '' = quitar
+  city: z.string().max(60).optional(),
+  whatsapp: z.string().max(30).optional(),
+  instagramUrl: z.string().max(300).optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+/** Editar cualquier campo clave de un negocio (incluye activarlo/desactivarlo). */
+r.patch(
+  '/profiles/:id',
+  ah(async (req, res) => {
+    const body = adminEditProfileSchema.parse(req.body);
+    const existing = (
+      await db.select().from(profiles).where(eq(profiles.id, req.params.id)).limit(1)
+    )[0];
+    if (!existing) throw new HttpError(404, 'Negocio no encontrado');
+
+    if (body.province && !PROVINCE_SLUGS.includes(body.province)) {
+      throw new HttpError(400, 'Provincia inválida');
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (body.name !== undefined) patch.name = body.name;
+    if (body.tagline !== undefined) patch.tagline = body.tagline || null;
+    if (body.bio !== undefined) patch.bio = body.bio || null;
+    if (body.province !== undefined) patch.province = body.province || null;
+    if (body.city !== undefined) patch.city = canonicalCityName(body.city) ?? null;
+    if (body.whatsapp !== undefined) patch.whatsapp = body.whatsapp || null;
+    if (body.instagramUrl !== undefined) patch.instagramUrl = body.instagramUrl || null;
+    if (body.latitude !== undefined)
+      patch.latitude = body.latitude != null ? body.latitude.toFixed(7) : null;
+    if (body.longitude !== undefined)
+      patch.longitude = body.longitude != null ? body.longitude.toFixed(7) : null;
+    if (body.isActive !== undefined) patch.isActive = body.isActive;
+    if (body.categorySlug) {
+      const cat = (
+        await db.select().from(categories).where(eq(categories.slug, body.categorySlug)).limit(1)
+      )[0];
+      if (!cat) throw new HttpError(400, 'Categoría inválida');
+      patch.categoryId = cat.id;
+    }
+    if (!Object.keys(patch).length) throw new HttpError(400, 'Nada que cambiar');
+
+    const [updated] = await db
+      .update(profiles)
+      .set(patch)
+      .where(eq(profiles.id, req.params.id))
+      .returning();
+    await audit(req.user!.id, 'admin.profile.edit', 'profile', req.params.id, { changes: body });
+
+    if (
+      patch.categoryId !== undefined ||
+      patch.province !== undefined ||
+      patch.isActive !== undefined
+    ) {
+      try {
+        await checkDethronements(req.params.id);
+      } catch {
+        /* no bloquea la edición */
+      }
+    }
+
+    res.json({
+      ...updated,
+      latitude: updated!.latitude != null ? Number(updated!.latitude) : null,
+      longitude: updated!.longitude != null ? Number(updated!.longitude) : null,
+    });
+  }),
+);
+
+/** "Eliminar" = borrado lógico: sale del directorio y los rankings al instante. */
+r.delete(
+  '/profiles/:id',
+  ah(async (req, res) => {
+    const existing = (
+      await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.id, req.params.id)).limit(1)
+    )[0];
+    if (!existing) throw new HttpError(404, 'Negocio no encontrado');
+    await db.update(profiles).set({ isActive: false }).where(eq(profiles.id, req.params.id));
+    await audit(req.user!.id, 'admin.profile.deactivate', 'profile', req.params.id, {});
+    try {
+      await checkDethronements(req.params.id);
+    } catch {
+      /* no bloquea */
+    }
+    res.json({ ok: true });
   }),
 );
 

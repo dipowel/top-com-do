@@ -7,12 +7,14 @@ import RoundsControl from './RoundsControl';
 import AuditLog from './AuditLog';
 import ReferralsQueue from './ReferralsQueue';
 import ReviewsQueue from './ReviewsQueue';
+import NegociosAdmin from './NegociosAdmin';
 import NotificationBell from '../components/layout/NotificationBell';
 
 const tabs = [
   { to: '', label: 'Resumen', end: true },
   { to: 'referidos', label: 'Referidos' },
   { to: 'resenas', label: 'Reseñas' },
+  { to: 'negocios', label: 'Negocios' },
   { to: 'pujas', label: 'Pujas' },
   { to: 'rondas', label: 'Rondas' },
   { to: 'log', label: 'Log' },
@@ -84,6 +86,7 @@ export default function AdminLayout() {
         <Route index element={<AdminOverview />} />
         <Route path="referidos" element={<ReferralsQueue />} />
         <Route path="resenas" element={<ReviewsQueue />} />
+        <Route path="negocios" element={<NegociosAdmin />} />
         <Route path="pujas" element={<BidsAudit />} />
         <Route path="rondas" element={<RoundsControl />} />
         <Route path="log" element={<AuditLog />} />
