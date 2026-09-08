@@ -6,6 +6,12 @@
   "functions": {
     "api/index.ts": { "maxDuration": 30 }
   },
+  "crons": [
+    {
+      "path": "/api/cron/expire-jobs",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/(.*)",
