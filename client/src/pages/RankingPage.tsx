@@ -129,6 +129,16 @@ export default function RankingPage() {
           >
             🔎 ¿Solo quieres aparecer en el directorio? Explóralo gratis <span aria-hidden>→</span>
           </Link>
+          <Link
+            to="/empleos"
+            className="glass flex items-center justify-between gap-3 border border-white/10 p-3 text-sm transition hover:border-gold/40"
+          >
+            <span className="min-w-0">
+              <span className="font-bold text-white">💼 Empleos en RD</span>
+              <span className="block text-[11px] text-white/50">Encuentra o publica trabajo gratis</span>
+            </span>
+            <span aria-hidden className="shrink-0 text-white/40">→</span>
+          </Link>
         </header>
       ) : (
         <div className="space-y-1.5">

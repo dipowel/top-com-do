@@ -151,3 +151,73 @@ export interface MyRankEntry {
   myTotalDop: number;
   minBidDop: number;
 }
+
+// ---------------- Empleos ----------------
+
+export interface JobCard {
+  id: string;
+  slug: string;
+  title: string;
+  companyId: string | null;
+  companyName: string;
+  category: string;
+  categoryName: string;
+  province: string | null;
+  provinceName: string | null;
+  city: string | null;
+  jobType: string;
+  jobTypeLabel: string;
+  workMode: string;
+  workModeLabel: string;
+  salaryLabel: string;
+  isFeatured: boolean;
+  publishedAt: string | null;
+}
+
+export interface JobDetail extends JobCard {
+  description: string;
+  requirements: string | null;
+  responsibilities: string | null;
+  locationText: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+  salaryPeriod: string | null;
+  applicationUrl: string | null;
+  applicationEmail: string | null;
+  contactWhatsapp: string | null;
+  status: string;
+  expiresAt: string | null;
+  createdAt: string;
+  related: JobCard[];
+}
+
+export interface JobsListResponse {
+  items: JobCard[];
+  nextCursor: string | null;
+  total?: number;
+}
+
+export interface JobPostInput {
+  title: string;
+  description: string;
+  requirements?: string;
+  responsibilities?: string;
+  companyId?: string | null;
+  companyName: string;
+  category: string;
+  province?: string;
+  city?: string;
+  locationText?: string;
+  jobType: string;
+  workMode: string;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryCurrency?: string;
+  salaryPeriod?: string | null;
+  applicationUrl?: string;
+  applicationEmail?: string;
+  contactWhatsapp?: string;
+  status?: 'draft' | 'published';
+  expiresAt?: string | null;
+}

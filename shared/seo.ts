@@ -7,8 +7,12 @@
 import { SITE_URL, SOCIAL_URLS, profileShareUrl } from './site';
 import { CATEGORY_DEFS, subcategoryLabel } from './categories';
 import { NATIONAL_SLUG, provinceName } from './provinces';
+import { jobCategoryLabel } from './job-categories';
+import { SCHEMA_EMPLOYMENT_TYPE, formatSalary, type JobType, type SalaryPeriod } from './jobs';
 import { toE164 } from './phone';
 import type { ReviewSummary } from './types';
+
+export const jobUrl = (slug: string) => `${SITE_URL}/empleo/${slug}`;
 
 export const RD = 'República Dominicana';
 const LOGO_URL = `${SITE_URL}/logo.png`;
@@ -592,6 +596,176 @@ export function localBusinessLd(
   return ld;
 }
 
+// ---------------- Empleos ----------------
+
+export interface JobSeoInput {
+  slug: string;
+  title: string;
+  description: string;
+  companyId: string | null;
+  companyName: string;
+  category: string;
+  province: string | null;
+  provinceName?: string | null;
+  city: string | null;
+  jobType: string;
+  workMode: string;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string;
+  salaryPeriod: string | null;
+  publishedAt: string | null;
+  expiresAt: string | null;
+}
+
+/** Meta de la lista de empleos y de las landings programáticas. */
+export function empleosSeo(opts: {
+  categorySlug?: string | null;
+  provinceSlug?: string | null;
+  items?: { slug: string; title: string }[];
+  indexable?: boolean;
+}): SeoData {
+  const cat = opts.categorySlug ? jobCategoryLabel(opts.categorySlug) : '';
+  const isProv = opts.provinceSlug && opts.provinceSlug !== NATIONAL_SLUG;
+  const zone = isProv ? provinceName(opts.provinceSlug!) || RD : RD;
+  const path =
+    cat && isProv
+      ? `/empleos/${opts.categorySlug}/${opts.provinceSlug}`
+      : cat
+        ? `/empleos/${opts.categorySlug}`
+        : isProv
+          ? `/empleos/${opts.provinceSlug}`
+          : '/empleos';
+  const canonical = `${SITE_URL}${path}`;
+  const titleCore = cat
+    ? `Empleos de ${cat} en ${zone}`
+    : isProv
+      ? `Empleos en ${zone}`
+      : 'Empleos en República Dominicana';
+  const crumbs = breadcrumbLd([
+    { name: 'Inicio', url: `${SITE_URL}/` },
+    { name: 'Empleos', url: `${SITE_URL}/empleos` },
+    ...(cat ? [{ name: cat, url: `${SITE_URL}/empleos/${opts.categorySlug}` }] : []),
+    ...(isProv ? [{ name: zone, url: canonical }] : []),
+  ]);
+  const list =
+    opts.items && opts.items.length
+      ? [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: titleCore,
+            url: canonical,
+            numberOfItems: opts.items.length,
+            itemListElement: opts.items.map((it, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              url: jobUrl(it.slug),
+              name: it.title,
+            })),
+          },
+        ]
+      : [];
+  return {
+    title: `${titleCore} · Top.com.do`,
+    description: `Ofertas de trabajo${cat ? ` de ${cat}` : ''} en ${zone}: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.`,
+    canonical,
+    image: OG_IMAGE,
+    noindex: opts.indexable === false,
+    jsonLd: [...list, crumbs],
+  };
+}
+
+/** Meta de la ficha de un empleo. */
+export function jobPostingSeo(job: JobSeoInput): SeoData {
+  const provName = job.provinceName || (job.province ? provinceName(job.province) : '');
+  const zone = job.city || provName || (job.workMode === 'remote' ? 'remoto' : RD);
+  const canonical = jobUrl(job.slug);
+  const crumbs = breadcrumbLd([
+    { name: 'Inicio', url: `${SITE_URL}/` },
+    { name: 'Empleos', url: `${SITE_URL}/empleos` },
+    ...(job.category
+      ? [{ name: jobCategoryLabel(job.category) || 'Empleos', url: `${SITE_URL}/empleos/${job.category}` }]
+      : []),
+    { name: job.title, url: canonical },
+  ]);
+  const salary = formatSalary({
+    min: job.salaryMin,
+    max: job.salaryMax,
+    currency: job.salaryCurrency,
+    period: job.salaryPeriod as SalaryPeriod | null,
+  });
+  return {
+    title: `${job.title} en ${zone} · ${job.companyName} · Top.com.do`.slice(0, 110),
+    description: `${job.companyName} busca ${job.title} en ${zone}. ${
+      salary ? `${salary}. ` : ''
+    }${(job.description || '').replace(/\s+/g, ' ').trim().slice(0, 150)}`.slice(0, 300),
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [jobPostingLd(job), crumbs],
+  };
+}
+
+/** JSON-LD `JobPosting`. Solo emite los campos que existen — no inventa datos. */
+export function jobPostingLd(job: JobSeoInput): Record<string, unknown> {
+  const provName = job.provinceName || (job.province ? provinceName(job.province) : '');
+  const ld: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'JobPosting',
+    title: job.title,
+    description: (job.description || '').trim(),
+    identifier: { '@type': 'PropertyValue', name: 'Top.com.do', value: job.slug },
+    url: jobUrl(job.slug),
+    employmentType: SCHEMA_EMPLOYMENT_TYPE[job.jobType as JobType] || 'OTHER',
+    hiringOrganization: {
+      '@type': 'Organization',
+      name: job.companyName,
+      ...(job.companyId ? { sameAs: profileShareUrl(job.companyId) } : {}),
+    },
+  };
+  if (job.publishedAt) ld.datePosted = new Date(job.publishedAt).toISOString().slice(0, 10);
+  if (job.expiresAt) ld.validThrough = new Date(job.expiresAt).toISOString();
+
+  // Ubicación: se omite si es remoto sin ciudad concreta.
+  if (job.city || provName) {
+    ld.jobLocation = {
+      '@type': 'Place',
+      address: {
+        '@type': 'PostalAddress',
+        addressCountry: 'DO',
+        ...(provName ? { addressRegion: provName } : {}),
+        ...(job.city ? { addressLocality: job.city } : {}),
+      },
+    };
+  }
+  if (job.workMode === 'remote') {
+    ld.jobLocationType = 'TELECOMMUTE';
+    ld.applicantLocationRequirements = { '@type': 'Country', name: RD };
+  }
+
+  // Salario: solo si hay un mínimo real y no es "a convenir".
+  if (job.salaryMin != null && job.salaryPeriod && job.salaryPeriod !== 'negotiable') {
+    const unit: Record<string, string> = {
+      monthly: 'MONTH',
+      weekly: 'WEEK',
+      daily: 'DAY',
+      hourly: 'HOUR',
+    };
+    ld.baseSalary = {
+      '@type': 'MonetaryAmount',
+      currency: (job.salaryCurrency || 'DOP').toUpperCase(),
+      value: {
+        '@type': 'QuantitativeValue',
+        ...(job.salaryMax != null && job.salaryMax > job.salaryMin
+          ? { minValue: job.salaryMin, maxValue: job.salaryMax }
+          : { value: job.salaryMin }),
+        unitText: unit[job.salaryPeriod] || 'MONTH',
+      },
+    };
+  }
+  return ld;
+}
+
 // ---------------- Sitemap ----------------
 
 export interface SitemapEntry {
@@ -614,11 +788,19 @@ export interface GeoCombo {
  * que el servidor confirma con negocios reales (evita cientos de páginas vacías). El
  * `lastmod` se reserva para URLs con datos; las páginas de estructura pura lo omiten.
  */
+export interface JobSitemapInput {
+  slugs: { slug: string; lastmod?: string }[];
+  categoryLandings: { slug: string; lastmod?: string }[];
+  provinceLandings: { slug: string; lastmod?: string }[];
+  comboLandings: { category: string; province: string; lastmod?: string }[];
+}
+
 export function sitemapUrls(
   profiles: { id: string; createdAt?: string | Date | null }[] = [],
   subProvinceCombos: GeoCombo[] = [],
   catProvinceCombos: GeoCombo[] = [],
   provinceCombos: GeoCombo[] = [],
+  jobs?: JobSitemapInput,
 ): SitemapEntry[] {
   const cats = CATEGORY_DEFS.filter((c) => c.slug !== 'todo-rd');
 
@@ -634,6 +816,7 @@ export function sitemapUrls(
     { loc: `${SITE_URL}/entrega`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/seguridad-pagos`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/contacto`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/empleos`, changefreq: 'daily', priority: 0.7 },
   ];
 
   for (const c of cats) {
@@ -681,6 +864,27 @@ export function sitemapUrls(
       changefreq: 'weekly',
       priority: 0.9,
     });
+  }
+
+  // Empleos: solo landings con contenido suficiente (el servidor aplica el guard).
+  if (jobs) {
+    for (const c of jobs.categoryLandings) {
+      out.push({ loc: `${SITE_URL}/empleos/${c.slug}`, lastmod: c.lastmod, changefreq: 'daily', priority: 0.6 });
+    }
+    for (const p of jobs.provinceLandings) {
+      out.push({ loc: `${SITE_URL}/empleos/${p.slug}`, lastmod: p.lastmod, changefreq: 'daily', priority: 0.55 });
+    }
+    for (const cp of jobs.comboLandings) {
+      out.push({
+        loc: `${SITE_URL}/empleos/${cp.category}/${cp.province}`,
+        lastmod: cp.lastmod,
+        changefreq: 'daily',
+        priority: 0.5,
+      });
+    }
+    for (const j of jobs.slugs) {
+      out.push({ loc: jobUrl(j.slug), lastmod: j.lastmod, changefreq: 'weekly', priority: 0.6 });
+    }
   }
 
   return out;

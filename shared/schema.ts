@@ -25,6 +25,28 @@ export const reviewStatus = pgEnum('review_status', ['published', 'flagged', 'hi
 // Ortogonal a `role` (que gobierna los permisos): distingue el flujo/UI del usuario.
 export const accountType = pgEnum('account_type', ['consumer', 'merchant', 'admin']);
 
+// ---------------- Empleos ----------------
+export const jobType = pgEnum('job_type', [
+  'full_time',
+  'part_time',
+  'temporary',
+  'internship',
+  'freelance',
+  'contract',
+]);
+export const workMode = pgEnum('work_mode', ['onsite', 'hybrid', 'remote']);
+export const salaryPeriod = pgEnum('salary_period', [
+  'monthly',
+  'weekly',
+  'daily',
+  'hourly',
+  'negotiable',
+]);
+// `is_active` del prompt = status='published'. `expired` conserva histórico sin re-generar SEO.
+export const jobStatus = pgEnum('job_status', ['draft', 'published', 'expired', 'closed']);
+export const sourceType = pgEnum('source_type', ['direct', 'api', 'feed', 'partner']);
+export const sourceAuth = pgEnum('source_auth', ['none', 'requested', 'authorized', 'denied']);
+
 // ---------------- Tablas ----------------
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -299,6 +321,89 @@ export const auditLog = pgTable('audit_log', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---------------- Empleos (jobs) ----------------
+
+/** Fuentes de ofertas. Solo `direct` (publicación de empresas) está autorizada/activa. */
+export const jobSources = pgTable('job_sources', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  platform: text('platform').notNull().unique(),
+  baseUrl: text('base_url'),
+  sourceType: sourceType('source_type').notNull(),
+  authorizationStatus: sourceAuth('authorization_status').notNull().default('none'),
+  isEnabled: boolean('is_enabled').notNull().default(false),
+  lastRunAt: timestamp('last_run_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const jobs = pgTable(
+  'jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull().unique(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    requirements: text('requirements'),
+    responsibilities: text('responsibilities'),
+    // Vínculo opcional con un negocio registrado; `companyName` siempre presente.
+    companyId: uuid('company_id').references(() => profiles.id, { onDelete: 'set null' }),
+    companyName: text('company_name').notNull(),
+    postedByUserId: uuid('posted_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    category: text('category').notNull(), // slug de shared/job-categories.ts
+    subcategory: text('subcategory'),
+    province: text('province'), // slug de shared/provinces.ts (null en remotos sin sede)
+    city: text('city'),
+    locationText: text('location_text'),
+    latitude: numeric('latitude', { precision: 10, scale: 7 }),
+    longitude: numeric('longitude', { precision: 10, scale: 7 }),
+    jobType: jobType('job_type').notNull(),
+    workMode: workMode('work_mode').notNull(),
+    salaryMin: integer('salary_min'),
+    salaryMax: integer('salary_max'),
+    salaryCurrency: text('salary_currency').notNull().default('DOP'),
+    salaryPeriod: salaryPeriod('salary_period'),
+    applicationUrl: text('application_url'),
+    applicationEmail: text('application_email'),
+    contactWhatsapp: text('contact_whatsapp'),
+    status: jobStatus('status').notNull().default('published'),
+    isFeatured: boolean('is_featured').notNull().default(false),
+    sourceId: uuid('source_id').references(() => jobSources.id, { onDelete: 'set null' }),
+    sourcePlatform: text('source_platform').default('direct'),
+    sourceUrl: text('source_url'),
+    sourceJobId: text('source_job_id'),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byStatusPublished: index('jobs_status_published_idx').on(t.status, t.publishedAt),
+    byCategory: index('jobs_category_idx').on(t.category),
+    byProvince: index('jobs_province_idx').on(t.province),
+    byCity: index('jobs_city_idx').on(t.city),
+    byCompany: index('jobs_company_idx').on(t.companyId),
+    byExpires: index('jobs_expires_idx').on(t.expiresAt),
+    bySource: uniqueIndex('jobs_source_uniq').on(t.sourcePlatform, t.sourceJobId),
+  }),
+);
+
+export const jobReports = pgTable('job_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  jobId: uuid('job_id')
+    .notNull()
+    .references(() => jobs.id, { onDelete: 'cascade' }),
+  reporterUserId: uuid('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
+  reason: text('reason').notNull(),
+  detail: text('detail'),
+  status: text('status').notNull().default('open'), // open | reviewed | dismissed
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Bid = typeof bids.$inferSelect;
@@ -308,3 +413,6 @@ export type Referral = typeof referrals.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type DodoPayment = typeof dodoPayments.$inferSelect;
+export type Job = typeof jobs.$inferSelect;
+export type JobSource = typeof jobSources.$inferSelect;
+export type JobReport = typeof jobReports.$inferSelect;

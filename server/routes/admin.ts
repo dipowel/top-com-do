@@ -3,7 +3,19 @@ import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { rankingWindowStart, RANKING_WINDOW_DAYS } from '../../shared/bidding';
 import { z } from 'zod';
 import { db } from '../db';
-import { bids, profiles, categories, users, auditLog, referrals, reviews } from '../../shared/schema';
+import {
+  bids,
+  profiles,
+  categories,
+  users,
+  auditLog,
+  referrals,
+  reviews,
+  jobs as J,
+  jobReports,
+} from '../../shared/schema';
+import { toJobCard } from '../lib/jobs';
+import { expireStaleJobs } from '../lib/jobs';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
@@ -407,6 +419,122 @@ r.delete(
       /* no bloquea */
     }
     res.json({ ok: true });
+  }),
+);
+
+// ---------------- Empleos ----------------
+
+r.get(
+  '/jobs',
+  ah(async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const status = typeof req.query.status === 'string' ? req.query.status : '';
+    const rows = await db
+      .select()
+      .from(J)
+      .where(
+        and(
+          q
+            ? sql`(${J.title} ilike ${`%${q}%`} or ${J.companyName} ilike ${`%${q}%`})`
+            : undefined,
+          status ? eq(J.status, status as 'draft' | 'published' | 'expired' | 'closed') : undefined,
+        ),
+      )
+      .orderBy(desc(J.createdAt))
+      .limit(300);
+    res.json(rows.map((row) => ({ ...toJobCard(row), status: row.status, createdAt: row.createdAt })));
+  }),
+);
+
+const adminJobPatch = z.object({
+  title: z.string().min(4).max(140).optional(),
+  companyName: z.string().min(2).max(120).optional(),
+  category: z.string().max(60).optional(),
+  province: z.string().max(40).optional(),
+  status: z.enum(['draft', 'published', 'expired', 'closed']).optional(),
+  isFeatured: z.boolean().optional(),
+  expiresAt: z.string().datetime().nullable().optional(),
+});
+
+r.patch(
+  '/jobs/:id',
+  ah(async (req, res) => {
+    const body = adminJobPatch.parse(req.body);
+    const [existing] = await db.select().from(J).where(eq(J.id, req.params.id)).limit(1);
+    if (!existing) throw new HttpError(404, 'Vacante no encontrada');
+    if (body.province && !PROVINCE_SLUGS.includes(body.province)) throw new HttpError(400, 'Provincia inválida');
+
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.title !== undefined) patch.title = body.title;
+    if (body.companyName !== undefined) patch.companyName = body.companyName;
+    if (body.category !== undefined) patch.category = body.category;
+    if (body.province !== undefined) patch.province = body.province || null;
+    if (body.isFeatured !== undefined) patch.isFeatured = body.isFeatured;
+    if (body.expiresAt !== undefined) patch.expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
+    if (body.status !== undefined) {
+      patch.status = body.status;
+      if (body.status === 'published' && !existing.publishedAt) patch.publishedAt = new Date();
+    }
+
+    const [row] = await db.update(J).set(patch).where(eq(J.id, existing.id)).returning();
+    await audit(req.user!.id, 'admin.job.edit', 'job', existing.id, { changes: body });
+    res.json({ ...toJobCard(row!), status: row!.status });
+  }),
+);
+
+r.delete(
+  '/jobs/:id',
+  ah(async (req, res) => {
+    const [existing] = await db.select({ id: J.id }).from(J).where(eq(J.id, req.params.id)).limit(1);
+    if (!existing) throw new HttpError(404, 'Vacante no encontrada');
+    await db.update(J).set({ status: 'closed', updatedAt: new Date() }).where(eq(J.id, existing.id));
+    await audit(req.user!.id, 'admin.job.close', 'job', existing.id, {});
+    res.json({ ok: true });
+  }),
+);
+
+r.get(
+  '/job-reports',
+  ah(async (req, res) => {
+    const status = typeof req.query.status === 'string' ? req.query.status : 'open';
+    const rows = await db
+      .select({
+        id: jobReports.id,
+        reason: jobReports.reason,
+        detail: jobReports.detail,
+        status: jobReports.status,
+        createdAt: jobReports.createdAt,
+        jobId: J.id,
+        jobSlug: J.slug,
+        jobTitle: J.title,
+        reporterEmail: users.email,
+      })
+      .from(jobReports)
+      .innerJoin(J, eq(J.id, jobReports.jobId))
+      .leftJoin(users, eq(users.id, jobReports.reporterUserId))
+      .where(status ? eq(jobReports.status, status) : undefined)
+      .orderBy(desc(jobReports.createdAt))
+      .limit(200);
+    res.json(rows);
+  }),
+);
+
+r.post(
+  '/job-reports/:id/resolve',
+  ah(async (req, res) => {
+    const body = z.object({ status: z.enum(['reviewed', 'dismissed']) }).parse(req.body);
+    await db.update(jobReports).set({ status: body.status }).where(eq(jobReports.id, req.params.id));
+    await audit(req.user!.id, `admin.jobReport.${body.status}`, 'jobReport', req.params.id, {});
+    res.json({ ok: true });
+  }),
+);
+
+r.post(
+  '/jobs/expire',
+  ah(async (req, res) => {
+    const n = await expireStaleJobs();
+    await audit(req.user!.id, 'admin.jobs.expire', 'job', null, { expired: n });
+    res.json({ expired: n });
   }),
 );
 

@@ -77,4 +77,35 @@ describe('renderPage · metadatos por ruta', () => {
     expect((await renderPage('/recibo')).noindex).toBe(true);
     expect((await renderPage('/recibo/abc123')).noindex).toBe(true);
   });
+
+  it('/empleos: indexable con su título aunque la lista esté vacía', async () => {
+    const r = await renderPage('/empleos');
+    expect(r.status).toBe(200);
+    expect(r.noindex).toBe(false);
+    expect(r.html).toContain('<title>Empleos en República Dominicana · Top.com.do</title>');
+    expect(r.html).toContain('<link rel="canonical" href="https://www.top.com.do/empleos" />');
+  });
+
+  it('/empleos/publicar y /empleos/mis-vacantes → noindex (rutas privadas)', async () => {
+    expect((await renderPage('/empleos/publicar')).noindex).toBe(true);
+    expect((await renderPage('/empleos/mis-vacantes')).noindex).toBe(true);
+  });
+
+  it('/empleos/:categoria sin datos (test) → noindex (guard de thin content)', async () => {
+    const r = await renderPage('/empleos/tecnologia');
+    expect(r.status).toBe(200);
+    expect(r.noindex).toBe(true);
+  });
+
+  it('/empleos/:filtro inválido → 404 + noindex', async () => {
+    const r = await renderPage('/empleos/no-existe-nada');
+    expect(r.status).toBe(404);
+    expect(r.html).toContain('noindex');
+  });
+
+  it('/empleo/:slug inexistente → 404 + noindex', async () => {
+    const r = await renderPage('/empleo/vacante-que-no-existe');
+    expect(r.status).toBe(404);
+    expect(r.html).toContain('noindex');
+  });
 });

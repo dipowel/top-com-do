@@ -33,6 +33,12 @@ export default function TopBar() {
         </Link>
         <div className="flex items-center gap-1.5">
           <Link
+            to="/empleos"
+            className="btn-ghost hidden !px-3 !py-1.5 text-xs sm:inline-flex"
+          >
+            Empleos
+          </Link>
+          <Link
             to="/publicar"
             className="btn-ghost hidden !px-3 !py-1.5 text-xs sm:inline-flex"
           >

@@ -93,6 +93,48 @@ describe('API base', () => {
     expect(res.body.error).toBeTruthy();
   });
 
+  it('GET /api/jobs responde JSON (200) o error controlado sin DB (500); no-store', async () => {
+    const res = await request(app).get('/api/jobs');
+    expect([200, 500]).toContain(res.status);
+    expect(res.headers['cache-control']).toContain('no-store');
+    if (res.status === 200) expect(Array.isArray(res.body.items)).toBe(true);
+  });
+
+  it('GET /api/jobs/facets → [200, 500]', async () => {
+    const res = await request(app).get('/api/jobs/facets');
+    expect([200, 500]).toContain(res.status);
+  });
+
+  it('GET /api/jobs/:slug inexistente → [404, 500]', async () => {
+    const res = await request(app).get('/api/jobs/vacante-que-no-existe');
+    expect([404, 500]).toContain(res.status);
+  });
+
+  it('POST /api/jobs sin token → 401', async () => {
+    const res = await request(app).post('/api/jobs').send({ title: 'x', description: 'y' });
+    expect(res.status).toBe(401);
+  });
+
+  it('PATCH /api/jobs/:id sin token → 401', async () => {
+    const res = await request(app).patch('/api/jobs/00000000-0000-0000-0000-000000000000').send({ title: 'x' });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/jobs/:id/report sin token → 401', async () => {
+    const res = await request(app).post('/api/jobs/00000000-0000-0000-0000-000000000000/report').send({ reason: 'spam' });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/admin/jobs sin token → 401', async () => {
+    const res = await request(app).get('/api/admin/jobs');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/me/jobs sin token → 401', async () => {
+    const res = await request(app).get('/api/me/jobs');
+    expect(res.status).toBe(401);
+  });
+
   it('GET /api/health/config reporta el estado de configuración', async () => {
     const res = await request(app).get('/api/health/config');
     expect(res.status).toBe(200);

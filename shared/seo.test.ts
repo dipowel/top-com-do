@@ -19,7 +19,30 @@ import {
   itemListLd,
   sitemapUrls,
   renderSitemap,
+  empleosSeo,
+  jobPostingSeo,
+  jobPostingLd,
+  type JobSeoInput,
 } from './seo';
+
+const baseJob: JobSeoInput = {
+  slug: 'desarrollador-frontend-santo-domingo',
+  title: 'Desarrollador Frontend',
+  description: 'Buscamos un dev con React para nuestro equipo en Santo Domingo.',
+  companyId: null,
+  companyName: 'Acme SRL',
+  category: 'tecnologia',
+  province: 'distrito-nacional',
+  city: 'Santo Domingo',
+  jobType: 'full_time',
+  workMode: 'onsite',
+  salaryMin: 60000,
+  salaryMax: 90000,
+  salaryCurrency: 'DOP',
+  salaryPeriod: 'monthly',
+  publishedAt: '2026-09-01T00:00:00Z',
+  expiresAt: null,
+};
 
 describe('seo · títulos y descripciones con geografía', () => {
   it('portada: publicidad + ranking + República Dominicana', () => {
@@ -261,5 +284,73 @@ describe('seo · sitemap', () => {
 
   it('organizationLd lleva las 3 redes en sameAs', () => {
     expect((organizationLd().sameAs as string[]).length).toBe(3);
+  });
+});
+
+describe('seo · empleos', () => {
+  it('empleosSeo: canónico limpio y noindex según guard', () => {
+    const s = empleosSeo({ categorySlug: 'tecnologia', provinceSlug: 'santiago', indexable: true });
+    expect(s.canonical).toBe('https://www.top.com.do/empleos/tecnologia/santiago');
+    expect(s.noindex).toBeFalsy();
+    expect(empleosSeo({ indexable: false }).noindex).toBe(true);
+  });
+
+  it('empleosSeo: sin filtros apunta a /empleos', () => {
+    expect(empleosSeo({ indexable: true }).canonical).toBe('https://www.top.com.do/empleos');
+  });
+
+  it('jobPostingLd: empleo con salario y ciudad emite jobLocation y baseSalary', () => {
+    const ld = jobPostingLd(baseJob);
+    expect(ld['@type']).toBe('JobPosting');
+    expect(ld.jobLocation).toBeDefined();
+    expect((ld.baseSalary as Record<string, unknown>).currency).toBe('DOP');
+    expect(ld.validThrough).toBeUndefined();
+    expect(ld.jobLocationType).toBeUndefined();
+  });
+
+  it('jobPostingLd: remoto sin ciudad omite jobLocation pero declara TELECOMMUTE', () => {
+    const ld = jobPostingLd({
+      ...baseJob,
+      province: null,
+      city: null,
+      workMode: 'remote',
+    });
+    expect(ld.jobLocation).toBeUndefined();
+    expect(ld.jobLocationType).toBe('TELECOMMUTE');
+    expect(ld.applicantLocationRequirements).toMatchObject({ '@type': 'Country' });
+  });
+
+  it('jobPostingLd: sin salario o negociable no emite baseSalary', () => {
+    expect(jobPostingLd({ ...baseJob, salaryMin: null }).baseSalary).toBeUndefined();
+    expect(jobPostingLd({ ...baseJob, salaryPeriod: 'negotiable' }).baseSalary).toBeUndefined();
+  });
+
+  it('jobPostingLd: validThrough solo con expiresAt', () => {
+    const ld = jobPostingLd({ ...baseJob, expiresAt: '2026-12-01T00:00:00Z' });
+    expect(ld.validThrough).toContain('2026-12-01');
+  });
+
+  it('jobPostingSeo: canónico a /empleo/:slug y JSON-LD con JobPosting + BreadcrumbList', () => {
+    const s = jobPostingSeo(baseJob);
+    expect(s.canonical).toBe('https://www.top.com.do/empleo/desarrollador-frontend-santo-domingo');
+    expect(s.jsonLd?.[0]).toMatchObject({ '@type': 'JobPosting' });
+    expect(s.jsonLd?.[1]).toMatchObject({ '@type': 'BreadcrumbList' });
+  });
+
+  it('sitemapUrls: incluye /empleos siempre y detalles/landings solo si se pasan', () => {
+    const plain = sitemapUrls();
+    expect(plain.some((u) => u.loc === 'https://www.top.com.do/empleos')).toBe(true);
+    expect(plain.some((u) => u.loc.startsWith('https://www.top.com.do/empleo/'))).toBe(false);
+
+    const withJobs = sitemapUrls([], [], [], [], {
+      slugs: [{ slug: 'dev-frontend-sd', lastmod: '2026-09-01' }],
+      categoryLandings: [{ slug: 'tecnologia' }],
+      provinceLandings: [],
+      comboLandings: [{ category: 'tecnologia', province: 'santiago' }],
+    });
+    const locs = withJobs.map((u) => u.loc);
+    expect(locs).toContain('https://www.top.com.do/empleo/dev-frontend-sd');
+    expect(locs).toContain('https://www.top.com.do/empleos/tecnologia');
+    expect(locs).toContain('https://www.top.com.do/empleos/tecnologia/santiago');
   });
 });

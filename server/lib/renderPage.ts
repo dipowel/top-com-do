@@ -15,7 +15,9 @@ import {
   SUBCATEGORY_DEFS,
   subcategoryLabel,
 } from '../../shared/categories';
-import { PROVINCE_SLUGS, NATIONAL_SLUG, provinceName } from '../../shared/provinces';
+import { PROVINCE_SLUGS, NATIONAL_SLUG, provinceName, isRealProvince } from '../../shared/provinces';
+import { jobCategoryLabel, isJobCategory } from '../../shared/job-categories';
+import { listJobs, getJobBySlug, jobFacetCounts, landingIndexable } from './jobs';
 import {
   homeSeo,
   categorySeo,
@@ -26,6 +28,8 @@ import {
   publicarSeo,
   legalSeo,
   directorioSeo,
+  empleosSeo,
+  jobPostingSeo,
   organizationLd,
   websiteLd,
   categoryIntro,
@@ -402,6 +406,142 @@ async function resolve(pathname: string): Promise<Resolved> {
       status: 200,
       cache: 300,
       body: hero(esc(row.name), seo.description, extra, crumbNav(crumbs)),
+    };
+  }
+
+  if (head === 'empleo' && segs[1]) {
+    let job = null;
+    try {
+      job = await getJobBySlug(segs[1]);
+    } catch {
+      job = null;
+    }
+    if (!job) return notFound(pathname);
+    const seo = jobPostingSeo({
+      slug: job.slug,
+      title: job.title,
+      description: job.description,
+      companyId: job.companyId,
+      companyName: job.companyName,
+      category: job.category,
+      province: job.province,
+      provinceName: job.provinceName,
+      city: job.city,
+      jobType: job.jobType,
+      workMode: job.workMode,
+      salaryMin: job.salaryMin,
+      salaryMax: job.salaryMax,
+      salaryCurrency: job.salaryCurrency,
+      salaryPeriod: job.salaryPeriod,
+      publishedAt: job.publishedAt,
+      expiresAt: job.expiresAt,
+    });
+    const zone = job.city || job.provinceName || (job.workMode === 'remote' ? 'Remoto' : RD);
+    const meta = [job.companyName, zone, job.jobTypeLabel, job.workModeLabel]
+      .filter(Boolean)
+      .join(' · ');
+    const salary = job.salaryLabel ? `<p style="${P_STYLE}">💰 ${esc(job.salaryLabel)}</p>` : '';
+    const apply =
+      job.applicationUrl || job.applicationEmail || job.contactWhatsapp
+        ? `<p style="font-size:.9rem"><a href="${esc(
+            job.applicationUrl ||
+              (job.applicationEmail ? `mailto:${job.applicationEmail}` : whatsappLink(job.contactWhatsapp!)),
+          )}" style="color:#34d399">Aplicar ahora</a></p>`
+        : '';
+    return {
+      seo,
+      status: 200,
+      cache: 600,
+      body: hero(
+        esc(job.title),
+        `${meta}. ${(job.description || '').replace(/\s+/g, ' ').trim().slice(0, 400)}`,
+        salary + apply,
+        crumbNav([
+          { name: 'Inicio', href: '/' },
+          { name: 'Empleos', href: '/empleos' },
+          { name: jobCategoryLabel(job.category) || 'Empleos', href: `/empleos/${job.category}` },
+          { name: job.title },
+        ]),
+      ),
+    };
+  }
+
+  if (head === 'empleos') {
+    if (segs[1] === 'publicar' || segs[1] === 'mis-vacantes') {
+      return {
+        seo: { ...homeSeo(), canonical: `${SITE_URL}/empleos/${segs[1]}`, noindex: true },
+        status: 200,
+        cache: 60,
+        body: homeBody(),
+      };
+    }
+
+    const filtro = segs[1];
+    const provSeg = isRealProvince(segs[2]) ? segs[2] : null;
+    const catSlug = isJobCategory(filtro) ? filtro : null;
+    const provSlug = !catSlug && isRealProvince(filtro) ? filtro : provSeg;
+
+    if (segs.length > 1 && !catSlug && !provSlug) return notFound(pathname);
+
+    let items: { slug: string; title: string; companyName: string; sub: string }[] = [];
+    let indexable = true;
+    try {
+      if (catSlug || provSlug) {
+        const facets = await jobFacetCounts();
+        indexable = landingIndexable(facets, catSlug, provSlug).indexable;
+      }
+      const list = await listJobs({
+        category: catSlug ?? undefined,
+        province: provSlug ?? undefined,
+        limit: 24,
+      });
+      items = list.items.map((j) => ({
+        slug: j.slug,
+        title: j.title,
+        companyName: j.companyName,
+        sub: [j.provinceName || j.city, j.jobTypeLabel].filter(Boolean).join(' · '),
+      }));
+    } catch {
+      items = [];
+      indexable = false;
+    }
+
+    const seo = empleosSeo({
+      categorySlug: catSlug,
+      provinceSlug: provSlug,
+      items: items.map((i) => ({ slug: i.slug, title: i.title })),
+      indexable: (catSlug || provSlug) ? indexable : true,
+    });
+    const lis = items
+      .map(
+        (i) =>
+          `<li><a href="/empleo/${esc(i.slug)}" style="color:#e8c874">${esc(i.title)}</a> ` +
+          `<span style="color:#9aa4b2">— ${esc(i.companyName)}${i.sub ? ` · ${esc(i.sub)}` : ''}</span></li>`,
+      )
+      .join('');
+    const ul = items.length
+      ? `<ul style="list-style:none;padding:0;margin:0;display:grid;gap:.4rem;font-size:.9rem">${lis}</ul>`
+      : '<p style="color:#9aa4b2">Aún no hay vacantes publicadas en esta sección. <a href="/empleos/publicar" style="color:#e8c874">Publica la tuya gratis</a>.</p>';
+    const heading = catSlug
+      ? `Empleos de ${jobCategoryLabel(catSlug)} en ${provSlug ? provinceName(provSlug) : RD}`
+      : provSlug
+        ? `Empleos en ${provinceName(provSlug)}`
+        : 'Empleos en República Dominicana';
+    return {
+      seo,
+      status: 200,
+      cache: catSlug || provSlug ? 600 : 900,
+      body: hero(
+        esc(heading),
+        seo.description,
+        ul,
+        crumbNav([
+          { name: 'Inicio', href: '/' },
+          { name: 'Empleos', href: '/empleos' },
+          ...(catSlug ? [{ name: jobCategoryLabel(catSlug), href: `/empleos/${catSlug}` }] : []),
+          ...(provSlug ? [{ name: provinceName(provSlug) }] : []),
+        ]),
+      ),
     };
   }
 

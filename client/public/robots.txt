@@ -8,9 +8,18 @@ Disallow: /mis-pujas
 Disallow: /favoritos
 Disallow: /notificaciones
 Disallow: /recibo
+Disallow: /empleos/publicar
+Disallow: /empleos/mis-vacantes
 Disallow: /*?ref=
 Disallow: /*?pujar=
 Disallow: /*?pago=
 Disallow: /*?q=
+Disallow: /*?categoria=
+Disallow: /*?provincia=
+Disallow: /*?modalidad=
+Disallow: /*?tipo=
+Disallow: /*?salario=
+Disallow: /*?donde=
+Disallow: /*?cursor=
 
 Sitemap: https://www.top.com.do/sitemap.xml

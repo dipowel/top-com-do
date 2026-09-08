@@ -12,7 +12,9 @@ import {
   creditTransactions,
   notifications,
   reviews,
+  jobs as jobsTable,
 } from '../../shared/schema';
+import { toJobDetail } from '../lib/jobs';
 import { profileAvatarUrl } from '../../shared/site';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
@@ -327,6 +329,19 @@ r.get(
       profileName: b.profileName,
       profileHandle: b.profileHandle,
     });
+  }),
+);
+
+/** Vacantes que yo publiqué (todos los estados). */
+r.get(
+  '/jobs',
+  ah(async (req, res) => {
+    const rows = await db
+      .select()
+      .from(jobsTable)
+      .where(eq(jobsTable.postedByUserId, req.user!.id))
+      .orderBy(desc(jobsTable.createdAt));
+    res.json(rows.map((r) => toJobDetail(r, [])));
   }),
 );
 

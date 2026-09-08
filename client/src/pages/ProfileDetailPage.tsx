@@ -10,9 +10,10 @@ import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
 import { useSeo } from '../hooks/useSeo';
 import ProfileReviews from '../components/reviews/ProfileReviews';
+import JobCard from '../components/jobs/JobCard';
 import { categoryLabel, profileSeo } from '@shared/seo';
 import Breadcrumbs, { type Crumb } from '../components/common/Breadcrumbs';
-import type { ReviewSummary } from '@shared/types';
+import type { ReviewSummary, JobCard as JobCardDTO, JobsListResponse } from '@shared/types';
 
 interface Detail {
   id: string;
@@ -47,6 +48,7 @@ export default function ProfileDetailPage() {
   const { id = '' } = useParams();
   const [profile, setProfile] = useState<Detail | null>(null);
   const [bids, setBids] = useState<VerifiedBid[]>([]);
+  const [jobs, setJobs] = useState<JobCardDTO[]>([]);
   const [notFound, setNotFound] = useState(false);
   const { openBid } = useShell();
   const { ids, toggle } = useFavorites();
@@ -61,6 +63,9 @@ export default function ProfileDetailPage() {
     api<VerifiedBid[]>(`/profiles/${id}/bids`)
       .then(setBids)
       .catch(() => setBids([]));
+    api<JobsListResponse>(`/jobs?company=${encodeURIComponent(id)}`)
+      .then((r) => setJobs(r.items))
+      .catch(() => setJobs([]));
   }, [id]);
 
   // Enlace del correo "Recuperar #1" / de las notificaciones → abre el checkout.
@@ -230,6 +235,17 @@ export default function ProfileDetailPage() {
           {!bids.length && <p className="text-xs text-white/40">Sin pujas verificadas todavía.</p>}
         </div>
       </div>
+
+      {jobs.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold text-white/85">💼 Vacantes disponibles</h2>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {jobs.map((j) => (
+              <JobCard key={j.id} job={j} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Reseñas — debajo de las pujas, sin tocar la sección de competencia de arriba */}
       <ProfileReviews profileId={profile.id} isOwner={isOwner} />

@@ -10,10 +10,11 @@ import { noStore } from './middleware/noStore';
 import { errorHandler } from './middleware/errorHandler';
 import { ah } from './lib/asyncHandler';
 import { db } from './db';
-import { profiles as profilesTable, categories as categoriesTable } from '../shared/schema';
-import { sitemapUrls, renderSitemap } from '../shared/seo';
+import { profiles as profilesTable, categories as categoriesTable, jobs as jobsTable } from '../shared/schema';
+import { sitemapUrls, renderSitemap, type JobSitemapInput } from '../shared/seo';
 import { subSlug } from '../shared/categories';
 import { isRealProvince } from '../shared/provinces';
+import { hasEnoughJobsForIndexing } from '../shared/jobs';
 import { renderPage } from './lib/renderPage';
 
 import health from './routes/health';
@@ -27,6 +28,7 @@ import me from './routes/me';
 import admin from './routes/admin';
 import cron from './routes/cron';
 import reviews from './routes/reviews';
+import jobs from './routes/jobs';
 
 export function createApp() {
   const app = express();
@@ -116,9 +118,71 @@ export function createApp() {
         provinces = [];
       }
 
+      // Empleos: slugs activos + landings de categoría/provincia/combo que pasan el guard.
+      let jobSitemap: JobSitemapInput | undefined;
+      try {
+        const jobLastmod = sql<string | null>`max(coalesce(${jobsTable.publishedAt}, ${jobsTable.updatedAt}))`;
+        const active = sql`${jobsTable.status} = 'published' and (${jobsTable.expiresAt} is null or ${jobsTable.expiresAt} > now())`;
+        const [slugRows, catRows, provRows, comboRows] = await Promise.all([
+          db
+            .select({ slug: jobsTable.slug, publishedAt: jobsTable.publishedAt, updatedAt: jobsTable.updatedAt })
+            .from(jobsTable)
+            .where(active)
+            .orderBy(jobsTable.publishedAt)
+            .limit(5000),
+          db
+            .select({
+              k: jobsTable.category,
+              n: sql<number>`count(*)::int`,
+              c: sql<number>`count(distinct coalesce(${jobsTable.companyId}::text, ${jobsTable.companyName}))::int`,
+              m: jobLastmod,
+            })
+            .from(jobsTable)
+            .where(active)
+            .groupBy(jobsTable.category),
+          db
+            .select({
+              k: jobsTable.province,
+              n: sql<number>`count(*)::int`,
+              c: sql<number>`count(distinct coalesce(${jobsTable.companyId}::text, ${jobsTable.companyName}))::int`,
+              m: jobLastmod,
+            })
+            .from(jobsTable)
+            .where(sql`${active} and ${jobsTable.province} is not null`)
+            .groupBy(jobsTable.province),
+          db
+            .select({
+              cat: jobsTable.category,
+              prov: jobsTable.province,
+              n: sql<number>`count(*)::int`,
+              c: sql<number>`count(distinct coalesce(${jobsTable.companyId}::text, ${jobsTable.companyName}))::int`,
+              m: jobLastmod,
+            })
+            .from(jobsTable)
+            .where(sql`${active} and ${jobsTable.province} is not null`)
+            .groupBy(jobsTable.category, jobsTable.province),
+        ]);
+        const pass = (n: number, c: number, m: string | null) =>
+          hasEnoughJobsForIndexing({ activeCount: n, distinctCompanies: c, newestPublishedAt: m });
+        jobSitemap = {
+          slugs: slugRows.map((s) => ({ slug: s.slug, lastmod: day(s.publishedAt ?? s.updatedAt) })),
+          categoryLandings: catRows
+            .filter((x) => x.k && pass(x.n, x.c, x.m))
+            .map((x) => ({ slug: x.k as string, lastmod: day(x.m) })),
+          provinceLandings: provRows
+            .filter((x) => x.k && isRealProvince(x.k) && pass(x.n, x.c, x.m))
+            .map((x) => ({ slug: x.k as string, lastmod: day(x.m) })),
+          comboLandings: comboRows
+            .filter((x) => x.prov && isRealProvince(x.prov) && pass(x.n, x.c, x.m))
+            .map((x) => ({ category: x.cat, province: x.prov as string, lastmod: day(x.m) })),
+        };
+      } catch {
+        jobSitemap = undefined;
+      }
+
       res.type('application/xml');
       res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-      res.send(renderSitemap(sitemapUrls(rows, subProvince, catProvince, provinces)));
+      res.send(renderSitemap(sitemapUrls(rows, subProvince, catProvince, provinces, jobSitemap)));
     }),
   );
 
@@ -132,6 +196,7 @@ export function createApp() {
   app.use('/api/checkout', checkout);
   app.use('/api/me', me);
   app.use('/api/reviews', reviews);
+  app.use('/api/jobs', jobs);
   app.use('/api/admin', admin);
   app.use('/api/cron', cron);
 

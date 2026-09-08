@@ -23,6 +23,10 @@ const EntregaPage = lazy(() => import('./pages/legal/EntregaPage'));
 const SeguridadPagosPage = lazy(() => import('./pages/legal/SeguridadPagosPage'));
 const ContactoPage = lazy(() => import('./pages/legal/ContactoPage'));
 const ReciboPage = lazy(() => import('./pages/ReciboPage'));
+const EmpleosPage = lazy(() => import('./pages/jobs/EmpleosPage'));
+const EmpleoDetailPage = lazy(() => import('./pages/jobs/EmpleoDetailPage'));
+const PublicarEmpleoPage = lazy(() => import('./pages/jobs/PublicarEmpleoPage'));
+const MisVacantesPage = lazy(() => import('./pages/jobs/MisVacantesPage'));
 const AdminLayout = lazy(() => import('./admin/AdminLayout'));
 
 export default function App() {
@@ -55,6 +59,12 @@ export default function App() {
           <Route path="/contacto" element={<ContactoPage />} />
           <Route path="/recibo" element={<ReciboPage />} />
           <Route path="/recibo/:bidId" element={<ReciboPage />} />
+          <Route path="/empleos" element={<EmpleosPage />} />
+          <Route path="/empleos/publicar" element={<PublicarEmpleoPage />} />
+          <Route path="/empleos/mis-vacantes" element={<MisVacantesPage />} />
+          <Route path="/empleos/:filtro" element={<EmpleosPage />} />
+          <Route path="/empleos/:filtro/:provincia" element={<EmpleosPage />} />
+          <Route path="/empleo/:slug" element={<EmpleoDetailPage />} />
         </Route>
         <Route path="/admin/*" element={<AdminLayout />} />
         <Route path="*" element={<Navigate to="/" replace />} />

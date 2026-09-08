@@ -82,6 +82,16 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link to="/empleos" className="hover:text-gold">
+                Empleos en RD
+              </Link>
+            </li>
+            <li>
+              <Link to="/empleos/publicar" className="hover:text-gold">
+                Publicar una vacante
+              </Link>
+            </li>
+            <li>
               <Link to="/publicar" className="hover:text-gold">
                 Anunciar mi negocio
               </Link>
