@@ -73,4 +73,27 @@ describe('adapters · registry', () => {
       () => new GreenhouseAdapter(fakeSource({ platform: 'greenhouse', config: { greenhouseToken: 'acme' } as never })),
     ).not.toThrow();
   });
+
+  it('Greenhouse itera cada board de una lista "acme, globex"', async () => {
+    const calls: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL) => {
+      calls.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ jobs: [] }),
+      } as Response;
+    }) as typeof fetch;
+    try {
+      const gh = new GreenhouseAdapter(
+        fakeSource({ platform: 'greenhouse', config: { greenhouseToken: 'acme, globex' } as never }),
+      );
+      for await (const _ of gh.fetchJobs({ maxJobs: 50, deadline: Date.now() + 5000 })) void _;
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toContain('/boards/acme/');
+    expect(calls[1]).toContain('/boards/globex/');
+  });
 });

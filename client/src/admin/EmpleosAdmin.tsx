@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import Modal from '../components/common/Modal';
@@ -7,7 +7,28 @@ import JobForm, {
   jobFormToPayload,
   type JobFormValue,
 } from '../components/jobs/JobForm';
+import { JOB_CATEGORY_DEFS } from '@shared/job-categories';
 import type { JobDetail } from '@shared/types';
+
+type SourcePlatform = 'csv' | 'greenhouse' | 'lever' | 'jooble';
+const NEW_PLATFORMS: { v: SourcePlatform; label: string; type: string }[] = [
+  { v: 'csv', label: 'CSV curado (URL)', type: 'feed' },
+  { v: 'greenhouse', label: 'Greenhouse (ATS)', type: 'ats' },
+  { v: 'lever', label: 'Lever (ATS)', type: 'ats' },
+  { v: 'jooble', label: 'Jooble (API)', type: 'api' },
+];
+
+interface JoobleQuery {
+  keywords: string;
+  location?: string;
+}
+interface SourceConfig {
+  csvUrl?: string;
+  greenhouseToken?: string | string[];
+  leverHandle?: string | string[];
+  companyName?: string;
+  joobleQueries?: JoobleQuery[];
+}
 
 type View = 'jobs' | 'sources' | 'runs';
 
@@ -47,10 +68,21 @@ interface SourceRow {
   isEnabled: boolean;
   autoPublish: boolean;
   authorizationStatus: string;
+  defaultCategory: string | null;
+  feedUrl: string | null;
+  config: SourceConfig | null;
+  notes: string | null;
   lastRunAt: string | null;
   lastRunStatus: string | null;
   lastError: string | null;
   activeJobs: number;
+}
+
+interface ImportStatus {
+  enabled: boolean;
+  schedule: string;
+  cronSecretSet: boolean;
+  joobleKeySet: boolean;
 }
 
 interface RunRow {
@@ -103,10 +135,13 @@ export default function EmpleosAdmin() {
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<AdminJobRow[]>([]);
   const [sources, setSources] = useState<SourceRow[]>([]);
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; form: JobFormValue } | null>(null);
+  const [showNewSource, setShowNewSource] = useState(false);
+  const [editSourceId, setEditSourceId] = useState<string | null>(null);
 
   const loadJobs = useCallback(() => {
     const p = new URLSearchParams();
@@ -120,6 +155,9 @@ export default function EmpleosAdmin() {
 
   const loadSources = useCallback(() => {
     api<SourceRow[]>('/admin/job-sources', { auth: true }).then(setSources).catch(() => {});
+    api<{ jobsImport?: ImportStatus }>('/health/config')
+      .then((h) => setImportStatus(h.jobsImport ?? null))
+      .catch(() => {});
   }, []);
   const loadRuns = useCallback(() => {
     api<RunRow[]>('/admin/job-import-runs', { auth: true }).then(setRuns).catch(() => {});
@@ -173,11 +211,26 @@ export default function EmpleosAdmin() {
     }
   }
 
-  async function patchSource(id: string, patch: Partial<SourceRow>) {
+  async function patchSource(id: string, patch: Record<string, unknown>) {
     setBusy(id);
     try {
       await api(`/admin/job-sources/${id}`, { method: 'PATCH', body: JSON.stringify(patch), auth: true });
       loadSources();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function createSource(payload: Record<string, unknown>) {
+    setBusy('new-source');
+    setMsg(null);
+    try {
+      await api('/admin/job-sources', { method: 'POST', body: JSON.stringify(payload), auth: true });
+      setShowNewSource(false);
+      loadSources();
+      setMsg('Fuente creada. Ponla en "authorized" + "activa" para que el cron la importe.');
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
@@ -352,9 +405,43 @@ export default function EmpleosAdmin() {
 
       {view === 'sources' && (
         <div className="space-y-3">
-          <button onClick={runImport} disabled={busy === 'import'} className="btn-gold text-xs">
-            {busy === 'import' ? 'Importando…' : 'Ejecutar importación ahora'}
-          </button>
+          {importStatus && !importStatus.enabled && (
+            <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] text-amber-200">
+              La importación automática está <b>apagada</b>. Pon <code>IMPORT_ENABLED=true</code> en
+              Vercel para que el cron ({importStatus.schedule} UTC) y el botón "Ejecutar importación"
+              procesen fuentes.
+              {!importStatus.cronSecretSet && ' Además falta CRON_SECRET (el cron responderá 401).'}
+            </div>
+          )}
+          {importStatus?.enabled && (
+            <div className="rounded-xl border border-emerald/25 bg-emerald/10 p-3 text-[11px] text-emerald-soft">
+              Importación automática <b>activa</b> — el cron corre a las {importStatus.schedule} UTC.
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <button onClick={runImport} disabled={busy === 'import'} className="btn-gold text-xs">
+              {busy === 'import' ? 'Importando…' : 'Ejecutar importación ahora'}
+            </button>
+            <button
+              onClick={() => {
+                setShowNewSource((v) => !v);
+                setEditSourceId(null);
+              }}
+              className="btn-ghost text-xs"
+            >
+              {showNewSource ? 'Cancelar' : '＋ Nueva fuente'}
+            </button>
+          </div>
+
+          {showNewSource && (
+            <SourceForm
+              busy={busy === 'new-source'}
+              onCancel={() => setShowNewSource(false)}
+              onSubmit={createSource}
+            />
+          )}
+
           <div className="glass overflow-x-auto p-1">
             <table className="w-full text-left text-xs">
               <thead className="text-white/40">
@@ -368,57 +455,85 @@ export default function EmpleosAdmin() {
               </thead>
               <tbody>
                 {sources.map((s) => (
-                  <tr key={s.id} className="border-t border-white/5">
-                    <td className="p-2">
-                      <div className="font-semibold text-white/85">{s.name}</div>
-                      <div className="text-[10px] text-white/35">{s.platform} · {s.sourceType}</div>
-                    </td>
-                    <td className="p-2">
-                      <select
-                        className="input !py-1 text-[11px]"
-                        value={s.authorizationStatus}
-                        disabled={s.platform === 'direct'}
-                        onChange={(e) => patchSource(s.id, { authorizationStatus: e.target.value })}
-                      >
-                        {['none', 'requested', 'authorized', 'denied'].map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-2">{s.activeJobs}</td>
-                    <td className="p-2">
-                      {s.lastRunAt ? new Date(s.lastRunAt).toLocaleString('es-DO') : '—'}
-                      {s.lastError && <div className="text-[10px] text-red-300">{s.lastError.slice(0, 60)}</div>}
-                    </td>
-                    <td className="p-2">
-                      <label className="mr-2 text-[11px]">
-                        <input
-                          type="checkbox"
-                          checked={s.isEnabled}
+                  <Fragment key={s.id}>
+                    <tr className="border-t border-white/5">
+                      <td className="p-2">
+                        <div className="font-semibold text-white/85">{s.name}</div>
+                        <div className="text-[10px] text-white/35">
+                          {s.platform} · {s.sourceType}
+                          {s.platform !== 'direct' && (
+                            <button
+                              onClick={() => setEditSourceId(editSourceId === s.id ? null : s.id)}
+                              className="ml-2 text-gold underline"
+                            >
+                              {editSourceId === s.id ? 'cerrar' : 'config'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <select
+                          className="input !py-1 text-[11px]"
+                          value={s.authorizationStatus}
                           disabled={s.platform === 'direct'}
-                          onChange={(e) => patchSource(s.id, { isEnabled: e.target.checked })}
-                        />{' '}
-                        activa
-                      </label>
-                      <label className="text-[11px]">
-                        <input
-                          type="checkbox"
-                          checked={s.autoPublish}
-                          onChange={(e) => patchSource(s.id, { autoPublish: e.target.checked })}
-                        />{' '}
-                        auto-publica
-                      </label>
-                    </td>
-                  </tr>
+                          onChange={(e) => patchSource(s.id, { authorizationStatus: e.target.value })}
+                        >
+                          {['none', 'requested', 'authorized', 'denied'].map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-2">{s.activeJobs}</td>
+                      <td className="p-2">
+                        {s.lastRunAt ? new Date(s.lastRunAt).toLocaleString('es-DO') : '—'}
+                        {s.lastError && <div className="text-[10px] text-red-300">{s.lastError.slice(0, 60)}</div>}
+                      </td>
+                      <td className="p-2">
+                        <label className="mr-2 text-[11px]">
+                          <input
+                            type="checkbox"
+                            checked={s.isEnabled}
+                            disabled={s.platform === 'direct'}
+                            onChange={(e) => patchSource(s.id, { isEnabled: e.target.checked })}
+                          />{' '}
+                          activa
+                        </label>
+                        <label className="text-[11px]" title="Si está apagado, las vacantes importadas entran como 'Nuevas' para tu aprobación.">
+                          <input
+                            type="checkbox"
+                            checked={s.autoPublish}
+                            onChange={(e) => patchSource(s.id, { autoPublish: e.target.checked })}
+                          />{' '}
+                          auto-publica
+                        </label>
+                      </td>
+                    </tr>
+                    {editSourceId === s.id && (
+                      <tr className="border-t border-white/5 bg-white/[0.02]">
+                        <td colSpan={5} className="p-2">
+                          <SourceForm
+                            initial={s}
+                            busy={busy === s.id}
+                            onCancel={() => setEditSourceId(null)}
+                            onSubmit={(payload) => {
+                              patchSource(s.id, payload);
+                              setEditSourceId(null);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
           <p className="text-[11px] text-white/40">
-            Los portales bloqueados (LinkedIn, Computrabajo, Tecoloco, Tu Nuevo Trabajo) solo se pueden
-            activar con un feed/API/permiso legítimo; sin él, la importación lanza error controlado.
+            El campo "auto-publica" apagado = las vacantes importadas entran como "Nuevas" para tu
+            aprobación (pestaña Vacantes). Los portales bloqueados (LinkedIn, Computrabajo, Tecoloco,
+            Tu Nuevo Trabajo) solo se activan con feed/API/permiso legítimo.
           </p>
         </div>
       )}
@@ -464,6 +579,230 @@ export default function EmpleosAdmin() {
             busy={busy === editing.id}
           />
         </Modal>
+      )}
+    </div>
+  );
+}
+
+function joobleQueriesToText(qs?: JoobleQuery[]): string {
+  return (qs ?? [])
+    .map((q) => (q.location ? `${q.keywords} | ${q.location}` : q.keywords))
+    .join('\n');
+}
+function textToJoobleQueries(t: string): JoobleQuery[] {
+  return t
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [kw, loc] = line.split('|').map((x) => x.trim());
+      return loc ? { keywords: kw, location: loc } : { keywords: kw };
+    });
+}
+function cfgListToText(v: string | string[] | undefined): string {
+  return Array.isArray(v) ? v.join(', ') : v ?? '';
+}
+
+/** Formulario compartido para crear una fuente nueva o editar el `config` de una existente. */
+function SourceForm({
+  initial,
+  busy,
+  onCancel,
+  onSubmit,
+}: {
+  initial?: SourceRow;
+  busy: boolean;
+  onCancel: () => void;
+  onSubmit: (payload: Record<string, unknown>) => void;
+}) {
+  const isEdit = Boolean(initial);
+  const [platform, setPlatform] = useState<SourcePlatform>(
+    (initial?.platform as SourcePlatform) || 'csv',
+  );
+  const [name, setName] = useState(initial?.name ?? '');
+  const [defaultCategory, setDefaultCategory] = useState(initial?.defaultCategory ?? '');
+  const [notes, setNotes] = useState(initial?.notes ?? '');
+  const cfg = initial?.config ?? {};
+  const [csvUrl, setCsvUrl] = useState(cfg.csvUrl ?? initial?.feedUrl ?? '');
+  const [companyName, setCompanyName] = useState(cfg.companyName ?? '');
+  const [greenhouseToken, setGreenhouseToken] = useState(cfgListToText(cfg.greenhouseToken));
+  const [leverHandle, setLeverHandle] = useState(cfgListToText(cfg.leverHandle));
+  const [jooble, setJooble] = useState(joobleQueriesToText(cfg.joobleQueries));
+
+  const canSubmit =
+    (isEdit || name.trim().length > 1) &&
+    ((platform === 'csv' && csvUrl.trim()) ||
+      (platform === 'greenhouse' && greenhouseToken.trim()) ||
+      (platform === 'lever' && leverHandle.trim()) ||
+      (platform === 'jooble' && jooble.trim()));
+
+  function submit() {
+    const config: SourceConfig = {};
+    if (platform === 'csv') config.csvUrl = csvUrl.trim();
+    if (platform === 'greenhouse') {
+      config.greenhouseToken = greenhouseToken.trim();
+      if (companyName.trim()) config.companyName = companyName.trim();
+    }
+    if (platform === 'lever') {
+      config.leverHandle = leverHandle.trim();
+      if (companyName.trim()) config.companyName = companyName.trim();
+    }
+    if (platform === 'jooble') config.joobleQueries = textToJoobleQueries(jooble);
+
+    const payload: Record<string, unknown> = {
+      name: name.trim(),
+      config,
+      defaultCategory: defaultCategory || null,
+      notes: notes.trim() || null,
+    };
+    if (platform === 'csv') payload.feedUrl = csvUrl.trim() || null;
+    if (!isEdit) {
+      payload.platform = platform;
+      payload.sourceType = NEW_PLATFORMS.find((p) => p.v === platform)?.type ?? 'feed';
+    }
+    onSubmit(payload);
+  }
+
+  return (
+    <div className="glass space-y-2 p-3 text-xs">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-white/40">Plataforma</span>
+          <select
+            className="input mt-1 w-full !py-1"
+            value={platform}
+            disabled={isEdit}
+            onChange={(e) => setPlatform(e.target.value as SourcePlatform)}
+          >
+            {NEW_PLATFORMS.map((p) => (
+              <option key={p.v} value={p.v}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-white/40">Nombre visible</span>
+          <input
+            className="input mt-1 w-full !py-1"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej. Vacantes curadas RD"
+          />
+        </label>
+      </div>
+
+      {platform === 'csv' && (
+        <label className="block">
+          <span className="text-white/40">URL del CSV (Google Sheet publicada como CSV, etc.)</span>
+          <input
+            className="input mt-1 w-full !py-1"
+            value={csvUrl}
+            onChange={(e) => setCsvUrl(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/…/pub?output=csv"
+          />
+        </label>
+      )}
+
+      {platform === 'greenhouse' && (
+        <>
+          <label className="block">
+            <span className="text-white/40">Board token(s) de Greenhouse — separa varios con coma</span>
+            <input
+              className="input mt-1 w-full !py-1"
+              value={greenhouseToken}
+              onChange={(e) => setGreenhouseToken(e.target.value)}
+              placeholder="acme, globex"
+            />
+          </label>
+          <label className="block">
+            <span className="text-white/40">Nombre del empleador (opcional si son varios)</span>
+            <input
+              className="input mt-1 w-full !py-1"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </label>
+        </>
+      )}
+
+      {platform === 'lever' && (
+        <>
+          <label className="block">
+            <span className="text-white/40">Company handle(s) de Lever — separa varios con coma</span>
+            <input
+              className="input mt-1 w-full !py-1"
+              value={leverHandle}
+              onChange={(e) => setLeverHandle(e.target.value)}
+              placeholder="acme, globex"
+            />
+          </label>
+          <label className="block">
+            <span className="text-white/40">Nombre del empleador (opcional si son varios)</span>
+            <input
+              className="input mt-1 w-full !py-1"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </label>
+        </>
+      )}
+
+      {platform === 'jooble' && (
+        <label className="block">
+          <span className="text-white/40">
+            Búsquedas (una por línea, formato <code>palabras | ubicación</code>) — requiere{' '}
+            <code>JOOBLE_API_KEY</code> en el servidor
+          </span>
+          <textarea
+            className="input mt-1 w-full !py-1"
+            rows={3}
+            value={jooble}
+            onChange={(e) => setJooble(e.target.value)}
+            placeholder={'desarrollador | Santo Domingo\ncontador | Santiago'}
+          />
+        </label>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-white/40">Categoría por defecto</span>
+          <select
+            className="input mt-1 w-full !py-1"
+            value={defaultCategory}
+            onChange={(e) => setDefaultCategory(e.target.value)}
+          >
+            <option value="">(auto / sin asignar)</option>
+            {JOB_CATEGORY_DEFS.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-white/40">Notas internas</span>
+          <input
+            className="input mt-1 w-full !py-1"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </label>
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={submit} disabled={busy || !canSubmit} className="btn-gold text-xs">
+          {busy ? 'Guardando…' : isEdit ? 'Guardar config' : 'Crear fuente'}
+        </button>
+        <button onClick={onCancel} className="btn-ghost text-xs">
+          Cancelar
+        </button>
+      </div>
+      {!isEdit && (
+        <p className="text-[11px] text-white/35">
+          Nace con <b>auto-publica apagado</b>: lo importado entra como "Nuevas" para tu aprobación.
+          Actívala y ponla en "authorized" en la tabla de abajo.
+        </p>
       )}
     </div>
   );

@@ -74,16 +74,25 @@ export interface JobSourceAdapter {
 
 /** Config tipada que guarda `job_sources.config`. */
 export interface SourceConfig {
-  /** Greenhouse: board token — https://boards-api.greenhouse.io/v1/boards/<token>/jobs */
-  greenhouseToken?: string;
-  /** Lever: company handle — https://api.lever.co/v0/postings/<handle> */
-  leverHandle?: string;
+  /** Greenhouse: board token(s) — string, o lista/coma para varios empleadores. */
+  greenhouseToken?: string | string[];
+  /** Lever: company handle(s) — string, o lista/coma para varios empleadores. */
+  leverHandle?: string | string[];
   /** CSV: URL pública del archivo curado. */
   csvUrl?: string;
   /** Jooble: términos de búsqueda para acotar el volumen. */
   joobleQueries?: { keywords: string; location?: string }[];
   /** Nombre del empleador (cuando la fuente es el propio ATS de una empresa). */
   companyName?: string;
+}
+
+/** Normaliza un `string | string[] | undefined` de config a una lista limpia. */
+export function toList(v: string | string[] | undefined | null): string[] {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
+  return String(v ?? '')
+    .split(/[\s,;]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
 
 export type BuildAdapter = (source: JobSource) => JobSourceAdapter;

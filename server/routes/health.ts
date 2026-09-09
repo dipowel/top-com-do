@@ -4,6 +4,7 @@ import { db } from '../db';
 import { ah } from '../lib/asyncHandler';
 import { verifyIdToken, firebaseProjectId } from '../lib/firebaseAuth';
 import { probeProduct, listRecentPayments } from '../lib/dodo';
+import { importEnabled } from '../adapters/registry';
 
 const r = Router();
 
@@ -31,6 +32,13 @@ r.get(
       databaseUrlSet: Boolean(process.env.DATABASE_URL),
       firebaseProjectId: firebaseProjectId(),
       superadminEmailsSet: Boolean(process.env.SUPERADMIN_EMAILS),
+      jobsImport: {
+        enabled: importEnabled(),
+        cronPath: '/api/cron/jobs-maintenance',
+        schedule: '0 6 * * *',
+        joobleKeySet: Boolean(process.env.JOOBLE_API_KEY?.trim()),
+        cronSecretSet: Boolean(process.env.CRON_SECRET?.trim()),
+      },
       paymentProvider: (process.env.PAYMENT_PROVIDER || 'azul').toLowerCase(),
       azul: {
         configured: Boolean(process.env.AZUL_MERCHANT_ID?.trim() && process.env.AZUL_AUTH_KEY?.trim()),
