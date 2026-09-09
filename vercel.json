@@ -7,8 +7,7 @@
     "api/index.ts": { "maxDuration": 30 }
   },
   "crons": [
-    { "path": "/api/cron/reset-round", "schedule": "0 5 * * 1" },
-    { "path": "/api/cron/jobs-maintenance", "schedule": "0 */6 * * *" }
+    { "path": "/api/cron/jobs-maintenance", "schedule": "0 6 * * *" }
   ],
   "redirects": [
     {

@@ -67,9 +67,11 @@ r.get(
 );
 
 /**
- * Mantenimiento de empleos en un solo tick (Hobby-friendly: 1 cron cada 6 h):
+ * Mantenimiento de empleos en un solo tick. Vercel Cron 1×/día (Hobby permite un
+ * cron diario). Si se pasa a Vercel Pro se puede subir a `0 * / 6 * * *`.
  * 1) expira vencidas + avisa a Google, 2) importa de fuentes habilitadas,
  * 3) reintenta notificaciones de Indexing pendientes. Todo acotado en tiempo.
+ * Respaldo entre corridas: `maybeExpireJobs()` (perezoso, 1×/hora) en GET /api/jobs.
  */
 r.get(
   '/jobs-maintenance',
