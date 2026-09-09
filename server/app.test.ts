@@ -51,6 +51,30 @@ describe('API base', () => {
     expect(res.status).toBe(401);
   });
 
+  it('POST /api/checkout/azul sin token → 401', async () => {
+    const res = await request(app).post('/api/checkout/azul').send({ profileId: 'x', amountDop: 500 });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/pay/azul/approved sin datos → redirección controlada (302), nunca 500', async () => {
+    const res = await request(app).get('/api/pay/azul/approved');
+    expect([302, 303]).toContain(res.status);
+    expect(res.headers.location).toContain('/mis-pujas');
+  });
+
+  it('GET /api/pay/azul/cancel sin datos → 302 a mis-pujas', async () => {
+    const res = await request(app).get('/api/pay/azul/cancel');
+    expect([302, 303]).toContain(res.status);
+  });
+
+  it('GET /api/health/config incluye el bloque azul y paymentProvider', async () => {
+    const res = await request(app).get('/api/health/config');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('paymentProvider');
+    expect(res.body).toHaveProperty('azul');
+    expect(res.body.azul).toHaveProperty('configured');
+  });
+
   it('POST /api/webhooks/dodo sin firma → 401', async () => {
     const res = await request(app).post('/api/webhooks/dodo').send({ type: 'payment.succeeded' });
     expect(res.status).toBe(401);

@@ -13,6 +13,7 @@ import {
   notifications,
   reviews,
   jobs as jobsTable,
+  azulPayments,
 } from '../../shared/schema';
 import { toJobDetail } from '../lib/jobs';
 import { profileAvatarUrl } from '../../shared/site';
@@ -302,9 +303,16 @@ r.get(
         profileId: profiles.id,
         profileName: profiles.name,
         profileHandle: profiles.handle,
+        azulAuthCode: azulPayments.authorizationCode,
+        azulRrn: azulPayments.rrn,
+        azulOrderId: azulPayments.azulOrderId,
+        azulCard: azulPayments.cardNumberMasked,
+        azulDateTime: azulPayments.dateTime,
+        azulResponseMessage: azulPayments.responseMessage,
       })
       .from(bids)
       .innerJoin(profiles, eq(profiles.id, bids.profileId))
+      .leftJoin(azulPayments, eq(azulPayments.bidId, bids.id))
       .where(and(eq(bids.id, req.params.id), eq(bids.userId, req.user!.id)))
       .limit(1);
     const b = rows[0];
@@ -328,6 +336,12 @@ r.get(
       profileId: b.profileId,
       profileName: b.profileName,
       profileHandle: b.profileHandle,
+      authorizationCode: b.azulAuthCode,
+      rrn: b.azulRrn,
+      azulOrderId: b.azulOrderId,
+      cardNumberMasked: b.azulCard,
+      transactionDateTime: b.azulDateTime,
+      responseMessage: b.azulResponseMessage,
     });
   }),
 );

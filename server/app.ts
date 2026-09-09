@@ -25,6 +25,7 @@ import profiles from './routes/profiles';
 import bids from './routes/bids';
 import checkout from './routes/checkout';
 import webhooks from './routes/webhooks';
+import azul from './routes/azul';
 import me from './routes/me';
 import admin from './routes/admin';
 import cron from './routes/cron';
@@ -48,6 +49,8 @@ export function createApp() {
 
   // Webhooks: ANTES del parser JSON global — necesitan el cuerpo crudo para la firma.
   app.use('/api/webhooks', webhooks);
+  // Retornos de AZUL Payment Page: navegación del cliente (form-urlencoded / querystring), sin auth.
+  app.use('/api/pay/azul', azul);
 
   // En Vercel el body JSON puede venir ya parseado. Evita doble lectura del stream.
   const jsonParser = express.json({ limit: '2mb' });

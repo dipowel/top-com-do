@@ -16,7 +16,7 @@ import {
 export const userRole = pgEnum('user_role', ['user', 'admin', 'superadmin']);
 // 'dodo' = pago con Dodo Payments (procesador actual). 'bank_transfer'/'paypal' se
 // conservan solo para pujas históricas; ya no se emiten pujas nuevas con esos métodos.
-export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal', 'credit', 'dodo']);
+export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal', 'credit', 'dodo', 'azul']);
 export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected']);
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
 export const referralStatus = pgEnum('referral_status', ['pending', 'eligible', 'approved', 'rejected']);
@@ -189,6 +189,41 @@ export const dodoPayments = pgTable(
   (t) => ({
     byBid: index('dodo_payments_bid_idx').on(t.bidId),
     byPayment: uniqueIndex('dodo_payments_payment_uniq').on(t.paymentId),
+  }),
+);
+
+/** Intentos de pago con la Página de Pago de AZUL (uno por checkout de una puja). */
+export const azulPayments = pgTable(
+  'azul_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bidId: uuid('bid_id')
+      .notNull()
+      .references(() => bids.id, { onDelete: 'cascade' }),
+    orderNumber: text('order_number').notNull(),
+    /** Monto enviado a AZUL, en centavos de DOP (sin separadores). */
+    amount: integer('amount').notNull(),
+    itbis: integer('itbis').notNull().default(0),
+    currencyCode: text('currency_code'),
+    // created | approved | declined | cancelled | error
+    status: text('status').notNull().default('created'),
+    azulOrderId: text('azul_order_id'),
+    authorizationCode: text('authorization_code'),
+    rrn: text('rrn'),
+    isoCode: text('iso_code'),
+    responseCode: text('response_code'),
+    responseMessage: text('response_message'),
+    errorDescription: text('error_description'),
+    dateTime: text('date_time'),
+    cardNumberMasked: text('card_number_masked'),
+    dataVaultBrand: text('data_vault_brand'),
+    raw: jsonb('raw'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrder: uniqueIndex('azul_payments_order_uniq').on(t.orderNumber),
+    byBid: index('azul_payments_bid_idx').on(t.bidId),
   }),
 );
 
@@ -484,6 +519,7 @@ export type Referral = typeof referrals.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type DodoPayment = typeof dodoPayments.$inferSelect;
+export type AzulPayment = typeof azulPayments.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type JobSource = typeof jobSources.$inferSelect;
 export type JobReport = typeof jobReports.$inferSelect;

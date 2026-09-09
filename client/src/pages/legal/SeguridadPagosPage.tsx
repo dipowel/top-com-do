@@ -53,9 +53,11 @@ export default function SeguridadPagosPage() {
           {COMPANY.brand} no ve, no procesa ni almacena números de tarjeta ni credenciales
           bancarias
         </strong>
-        : esos datos se capturan y protegen exclusivamente en el entorno seguro de{' '}
-        {COMPANY.paymentGateway}. Te recomendamos leer también las políticas de privacidad de este
-        proveedor para entender mejor cómo maneja la información suministrada.
+        : los datos de la tarjeta se ingresan y protegen exclusivamente en la{' '}
+        <strong>Página de Pago de {COMPANY.paymentGateway}</strong> (alojada por el propio
+        procesador). {COMPANY.brand} solo recibe de vuelta el resultado de la transacción (aprobada
+        o declinada), el número de autorización y el número de tarjeta <em>enmascarado</em>. Te
+        recomendamos leer también las políticas de privacidad de este proveedor.
       </p>
 
       <h2>4. Autenticación 3D Secure</h2>

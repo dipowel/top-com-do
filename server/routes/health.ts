@@ -31,6 +31,19 @@ r.get(
       databaseUrlSet: Boolean(process.env.DATABASE_URL),
       firebaseProjectId: firebaseProjectId(),
       superadminEmailsSet: Boolean(process.env.SUPERADMIN_EMAILS),
+      paymentProvider: (process.env.PAYMENT_PROVIDER || 'azul').toLowerCase(),
+      azul: {
+        configured: Boolean(process.env.AZUL_MERCHANT_ID?.trim() && process.env.AZUL_AUTH_KEY?.trim()),
+        env: process.env.AZUL_ENV || 'test',
+        merchantId: process.env.AZUL_MERCHANT_ID || '(vacío)',
+        merchantName: process.env.AZUL_MERCHANT_NAME || 'Top.com.do (default)',
+        currencyCode: process.env.AZUL_CURRENCY_CODE || '$ (default)',
+        authKeyHint: mask(process.env.AZUL_AUTH_KEY),
+        itbisRate: process.env.AZUL_ITBIS_RATE || '0',
+        envVarsSeen: Object.keys(process.env)
+          .filter((k) => k.startsWith('AZUL'))
+          .sort(),
+      },
       dodoConfigured: Boolean(process.env.DODO_API_KEY && process.env.DODO_WEBHOOK_SECRET),
       dodoEnv: process.env.DODO_ENV || 'test',
       dodo: {

@@ -2,8 +2,13 @@ import { useState } from 'react';
 import Modal from '../common/Modal';
 import SecurityBadges from '../common/SecurityBadges';
 import { api } from '../../lib/api';
+import { submitAzulForm } from '../../lib/azulForm';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDOP } from '../../lib/format';
+
+type CheckoutSession =
+  | { kind: 'redirect'; url: string; bidId: string }
+  | { kind: 'form'; actionUrl: string; actionUrlAlt: string; fields: Record<string, string>; bidId: string };
 
 /**
  * Checkout de una puja (subasta dinámica): el usuario oferta un monto libre que
@@ -37,7 +42,7 @@ export default function BiddingCheckoutModal({
   const min = Math.max(Math.round(minBidDop), 100);
   const [amount, setAmount] = useState(min);
   const [accepted, setAccepted] = useState(false);
-  const [loading, setLoading] = useState<null | 'dodo' | 'credit'>(null);
+  const [loading, setLoading] = useState<null | 'card' | 'credit'>(null);
   const [error, setError] = useState<string | null>(null);
   const [okCredit, setOkCredit] = useState(false);
 
@@ -45,16 +50,20 @@ export default function BiddingCheckoutModal({
   const canUseCredit = credit >= amount && !belowMin;
   const quick = [min, min + 500, min + 1000, min + 2500];
 
-  async function payWithDodo() {
+  async function payWithCard() {
     setError(null);
-    setLoading('dodo');
+    setLoading('card');
     try {
-      const { url } = await api<{ url: string }>('/checkout/dodo', {
+      const s = await api<CheckoutSession>('/checkout/azul', {
         method: 'POST',
         body: JSON.stringify({ profileId, amountDop: amount }),
         auth: true,
       });
-      window.location.href = url;
+      if (s.kind === 'redirect') {
+        window.location.href = s.url;
+      } else {
+        submitAzulForm(s.actionUrl, s.fields);
+      }
     } catch (e) {
       setError((e as Error).message);
       setLoading(null);
@@ -190,11 +199,11 @@ export default function BiddingCheckoutModal({
         {error && <p className="text-xs text-red-400">{error}</p>}
 
         <button
-          onClick={payWithDodo}
+          onClick={payWithCard}
           disabled={!accepted || belowMin || loading !== null}
           className="btn-gold w-full"
         >
-          {loading === 'dodo' ? 'Redirigiendo…' : '💳 Pagar con tarjeta (AZUL)'}
+          {loading === 'card' ? 'Redirigiendo a AZUL…' : '💳 Pagar con tarjeta'}
         </button>
 
         {credit > 0 && (

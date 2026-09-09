@@ -22,6 +22,12 @@ interface Receipt {
   profileId: string;
   profileName: string;
   profileHandle: string;
+  authorizationCode?: string | null;
+  rrn?: string | null;
+  azulOrderId?: string | null;
+  cardNumberMasked?: string | null;
+  transactionDateTime?: string | null;
+  responseMessage?: string | null;
 }
 
 const SAMPLE: Receipt = {
@@ -29,15 +35,21 @@ const SAMPLE: Receipt = {
   createdAt: '2026-09-07T14:32:00-04:00',
   verifiedAt: '2026-09-07T14:32:18-04:00',
   status: 'verified',
-  method: 'dodo',
+  method: 'azul',
   gateway: 'AZUL',
-  reference: 'AZ-8842190',
+  reference: 'AZUL OK1234',
   amountDop: 600,
   currency: 'DOP',
   concept: 'Puja por visibilidad en el ranking — Punto Parrillada 2',
   profileId: '00000000-0000-0000-0000-000000000000',
   profileName: 'Punto Parrillada 2',
   profileHandle: 'punto-parrillada-2',
+  authorizationCode: 'OK1234',
+  rrn: '2026090714322000441290',
+  azulOrderId: '44129088',
+  cardNumberMasked: '542418******1732',
+  transactionDateTime: '20260907143218',
+  responseMessage: 'APROBADA',
 };
 
 const STATUS: Record<Receipt['status'], { label: string; cls: string }> = {
@@ -50,7 +62,8 @@ export default function ReciboPage() {
   const { bidId } = useParams();
   const [params, setParams] = useSearchParams();
   const isSample = !bidId;
-  const procesando = params.get('pago') === 'procesando';
+  const pago = params.get('pago');
+  const procesando = pago === 'procesando' || pago === 'ok' || pago === 'verificando';
 
   const [receipt, setReceipt] = useState<Receipt | null>(isSample ? SAMPLE : null);
   const [loading, setLoading] = useState(!isSample);
@@ -136,7 +149,9 @@ export default function ReciboPage() {
       )}
       {procesando && !isSample && (
         <div className="glass border border-gold/30 p-3 text-xs text-gold print:hidden">
-          Confirmando tu pago con {COMPANY.paymentGateway}… Esta página se actualiza sola.
+          {pago === 'verificando'
+            ? `Estamos verificando tu pago con ${COMPANY.paymentGateway}. Si ya pagaste, tu puja quedará confirmada en breve.`
+            : `Confirmando tu pago con ${COMPANY.paymentGateway}… Esta página se actualiza sola.`}
         </div>
       )}
 
@@ -165,7 +180,15 @@ export default function ReciboPage() {
             value={<span className="text-base font-extrabold text-gold">{formatDOP(receipt.amountDop)} {receipt.currency}</span>}
           />
           <Row label="Método de pago" value={`Tarjeta — ${receipt.gateway}`} />
-          {receipt.reference && <Row label="Referencia" value={receipt.reference} />}
+          {receipt.cardNumberMasked && <Row label="Tarjeta" value={receipt.cardNumberMasked} />}
+          {receipt.authorizationCode && (
+            <Row label="No. de aprobación" value={receipt.authorizationCode} />
+          )}
+          {receipt.rrn && <Row label="Referencia (RRN)" value={receipt.rrn} />}
+          {receipt.azulOrderId && <Row label="Orden AZUL" value={receipt.azulOrderId} />}
+          {!receipt.authorizationCode && receipt.reference && (
+            <Row label="Referencia" value={receipt.reference} />
+          )}
           <Row label="Estado" value={<span className={`font-semibold ${st.cls}`}>{st.label}</span>} />
         </dl>
 

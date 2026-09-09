@@ -79,6 +79,19 @@ export default function ProfileDetailPage() {
     }
   }, [params, id, openBid, setParams]);
 
+  // Vuelta desde AZUL con pago declinado / cancelado.
+  const pago = params.get('pago') ?? '';
+  useEffect(() => {
+    if (pago !== 'declinado' && pago !== 'cancelado') return;
+    const t = window.setTimeout(() => {
+      const next = new URLSearchParams(params);
+      next.delete('pago');
+      setParams(next, { replace: true });
+    }, 9000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pago]);
+
   useSeo(profile ? profileSeo(profile, profile.reviewSummary) : null);
 
   if (notFound) return <p className="text-sm text-white/50">Perfil no encontrado.</p>;
@@ -99,6 +112,13 @@ export default function ProfileDetailPage() {
   return (
     <div className="space-y-4">
       <Breadcrumbs items={crumbs} />
+      {(pago === 'declinado' || pago === 'cancelado') && (
+        <div className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-300">
+          {pago === 'declinado'
+            ? 'Tu pago fue declinado. Puedes intentar de nuevo con otra tarjeta.'
+            : 'Cancelaste el pago. Tu puja no se registró.'}
+        </div>
+      )}
       <div className="glass p-4">
         <div className="flex items-center gap-3">
           <img

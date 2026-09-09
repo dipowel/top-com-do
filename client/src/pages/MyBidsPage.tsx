@@ -13,17 +13,27 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 const METHOD: Record<string, string> = {
+  azul: 'Tarjeta (AZUL)',
   dodo: 'Tarjeta (AZUL)',
   credit: 'Saldo',
   bank_transfer: 'Transferencia',
   paypal: 'PayPal',
 };
 
+const PAGO_MSG: Record<string, string> = {
+  procesando: 'Estamos confirmando tu pago con AZUL… Esta página se actualiza sola.',
+  ok: 'Pago aprobado. Actualizando tu puja…',
+  verificando: 'Estamos verificando tu pago con AZUL. Si ya pagaste, tu puja quedará confirmada en breve.',
+  declinado: 'Tu pago fue declinado. Puedes intentar de nuevo con otra tarjeta.',
+  cancelado: 'Cancelaste el pago. Tu puja no se registró.',
+};
+
 export default function MyBidsPage() {
   const { user } = useAuth();
   const { data, loading, reload } = useMyBids();
   const [params, setParams] = useSearchParams();
-  const procesando = params.get('pago') === 'procesando';
+  const pago = params.get('pago') ?? '';
+  const procesando = pago === 'procesando' || pago === 'ok' || pago === 'verificando';
   const [checking, setChecking] = useState(false);
 
   // Pregunta a Dodo por los pagos del usuario y acredita lo que ya esté pagado.
@@ -58,6 +68,18 @@ export default function MyBidsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [procesando]);
 
+  // Mensajes terminales (declinado / cancelado): se limpian solos tras unos segundos.
+  useEffect(() => {
+    if (!pago || procesando) return;
+    const id = window.setTimeout(() => {
+      const next = new URLSearchParams(params);
+      next.delete('pago');
+      setParams(next, { replace: true });
+    }, 9000);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pago, procesando]);
+
   if (!user) {
     return (
       <div className="space-y-3">
@@ -74,9 +96,15 @@ export default function MyBidsPage() {
     <div className="space-y-3">
       <h1 className="text-xl font-extrabold">Mis pujas</h1>
 
-      {procesando && (
-        <div className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-xs text-gold">
-          Estamos confirmando tu pago con AZUL… Esta página se actualiza sola.
+      {PAGO_MSG[pago] && (
+        <div
+          className={`rounded-xl border p-3 text-xs ${
+            pago === 'declinado' || pago === 'cancelado'
+              ? 'border-red-400/30 bg-red-400/10 text-red-300'
+              : 'border-gold/30 bg-gold/10 text-gold'
+          }`}
+        >
+          {PAGO_MSG[pago]}
         </div>
       )}
 

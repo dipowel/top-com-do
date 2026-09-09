@@ -1,12 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
-import { bids, profiles, categories, dodoPayments } from '../../shared/schema';
-import { onBidVerified } from './rewards';
-import { checkDethronements, notifyUser } from './notify';
-import { audit } from './audit';
+import { bids, dodoPayments } from '../../shared/schema';
 import { listRecentPayments, dodoAmountToDop } from './dodo';
-import { pingIndexNow } from './indexnow';
-import { formatDOP } from '../../shared/fx';
+import { creditVerifiedBid } from './fulfillBid';
 
 /**
  * Acredita una puja pagada con Dodo. Idempotente: si ya está `verified` no hace nada.
@@ -18,7 +14,7 @@ export async function fulfillBid(opts: {
   paidDop: number | null;
   rawEvent?: unknown;
 }): Promise<'verified' | 'already' | 'not_found'> {
-  const bid = (await db.select().from(bids).where(eq(bids.id, opts.bidId)).limit(1))[0];
+  const bid = (await db.select({ id: bids.id }).from(bids).where(eq(bids.id, opts.bidId)).limit(1))[0];
   if (!bid) return 'not_found';
 
   // Registra siempre el pago en dodo_payments.
@@ -33,58 +29,12 @@ export async function fulfillBid(opts: {
     })
     .where(eq(dodoPayments.bidId, opts.bidId));
 
-  if (bid.status === 'verified') return 'already';
-
-  const expectedDop = Number(bid.amountDop);
-  const finalDop = opts.paidDop != null && opts.paidDop > 0 ? opts.paidDop : expectedDop;
-
-  await db
-    .update(bids)
-    .set({
-      status: 'verified',
-      verifiedAt: new Date(),
-      amountDop: finalDop.toFixed(2),
-      amountOriginal: finalDop.toFixed(2),
-      reference: `Dodo ${opts.paymentId ?? ''}`.trim(),
-    })
-    .where(eq(bids.id, bid.id));
-
-  if (opts.paidDop != null && Math.abs(opts.paidDop - expectedDop) > 0.009) {
-    await audit(null, 'bid.amount.adjusted', 'bid', bid.id, { expectedDop, paidDop: opts.paidDop });
-  }
-
-  await onBidVerified(bid.id);
-  await checkDethronements(bid.profileId);
-
-  const prof = (
-    await db
-      .select({ name: profiles.name, province: profiles.province, categorySlug: categories.slug })
-      .from(profiles)
-      .innerJoin(categories, eq(categories.id, profiles.categoryId))
-      .where(eq(profiles.id, bid.profileId))
-      .limit(1)
-  )[0];
-
-  // El ranking cambió: avisa a Bing de las páginas afectadas.
-  if (prof) {
-    const prov = prof.province && prof.province !== 'todo-rd' ? prof.province : null;
-    pingIndexNow([
-      '/',
-      `/p/${bid.profileId}`,
-      `/rd/${prof.categorySlug}`,
-      ...(prov ? [`/rd/${prof.categorySlug}/${prov}`] : []),
-    ]);
-  }
-
-  await notifyUser(bid.userId, {
-    type: 'bid.verified',
-    title: `✅ Puja verificada: ${formatDOP(finalDop)}`,
-    body: `Tu pago con Dodo Payments se confirmó. Tu puja por ${prof?.name ?? 'el perfil'} ya cuenta en el ranking.`,
-    url: `/p/${bid.profileId}`,
+  return creditVerifiedBid({
+    bidId: opts.bidId,
+    finalDop: opts.paidDop,
+    reference: `Dodo ${opts.paymentId ?? ''}`.trim(),
+    providerLabel: 'Dodo Payments',
   });
-  await audit(null, 'bid.verified.dodo', 'bid', bid.id, { paymentId: opts.paymentId });
-
-  return 'verified';
 }
 
 interface DodoPayment {
