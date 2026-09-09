@@ -47,6 +47,7 @@ export function azulConfig(): AzulConfig {
     env,
     paymentUrl: (process.env.AZUL_PAYMENT_URL || (env === 'prod' ? PROD_URL : TEST_URL)).trim(),
     paymentUrlAlt: (process.env.AZUL_PAYMENT_URL_ALT || (env === 'prod' ? PROD_URL_ALT : TEST_URL)).trim(),
+    // 0 (o sin definir) → comercio exento: el formulario envía ITBIS "000".
     itbisRate: Number.isFinite(rate) && rate > 0 && rate < 1 ? rate : 0,
     googlePay: String(process.env.AZUL_GOOGLE_PAY || '').toLowerCase() === 'true',
     applePay: String(process.env.AZUL_APPLE_PAY || '').toLowerCase() === 'true',
@@ -61,6 +62,14 @@ export const azulConfigured = (): boolean => {
 /** RD$ → string de centavos sin separadores (los 2 últimos dígitos son decimales). */
 export function formatAzulAmount(dop: number): string {
   return String(Math.max(0, toLowestDenomination(dop)));
+}
+
+/**
+ * ITBIS en el formato de AZUL: mismo formato que `Amount` (centavos sin separadores).
+ * Para comercios/transacciones EXENTOS la doc exige el literal `"000"` (= 0.00), no `"0"`.
+ */
+export function formatAzulItbis(dop: number): string {
+  return dop > 0 ? formatAzulAmount(dop) : '000';
 }
 
 /** Quita caracteres que AZUL rechaza o recorta en labels/valores visibles. */
@@ -170,7 +179,11 @@ export function buildAzulSaleForm(input: {
 }): AzulSaleForm {
   const c = azulConfig();
   const Amount = formatAzulAmount(input.amountDop);
-  const ITBIS = c.itbisRate > 0 ? formatAzulAmount(round2(input.amountDop - input.amountDop / (1 + c.itbisRate))) : '0';
+  // Exento (rate 0 / sin definir) → "000". Con tasa → el ITBIS incluido en el total.
+  const ITBIS =
+    c.itbisRate > 0
+      ? formatAzulItbis(round2(input.amountDop - input.amountDop / (1 + c.itbisRate)))
+      : '000';
   const base = `${SITE_URL}/api/pay/azul`;
   const o = encodeURIComponent(input.orderNumber);
 
