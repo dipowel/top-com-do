@@ -108,6 +108,45 @@ export function isJobVisible(job: { status: JobStatus; expiresAt?: string | Date
   return new Date(job.expiresAt).getTime() > Date.now();
 }
 
+/**
+ * Frase editorial breve y original, construida SOLO con datos reales de la oferta.
+ * No inventa beneficios, salario, requisitos ni funciones: si un dato falta, se omite.
+ * Sirve como entradilla de "Sobre esta oportunidad" cuando la descripción es escasa
+ * y para dar a Google contenido propio (no una copia literal de la fuente).
+ */
+export function editorialIntro(job: {
+  title: string;
+  companyName: string;
+  city?: string | null;
+  provinceName?: string | null;
+  workMode?: WorkMode | string | null;
+  jobType?: JobType | string | null;
+  sourceName?: string | null;
+}): string {
+  const where =
+    [job.city, job.provinceName].filter(Boolean).join(', ') ||
+    (job.workMode === 'remote' ? 'modalidad remota' : 'República Dominicana');
+  const parts = [`${job.companyName} busca cubrir la posición de ${job.title} en ${where}.`];
+  const mode =
+    job.workMode === 'remote'
+      ? 'El trabajo es remoto'
+      : job.workMode === 'hybrid'
+        ? 'El trabajo es híbrido'
+        : job.workMode === 'onsite'
+          ? 'El trabajo es presencial'
+          : '';
+  const type = job.jobType && JOB_TYPE_LABELS[job.jobType as JobType]
+    ? `en jornada de ${JOB_TYPE_LABELS[job.jobType as JobType].toLowerCase()}`
+    : '';
+  if (mode || type) parts.push([mode, type].filter(Boolean).join(' ') + '.');
+  parts.push(
+    job.sourceName
+      ? `Los detalles y el proceso de aplicación provienen de ${job.sourceName}.`
+      : 'Los detalles y el proceso de aplicación los define directamente la empresa.',
+  );
+  return parts.join(' ');
+}
+
 // ---------------- Criterio de indexación de landings programáticas ----------------
 
 /** Mínimo de empleos activos para que una landing categoría/provincia sea indexable. */

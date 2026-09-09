@@ -179,6 +179,8 @@ export interface JobDetail extends JobCard {
   requirements: string | null;
   responsibilities: string | null;
   locationText: string | null;
+  streetAddress: string | null;
+  postalCode: string | null;
   salaryMin: number | null;
   salaryMax: number | null;
   salaryCurrency: string;
@@ -186,9 +188,26 @@ export interface JobDetail extends JobCard {
   applicationUrl: string | null;
   applicationEmail: string | null;
   contactWhatsapp: string | null;
+  directApply: boolean;
   status: string;
+  publishedAt: string | null;
+  updatedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
+  /** Fuente de la oferta (para atribución visible). `null` en publicación directa. */
+  sourceName: string | null;
+  sourceUrl: string | null;
+  sourcePlatform: string | null;
+  related: JobCard[];
+}
+
+/** Respuesta cuando una vacante ya no está disponible (410 Gone). */
+export interface JobGone {
+  gone: true;
+  slug: string;
+  title: string;
+  category: string;
+  status: string;
   related: JobCard[];
 }
 
@@ -211,6 +230,8 @@ export interface JobPostInput {
   locationText?: string;
   jobType: string;
   workMode: string;
+  streetAddress?: string;
+  postalCode?: string;
   salaryMin?: number | null;
   salaryMax?: number | null;
   salaryCurrency?: string;

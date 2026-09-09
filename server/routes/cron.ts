@@ -32,14 +32,63 @@ r.get(
   }),
 );
 
-/** Marca como expiradas las vacantes vencidas. Vercel Cron (diario). */
+/** Marca como expiradas las vacantes vencidas + avisa a Google. Vercel Cron (diario). */
 r.get(
   '/expire-jobs',
   ah(async (req, res) => {
     assertCron(req);
-    const expired = await expireStaleJobs();
-    await audit(null, 'jobs.expire.cron', 'job', null, { expired });
-    res.json({ ok: true, expired });
+    const { expired } = await expireStaleJobs();
+    await audit(null, 'jobs.expire.cron', 'job', null, { count: expired.length });
+    res.json({ ok: true, expired: expired.length, slugs: expired });
+  }),
+);
+
+/** Importa vacantes de las fuentes habilitadas (ATS/CSV/Jooble). Manual / trigger. */
+r.get(
+  '/import-jobs',
+  ah(async (req, res) => {
+    assertCron(req);
+    const { runDueSources } = await import('../lib/jobImport');
+    const runs = await runDueSources();
+    await audit(null, 'jobs.import.cron', 'job', null, { runs: runs.length });
+    res.json({ ok: true, runs });
+  }),
+);
+
+/** Reintenta las notificaciones pendientes a la Google Indexing API. Manual / trigger. */
+r.get(
+  '/indexing-retry',
+  ah(async (req, res) => {
+    assertCron(req);
+    const { flushJobIndexing } = await import('../lib/googleIndexing');
+    const out = await flushJobIndexing();
+    res.json({ ok: true, ...out });
+  }),
+);
+
+/**
+ * Mantenimiento de empleos en un solo tick (Hobby-friendly: 1 cron cada 6 h):
+ * 1) expira vencidas + avisa a Google, 2) importa de fuentes habilitadas,
+ * 3) reintenta notificaciones de Indexing pendientes. Todo acotado en tiempo.
+ */
+r.get(
+  '/jobs-maintenance',
+  ah(async (req, res) => {
+    assertCron(req);
+    const [{ expireStaleJobs }, { runDueSources }, { flushJobIndexing }] = await Promise.all([
+      import('../lib/jobs'),
+      import('../lib/jobImport'),
+      import('../lib/googleIndexing'),
+    ]);
+    const expired = await expireStaleJobs().catch((e) => ({ expired: [], error: String(e) }));
+    const runs = await runDueSources().catch(() => []);
+    const indexing = await flushJobIndexing().catch(() => ({ sent: 0, failed: 0 }));
+    await audit(null, 'jobs.maintenance.cron', 'job', null, {
+      expired: (expired as { expired: string[] }).expired.length,
+      runs: runs.length,
+      indexingSent: indexing.sent,
+    });
+    res.json({ ok: true, expired, runs, indexing });
   }),
 );
 

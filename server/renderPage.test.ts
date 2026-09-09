@@ -108,4 +108,23 @@ describe('renderPage · metadatos por ruta', () => {
     expect(r.status).toBe(404);
     expect(r.html).toContain('noindex');
   });
+
+  it('/empleos y sus landings NUNCA llevan JobPosting', async () => {
+    for (const p of ['/empleos', '/empleos/tecnologia', '/empleos/categoria/ventas', '/empleos/empresa/acme']) {
+      const r = await renderPage(p);
+      expect(r.html).not.toContain('"@type":"JobPosting"');
+    }
+  });
+
+  it('/empleos/categoria/:cat canoniza a la forma corta /empleos/:cat', async () => {
+    const r = await renderPage('/empleos/categoria/tecnologia');
+    expect(r.status).toBe(200);
+    expect(r.html).toContain('<link rel="canonical" href="https://www.top.com.do/empleos/tecnologia" />');
+  });
+
+  it('/empleos/empresa/:slug sin vacantes → noindex', async () => {
+    const r = await renderPage('/empleos/empresa/empresa-inexistente');
+    expect(r.status).toBe(200);
+    expect(r.noindex).toBe(true);
+  });
 });

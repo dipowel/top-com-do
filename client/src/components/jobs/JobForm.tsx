@@ -16,6 +16,8 @@ export interface JobFormValue {
   province: string;
   city: string;
   locationText: string;
+  streetAddress: string;
+  postalCode: string;
   jobType: string;
   workMode: string;
   salaryMin: string;
@@ -25,6 +27,7 @@ export interface JobFormValue {
   applicationUrl: string;
   applicationEmail: string;
   contactWhatsapp: string;
+  expiresAt: string; // yyyy-mm-dd
 }
 
 export const emptyJobForm: JobFormValue = {
@@ -38,6 +41,8 @@ export const emptyJobForm: JobFormValue = {
   province: '',
   city: '',
   locationText: '',
+  streetAddress: '',
+  postalCode: '',
   jobType: 'full_time',
   workMode: 'onsite',
   salaryMin: '',
@@ -47,6 +52,7 @@ export const emptyJobForm: JobFormValue = {
   applicationUrl: '',
   applicationEmail: '',
   contactWhatsapp: '',
+  expiresAt: '',
 };
 
 export function jobFormToPayload(v: JobFormValue, status: 'draft' | 'published'): JobPostInput {
@@ -63,6 +69,8 @@ export function jobFormToPayload(v: JobFormValue, status: 'draft' | 'published')
     province: clean(v.province),
     city: clean(v.city),
     locationText: clean(v.locationText),
+    streetAddress: clean(v.streetAddress),
+    postalCode: clean(v.postalCode),
     jobType: v.jobType,
     workMode: v.workMode,
     salaryMin: n(v.salaryMin),
@@ -72,6 +80,7 @@ export function jobFormToPayload(v: JobFormValue, status: 'draft' | 'published')
     applicationUrl: v.applicationUrl.trim() ? normalizeUrl(v.applicationUrl) : undefined,
     applicationEmail: clean(v.applicationEmail),
     contactWhatsapp: clean(v.contactWhatsapp),
+    expiresAt: v.expiresAt ? new Date(`${v.expiresAt}T23:59:59`).toISOString() : null,
     status,
   };
 }
@@ -236,6 +245,23 @@ export default function JobForm({
           value={value.locationText}
           onChange={(e) => set({ locationText: e.target.value })}
         />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <input
+            className="input"
+            placeholder="Dirección exacta (opcional)"
+            value={value.streetAddress}
+            onChange={(e) => set({ streetAddress: e.target.value })}
+          />
+          <input
+            className="input"
+            placeholder="Código postal (opcional)"
+            value={value.postalCode}
+            onChange={(e) => set({ postalCode: e.target.value })}
+          />
+        </div>
+        <p className="text-[11px] text-white/35">
+          Dirección y código postal solo si los conoces con exactitud — no los inventes.
+        </p>
       </div>
 
       <div className="glass space-y-2 p-3">
@@ -268,6 +294,22 @@ export default function JobForm({
             ))}
           </select>
         </div>
+        <p className="text-[11px] text-white/35">
+          Si publicas un salario, aparecerá también en los datos estructurados que ve Google.
+        </p>
+      </div>
+
+      <div className="glass space-y-1 p-3">
+        <Label>Fecha límite para aplicar (opcional)</Label>
+        <input
+          type="date"
+          className="input"
+          value={value.expiresAt}
+          onChange={(e) => set({ expiresAt: e.target.value })}
+        />
+        <p className="text-[11px] text-white/35">
+          Al llegar esa fecha, la vacante se marca como expirada automáticamente.
+        </p>
       </div>
 
       <div className="glass space-y-2 p-3">

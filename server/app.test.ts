@@ -135,6 +135,28 @@ describe('API base', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /api/admin/job-sources y /job-import-runs sin token → 401', async () => {
+    expect((await request(app).get('/api/admin/job-sources')).status).toBe(401);
+    expect((await request(app).get('/api/admin/job-import-runs')).status).toBe(401);
+  });
+
+  it('POST /api/admin/jobs/:id/approve sin token → 401', async () => {
+    const res = await request(app).post('/api/admin/jobs/00000000-0000-0000-0000-000000000000/approve');
+    expect(res.status).toBe(401);
+  });
+
+  it('crons de empleos sin CRON_SECRET → 401', async () => {
+    for (const p of ['/api/cron/jobs-maintenance', '/api/cron/import-jobs', '/api/cron/expire-jobs']) {
+      const res = await request(app).get(p);
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it('GET /api/jobs/empresa/:slug inexistente → [404, 500]', async () => {
+    const res = await request(app).get('/api/jobs/empresa/empresa-que-no-existe');
+    expect([404, 500]).toContain(res.status);
+  });
+
   it('GET /api/health/config reporta el estado de configuración', async () => {
     const res = await request(app).get('/api/health/config');
     expect(res.status).toBe(200);

@@ -22,6 +22,7 @@ import {
   empleosSeo,
   jobPostingSeo,
   jobPostingLd,
+  jobGoneSeo,
   type JobSeoInput,
 } from './seo';
 
@@ -300,7 +301,7 @@ describe('seo · empleos', () => {
   });
 
   it('jobPostingLd: empleo con salario y ciudad emite jobLocation y baseSalary', () => {
-    const ld = jobPostingLd(baseJob);
+    const ld = jobPostingLd(baseJob)!;
     expect(ld['@type']).toBe('JobPosting');
     expect(ld.jobLocation).toBeDefined();
     expect((ld.baseSalary as Record<string, unknown>).currency).toBe('DOP');
@@ -314,20 +315,46 @@ describe('seo · empleos', () => {
       province: null,
       city: null,
       workMode: 'remote',
-    });
+    })!;
     expect(ld.jobLocation).toBeUndefined();
     expect(ld.jobLocationType).toBe('TELECOMMUTE');
     expect(ld.applicantLocationRequirements).toMatchObject({ '@type': 'Country' });
   });
 
   it('jobPostingLd: sin salario o negociable no emite baseSalary', () => {
-    expect(jobPostingLd({ ...baseJob, salaryMin: null }).baseSalary).toBeUndefined();
-    expect(jobPostingLd({ ...baseJob, salaryPeriod: 'negotiable' }).baseSalary).toBeUndefined();
+    expect(jobPostingLd({ ...baseJob, salaryMin: null })!.baseSalary).toBeUndefined();
+    expect(jobPostingLd({ ...baseJob, salaryPeriod: 'negotiable' })!.baseSalary).toBeUndefined();
   });
 
   it('jobPostingLd: validThrough solo con expiresAt', () => {
-    const ld = jobPostingLd({ ...baseJob, expiresAt: '2026-12-01T00:00:00Z' });
+    const ld = jobPostingLd({ ...baseJob, expiresAt: '2026-12-01T00:00:00Z' })!;
     expect(ld.validThrough).toContain('2026-12-01');
+  });
+
+  it('jobPostingLd: streetAddress y postalCode solo si existen', () => {
+    const addr = (ld: Record<string, unknown> | null) =>
+      (ld!.jobLocation as { address: Record<string, unknown> }).address;
+    const sin = addr(jobPostingLd(baseJob));
+    expect(sin.streetAddress).toBeUndefined();
+    expect(sin.postalCode).toBeUndefined();
+    const con = addr(jobPostingLd({ ...baseJob, streetAddress: 'Av. 27 de Febrero 100', postalCode: '10101' }));
+    expect(con.streetAddress).toBe('Av. 27 de Febrero 100');
+    expect(con.postalCode).toBe('10101');
+  });
+
+  it('jobPostingLd: null si la vacante no está publicada (no se indexa una oferta cerrada)', () => {
+    expect(jobPostingLd({ ...baseJob, status: 'expired' })).toBeNull();
+    expect(jobPostingLd({ ...baseJob, status: 'removed' })).toBeNull();
+    expect(jobPostingLd({ ...baseJob, status: 'published' })).not.toBeNull();
+    expect(jobPostingLd({ ...baseJob, status: null })).not.toBeNull();
+  });
+
+  it('jobGoneSeo: noindex, canónico propio y sin JobPosting', () => {
+    const s = jobGoneSeo({ slug: 'x', title: 'Cajero', category: 'ventas' });
+    expect(s.noindex).toBe(true);
+    expect(s.canonical).toBe('https://www.top.com.do/empleo/x');
+    expect(s.jsonLd?.some((o) => (o as Record<string, unknown>)['@type'] === 'JobPosting')).toBe(false);
+    expect(s.jsonLd?.[0]).toMatchObject({ '@type': 'BreadcrumbList' });
   });
 
   it('jobPostingSeo: canónico a /empleo/:slug y JSON-LD con JobPosting + BreadcrumbList', () => {
@@ -347,10 +374,12 @@ describe('seo · empleos', () => {
       categoryLandings: [{ slug: 'tecnologia' }],
       provinceLandings: [],
       comboLandings: [{ category: 'tecnologia', province: 'santiago' }],
+      companyLandings: [{ slug: 'acme-srl', lastmod: '2026-09-02' }],
     });
     const locs = withJobs.map((u) => u.loc);
     expect(locs).toContain('https://www.top.com.do/empleo/dev-frontend-sd');
     expect(locs).toContain('https://www.top.com.do/empleos/tecnologia');
     expect(locs).toContain('https://www.top.com.do/empleos/tecnologia/santiago');
+    expect(locs).toContain('https://www.top.com.do/empleos/empresa/acme-srl');
   });
 });

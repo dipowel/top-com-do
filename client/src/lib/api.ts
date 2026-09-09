@@ -1,6 +1,7 @@
 import { loadAuth } from './firebase';
 
-const BASE = import.meta.env.VITE_API_BASE || '/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const BASE = API_BASE;
 
 async function authHeader(): Promise<Record<string, string>> {
   // `{ auth: true }` solo se usa cuando ya hay sesión, así que Firebase ya se

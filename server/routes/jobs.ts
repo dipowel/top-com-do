@@ -8,6 +8,8 @@ import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
 import { pingIndexNow } from '../lib/indexnow';
+import { queueJobIndexing } from '../lib/googleIndexing';
+import { contentHash } from '../../shared/job-normalize';
 import { PROVINCE_SLUGS } from '../../shared/provinces';
 import { canonicalCityName } from '../../shared/cities';
 import { JOB_CATEGORY_SLUGS } from '../../shared/job-categories';
@@ -15,7 +17,7 @@ import {
   JOB_TYPE_VALUES,
   WORK_MODE_VALUES,
   SALARY_PERIOD_VALUES,
-  jobSlug,
+  dedupeKey,
   type JobType,
   type WorkMode,
   type SalaryPeriod,
@@ -23,10 +25,14 @@ import {
 import { normalizePhone } from '../../shared/phone';
 import {
   listJobs,
-  getJobBySlug,
+  getJobForRender,
   jobsForCompany,
   jobFacetCounts,
   maybeExpireJobs,
+  toJobCard,
+  toJobDetail,
+  generateUniqueJobSlug,
+  getCompanyJobsBySlug,
 } from '../lib/jobs';
 import { ensureDirectSource } from '../lib/jobSources';
 
@@ -93,6 +99,9 @@ const jobInputSchema = z
     province: z.enum(PROVINCE_SLUGS as [string, ...string[]]).optional(),
     city: z.string().max(60).optional(),
     locationText: z.string().max(200).optional(),
+    // Dirección exacta — opcional; solo si el empleador la conoce (nunca inventar).
+    streetAddress: z.string().max(160).optional(),
+    postalCode: z.string().max(12).optional(),
     jobType: z.enum(JOB_TYPE_VALUES as [JobType, ...JobType[]]),
     workMode: z.enum(WORK_MODE_VALUES as [WorkMode, ...WorkMode[]]),
     salaryMin: z.number().int().min(0).max(100_000_000).nullable().optional(),
@@ -107,16 +116,6 @@ const jobInputSchema = z
     (v) => v.applicationUrl || v.applicationEmail || v.contactWhatsapp,
     'Indica al menos una forma de aplicar (enlace, correo o WhatsApp)',
   );
-
-async function uniqueSlug(title: string, locationHint?: string | null): Promise<string> {
-  const base = jobSlug(title, locationHint);
-  for (let i = 0; i < 40; i++) {
-    const candidate = i === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
-    const [taken] = await db.select({ id: J.id }).from(J).where(eq(J.slug, candidate)).limit(1);
-    if (!taken) return candidate;
-  }
-  return `${base}-${Date.now().toString(36)}`;
-}
 
 /** Publicar una vacante. Cualquier usuario autenticado; el dueño puede adjuntar su negocio. */
 r.post(
@@ -152,15 +151,17 @@ r.post(
     const province = body.province && body.province !== 'todo-rd' ? body.province : null;
     const status = body.status ?? 'published';
     const now = new Date();
-    const slug = await uniqueSlug(body.title, body.city || (province ? province : null));
+    const city = canonicalCityName(body.city) ?? null;
+    const slug = await generateUniqueJobSlug(body.title, body.city || (province ? province : null));
     const sourceId = await ensureDirectSource();
+    const description = body.description.trim();
 
     const [row] = await db
       .insert(J)
       .values({
         slug,
         title: body.title.trim(),
-        description: body.description.trim(),
+        description,
         requirements: body.requirements?.trim() || null,
         responsibilities: body.responsibilities?.trim() || null,
         companyId,
@@ -168,8 +169,10 @@ r.post(
         postedByUserId: req.user!.id,
         category: body.category,
         province,
-        city: canonicalCityName(body.city) ?? null,
+        city,
         locationText: body.locationText?.trim() || null,
+        streetAddress: body.streetAddress?.trim() || null,
+        postalCode: body.postalCode?.trim() || null,
         jobType: body.jobType,
         workMode: body.workMode,
         salaryMin: body.salaryMin ?? null,
@@ -182,13 +185,18 @@ r.post(
         status,
         sourceId,
         sourcePlatform: 'direct',
+        dedupeKey: dedupeKey({ companyName, title: body.title, province, city }),
+        contentHash: contentHash({ title: body.title, companyName, description, city, province }),
         publishedAt: status === 'published' ? now : null,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
       })
       .returning();
 
     await audit(req.user!.id, 'job.create', 'job', row!.id, { slug, status });
-    if (status === 'published') pingIndexNow([`/empleo/${slug}`, '/empleos']);
+    if (status === 'published') {
+      pingIndexNow([`/empleo/${slug}`, '/empleos']);
+      void queueJobIndexing([slug], 'URL_UPDATED');
+    }
 
     res.status(201).json({ id: row!.id, slug: row!.slug, status: row!.status });
   }),
@@ -221,6 +229,8 @@ r.patch(
     assign('responsibilities', 'responsibilities');
     assign('category', 'category');
     assign('locationText', 'locationText');
+    assign('streetAddress', 'streetAddress');
+    assign('postalCode', 'postalCode');
     assign('jobType', 'jobType');
     assign('workMode', 'workMode');
     assign('salaryCurrency', 'salaryCurrency');
@@ -240,8 +250,38 @@ r.patch(
       if (body.status === 'published' && !existing.publishedAt) patch.publishedAt = new Date();
     }
 
+    // Recalcular hash / dedupeKey si cambió algo que los afecta.
+    const nextTitle = (patch.title as string) ?? existing.title;
+    const nextDesc = (patch.description as string) ?? existing.description;
+    const nextCity = (patch.city as string | null) ?? existing.city;
+    const nextProv = (patch.province as string | null) ?? existing.province;
+    const materialChange =
+      nextTitle !== existing.title || nextDesc !== existing.description || 'salaryMin' in patch;
+    patch.dedupeKey = dedupeKey({
+      companyName: existing.companyName,
+      title: nextTitle,
+      province: nextProv,
+      city: nextCity,
+    });
+    patch.contentHash = contentHash({
+      title: nextTitle,
+      companyName: existing.companyName,
+      description: nextDesc,
+      city: nextCity,
+      province: nextProv,
+    });
+
     const [row] = await db.update(J).set(patch).where(eq(J.id, existing.id)).returning();
     await audit(req.user!.id, 'job.update', 'job', existing.id, Object.keys(patch));
+
+    const nowPublished = row!.status === 'published';
+    const wasGone = existing.status !== 'published' && nowPublished;
+    if (nowPublished && (materialChange || wasGone)) {
+      pingIndexNow([`/empleo/${row!.slug}`]);
+      void queueJobIndexing([row!.slug], 'URL_UPDATED');
+    } else if (!nowPublished && existing.status === 'published') {
+      void queueJobIndexing([row!.slug], 'URL_DELETED');
+    }
     res.json({ id: row!.id, slug: row!.slug, status: row!.status });
   }),
 );
@@ -252,15 +292,19 @@ r.delete(
   requireAuth,
   ah(async (req, res) => {
     const [existing] = await db
-      .select({ id: J.id, postedByUserId: J.postedByUserId })
+      .select({ id: J.id, slug: J.slug, postedByUserId: J.postedByUserId, status: J.status })
       .from(J)
       .where(eq(J.id, req.params.id))
       .limit(1);
     if (!existing) throw new HttpError(404, 'Vacante no encontrada');
     const isAdmin = req.user!.role !== 'user';
     if (existing.postedByUserId !== req.user!.id && !isAdmin) throw new HttpError(403, 'No autorizado');
-    await db.update(J).set({ status: 'closed', updatedAt: new Date() }).where(eq(J.id, existing.id));
+    await db
+      .update(J)
+      .set({ status: 'closed', updatedAt: new Date(), removedAt: new Date(), removedReason: 'owner' })
+      .where(eq(J.id, existing.id));
     await audit(req.user!.id, 'job.close', 'job', existing.id, {});
+    if (existing.status === 'published') void queueJobIndexing([existing.slug], 'URL_DELETED');
     res.json({ ok: true });
   }),
 );
@@ -295,13 +339,35 @@ r.post(
   }),
 );
 
-/** Detalle público — DEBE ir al final para no capturar `/facets`. */
+/** Vacantes activas de una empresa por slug de nombre (landing `/empleos/empresa/:slug`). */
+r.get(
+  '/empresa/:slug',
+  ah(async (req, res) => {
+    const data = await getCompanyJobsBySlug(req.params.slug);
+    if (!data) throw new HttpError(404, 'Empresa sin vacantes activas');
+    res.json(data);
+  }),
+);
+
+/** Detalle público — DEBE ir al final para no capturar `/facets` ni `/empresa`. */
 r.get(
   '/:slug',
   ah(async (req, res) => {
-    const job = await getJobBySlug(req.params.slug);
-    if (!job) throw new HttpError(404, 'Vacante no encontrada');
-    res.json(job);
+    const result = await getJobForRender(req.params.slug);
+    if (result.kind === 'notfound') throw new HttpError(404, 'Vacante no encontrada');
+    if (result.kind === 'gone') {
+      // 410 Gone: la URL existió, la oferta ya no. El cliente muestra la "lápida".
+      res.status(410).json({
+        gone: true,
+        slug: result.row.slug,
+        title: result.row.title,
+        category: result.row.category,
+        status: result.row.status,
+        related: result.related.map(toJobCard),
+      });
+      return;
+    }
+    res.json(toJobDetail(result.row, result.related));
   }),
 );
 

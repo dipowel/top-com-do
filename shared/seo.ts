@@ -4,7 +4,7 @@
  * estructurados JSON-LD. Todo es puro (sin DOM): lo consume el cliente vía
  * `useSeo` y el servidor para `GET /sitemap.xml`.
  */
-import { SITE_URL, SOCIAL_URLS, profileShareUrl } from './site';
+import { SITE_URL, SOCIAL_URLS, profileShareUrl, profileAvatarUrl } from './site';
 import { CATEGORY_DEFS, subcategoryLabel } from './categories';
 import { NATIONAL_SLUG, provinceName } from './provinces';
 import { jobCategoryLabel } from './job-categories';
@@ -616,6 +616,19 @@ export interface JobSeoInput {
   salaryPeriod: string | null;
   publishedAt: string | null;
   expiresAt: string | null;
+  /** Componentes de dirección reales — se emiten SOLO si existen (nunca inventados). */
+  streetAddress?: string | null;
+  postalCode?: string | null;
+  /** URL de aplicación oficial (para `directApply` de Google si es un formulario directo). */
+  applyUrl?: string | null;
+  directApply?: boolean;
+  /** Fuente de la oferta (para atribución visible + `hiringOrganization`). */
+  sourceName?: string | null;
+  sourceUrl?: string | null;
+  /** Logo del empleador (perfil de Top o logo del ATS/feed). */
+  hiringOrgLogo?: string | null;
+  /** Estado de la vacante: si no es 'published', NO se emite JobPosting. */
+  status?: string | null;
 }
 
 /** Meta de la lista de empleos y de las landings programáticas. */
@@ -676,6 +689,9 @@ export function empleosSeo(opts: {
   };
 }
 
+/** ¿Está la vacante visible al público (y por tanto debe emitir JobPosting)? */
+const jobIsPublic = (job: Pick<JobSeoInput, 'status'>) => !job.status || job.status === 'published';
+
 /** Meta de la ficha de un empleo. */
 export function jobPostingSeo(job: JobSeoInput): SeoData {
   const provName = job.provinceName || (job.province ? provinceName(job.province) : '');
@@ -695,20 +711,52 @@ export function jobPostingSeo(job: JobSeoInput): SeoData {
     currency: job.salaryCurrency,
     period: job.salaryPeriod as SalaryPeriod | null,
   });
+  const posting = jobPostingLd(job);
   return {
-    title: `${job.title} en ${zone} · ${job.companyName} · Top.com.do`.slice(0, 110),
+    // Título limpio: el puesto real primero, sin keyword stuffing ni repetir la empresa.
+    title: `${job.title} en ${zone} | Top.com.do`.slice(0, 110),
     description: `${job.companyName} busca ${job.title} en ${zone}. ${
       salary ? `${salary}. ` : ''
     }${(job.description || '').replace(/\s+/g, ' ').trim().slice(0, 150)}`.slice(0, 300),
     canonical,
     image: OG_IMAGE,
-    jsonLd: [jobPostingLd(job), crumbs],
+    jsonLd: posting ? [posting, crumbs] : [crumbs],
   };
 }
 
-/** JSON-LD `JobPosting`. Solo emite los campos que existen — no inventa datos. */
-export function jobPostingLd(job: JobSeoInput): Record<string, unknown> {
+/** Meta de una vacante que ya no está disponible (expirada / retirada / cerrada). */
+export function jobGoneSeo(job: Pick<JobSeoInput, 'slug' | 'title' | 'category'>): SeoData {
+  const canonical = jobUrl(job.slug);
+  return {
+    title: `${job.title} (vacante no disponible) | Top.com.do`.slice(0, 110),
+    description:
+      'Esta vacante ya no está disponible en Top.com.do. Explora otras ofertas de empleo activas en la República Dominicana.',
+    canonical,
+    image: OG_IMAGE,
+    noindex: true,
+    jsonLd: [
+      breadcrumbLd([
+        { name: 'Inicio', url: `${SITE_URL}/` },
+        { name: 'Empleos', url: `${SITE_URL}/empleos` },
+        ...(job.category
+          ? [{ name: jobCategoryLabel(job.category) || 'Empleos', url: `${SITE_URL}/empleos/${job.category}` }]
+          : []),
+        { name: job.title, url: canonical },
+      ]),
+    ],
+  };
+}
+
+/**
+ * JSON-LD `JobPosting`. Solo emite los campos que existen — NO inventa datos.
+ * Devuelve `null` si la vacante no está publicada: Google no debe ver un
+ * `JobPosting` de una oferta que ya no acepta candidatos.
+ */
+export function jobPostingLd(job: JobSeoInput): Record<string, unknown> | null {
+  if (!jobIsPublic(job)) return null;
   const provName = job.provinceName || (job.province ? provinceName(job.province) : '');
+  const orgLogo =
+    job.hiringOrgLogo || (job.companyId ? profileAvatarUrl(job.companyId, 'x') || undefined : undefined);
   const ld: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',
@@ -721,20 +769,25 @@ export function jobPostingLd(job: JobSeoInput): Record<string, unknown> {
       '@type': 'Organization',
       name: job.companyName,
       ...(job.companyId ? { sameAs: profileShareUrl(job.companyId) } : {}),
+      ...(orgLogo ? { logo: orgLogo } : {}),
     },
   };
+  if (job.directApply) ld.directApply = true;
   if (job.publishedAt) ld.datePosted = new Date(job.publishedAt).toISOString().slice(0, 10);
   if (job.expiresAt) ld.validThrough = new Date(job.expiresAt).toISOString();
 
-  // Ubicación: se omite si es remoto sin ciudad concreta.
-  if (job.city || provName) {
+  // Ubicación: se omite si es remoto sin ciudad concreta. streetAddress / postalCode
+  // SOLO si el empleador o la fuente los aportaron (Search Console: nunca fabricar).
+  if (job.city || provName || job.streetAddress) {
     ld.jobLocation = {
       '@type': 'Place',
       address: {
         '@type': 'PostalAddress',
         addressCountry: 'DO',
+        ...(job.streetAddress ? { streetAddress: job.streetAddress } : {}),
         ...(provName ? { addressRegion: provName } : {}),
         ...(job.city ? { addressLocality: job.city } : {}),
+        ...(job.postalCode ? { postalCode: job.postalCode } : {}),
       },
     };
   }
@@ -793,6 +846,7 @@ export interface JobSitemapInput {
   categoryLandings: { slug: string; lastmod?: string }[];
   provinceLandings: { slug: string; lastmod?: string }[];
   comboLandings: { category: string; province: string; lastmod?: string }[];
+  companyLandings?: { slug: string; lastmod?: string }[];
 }
 
 export function sitemapUrls(
@@ -880,6 +934,14 @@ export function sitemapUrls(
         lastmod: cp.lastmod,
         changefreq: 'daily',
         priority: 0.5,
+      });
+    }
+    for (const co of jobs.companyLandings ?? []) {
+      out.push({
+        loc: `${SITE_URL}/empleos/empresa/${co.slug}`,
+        lastmod: co.lastmod,
+        changefreq: 'weekly',
+        priority: 0.45,
       });
     }
     for (const j of jobs.slugs) {

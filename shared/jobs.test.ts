@@ -6,9 +6,36 @@ import {
   isJobVisible,
   hasEnoughJobsForIndexing,
   normalizeText,
+  editorialIntro,
   SCHEMA_EMPLOYMENT_TYPE,
   JOB_TYPE_VALUES,
 } from './jobs';
+
+describe('jobs · editorialIntro', () => {
+  it('usa solo datos reales, sin inventar salario ni requisitos', () => {
+    const s = editorialIntro({
+      title: 'Cajero',
+      companyName: 'Supermercado Nacional',
+      city: 'Santiago',
+      provinceName: 'Santiago',
+      workMode: 'onsite',
+      jobType: 'full_time',
+      sourceName: 'Greenhouse',
+    });
+    expect(s).toContain('Cajero');
+    expect(s).toContain('Supermercado Nacional');
+    expect(s).toContain('Santiago');
+    expect(s).toContain('presencial');
+    expect(s).toContain('Greenhouse');
+    expect(s.toLowerCase()).not.toMatch(/salario|rd\$|beneficio/);
+  });
+
+  it('sin fuente atribuye a la empresa', () => {
+    const s = editorialIntro({ title: 'Chofer', companyName: 'Ron Barceló', workMode: 'remote' });
+    expect(s).toContain('remoto');
+    expect(s).toContain('directamente la empresa');
+  });
+});
 
 describe('jobs · jobSlug', () => {
   it('normaliza acentos, espacios y símbolos', () => {

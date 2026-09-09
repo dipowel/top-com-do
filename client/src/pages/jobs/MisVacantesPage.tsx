@@ -29,6 +29,8 @@ function toForm(j: JobDetail): JobFormValue {
     province: j.province ?? '',
     city: j.city ?? '',
     locationText: j.locationText ?? '',
+    streetAddress: j.streetAddress ?? '',
+    postalCode: j.postalCode ?? '',
     jobType: j.jobType,
     workMode: j.workMode,
     salaryMin: j.salaryMin != null ? String(j.salaryMin) : '',
@@ -38,6 +40,7 @@ function toForm(j: JobDetail): JobFormValue {
     applicationUrl: j.applicationUrl ?? '',
     applicationEmail: j.applicationEmail ?? '',
     contactWhatsapp: j.contactWhatsapp ?? '',
+    expiresAt: j.expiresAt ? j.expiresAt.slice(0, 10) : '',
   };
 }
 

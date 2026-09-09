@@ -6,8 +6,11 @@ import { jobCategoryLabel, isJobCategory } from '../../shared/job-categories';
 import {
   JOB_TYPE_LABELS,
   WORK_MODE_LABELS,
+  JOB_TYPE_VALUES,
   formatSalary,
   hasEnoughJobsForIndexing,
+  jobSlug,
+  normalizeText,
   type JobType,
   type WorkMode,
   type SalaryPeriod,
@@ -15,6 +18,29 @@ import {
 import type { JobCard, JobDetail } from '../../shared/types';
 
 type Row = typeof J.$inferSelect;
+
+/** Genera un slug único para `/empleo/:slug` (reintenta con sufijo aleatorio). */
+export async function generateUniqueJobSlug(title: string, locationHint?: string | null): Promise<string> {
+  const base = jobSlug(title, locationHint);
+  for (let i = 0; i < 40; i++) {
+    const candidate = i === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const [taken] = await db.select({ id: J.id }).from(J).where(eq(J.slug, candidate)).limit(1);
+    if (!taken) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`;
+}
+
+/** Mapea el "employment type" de una fuente a nuestro enum `job_type`. */
+export function mapJobType(raw: string | null | undefined): JobType {
+  const t = (raw || '').toLowerCase();
+  if (/part|medio tiempo|media jornada/.test(t)) return 'part_time';
+  if (/intern|pasant|practic|trainee/.test(t)) return 'internship';
+  if (/tempor|estacional|seasonal/.test(t)) return 'temporary';
+  if (/freelance|independiente|por proyecto/.test(t)) return 'freelance';
+  if (/contract|contrato|obra/.test(t)) return 'contract';
+  if (JOB_TYPE_VALUES.includes(t as JobType)) return t as JobType;
+  return 'full_time';
+}
 
 const iso = (d: Date | string | null): string | null => (d ? new Date(d).toISOString() : null);
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
@@ -53,6 +79,8 @@ export function toJobDetail(r: Row, related: Row[]): JobDetail {
     requirements: r.requirements,
     responsibilities: r.responsibilities,
     locationText: r.locationText,
+    streetAddress: r.streetAddress,
+    postalCode: r.postalCode,
     salaryMin: num(r.salaryMin),
     salaryMax: num(r.salaryMax),
     salaryCurrency: r.salaryCurrency,
@@ -60,10 +88,46 @@ export function toJobDetail(r: Row, related: Row[]): JobDetail {
     applicationUrl: r.applicationUrl,
     applicationEmail: r.applicationEmail,
     contactWhatsapp: r.contactWhatsapp,
+    directApply: r.directApply,
     status: r.status,
+    publishedAt: iso(r.publishedAt),
+    updatedAt: iso(r.updatedAt),
     expiresAt: iso(r.expiresAt),
     createdAt: iso(r.createdAt)!,
+    sourceName: r.sourceName,
+    sourceUrl: r.sourceUrl,
+    sourcePlatform: r.sourcePlatform,
     related: related.map(toJobCard),
+  };
+}
+
+/** Vacante para SEO/JSON-LD (`shared/seo.ts` `JobSeoInput`). */
+export function toJobSeoInput(r: Row) {
+  return {
+    slug: r.slug,
+    title: r.title,
+    description: r.description,
+    companyId: r.companyId,
+    companyName: r.companyName,
+    category: r.category,
+    province: r.province,
+    provinceName: r.province ? provinceName(r.province) || null : null,
+    city: r.city,
+    jobType: r.jobType,
+    workMode: r.workMode,
+    salaryMin: num(r.salaryMin),
+    salaryMax: num(r.salaryMax),
+    salaryCurrency: r.salaryCurrency,
+    salaryPeriod: r.salaryPeriod,
+    publishedAt: iso(r.publishedAt),
+    expiresAt: iso(r.expiresAt),
+    streetAddress: r.streetAddress,
+    postalCode: r.postalCode,
+    applyUrl: r.applicationUrl,
+    directApply: r.directApply,
+    sourceName: r.sourceName,
+    sourceUrl: r.sourceUrl,
+    status: r.status,
   };
 }
 
@@ -143,12 +207,9 @@ export async function listJobs(f: JobFilters): Promise<{ items: JobCard[]; nextC
   };
 }
 
-export async function getJobBySlug(slug: string): Promise<JobDetail | null> {
-  const [row] = await db.select().from(J).where(eq(J.slug, slug)).limit(1);
-  if (!row || row.status !== 'published') return null;
-  if (row.expiresAt && new Date(row.expiresAt).getTime() <= Date.now()) return null;
-
-  const related = await db
+/** 6 vacantes activas relacionadas por categoría o provincia. */
+async function relatedJobs(row: Row): Promise<Row[]> {
+  return db
     .select()
     .from(J)
     .where(
@@ -162,8 +223,65 @@ export async function getJobBySlug(slug: string): Promise<JobDetail | null> {
     )
     .orderBy(desc(J.publishedAt))
     .limit(6);
+}
 
-  return toJobDetail(row, related);
+const PUBLIC_VISIBLE = (row: Row) =>
+  row.status === 'published' &&
+  !(row.expiresAt && new Date(row.expiresAt).getTime() <= Date.now());
+
+/** Estados que muestran "lápida" 410 (la URL se conserva, sin JobPosting). */
+export const GONE_STATUSES = new Set(['expired', 'removed', 'closed']);
+
+export async function getJobBySlug(slug: string): Promise<JobDetail | null> {
+  const [row] = await db.select().from(J).where(eq(J.slug, slug)).limit(1);
+  if (!row || !PUBLIC_VISIBLE(row)) return null;
+  return toJobDetail(row, await relatedJobs(row));
+}
+
+export type JobRenderResult =
+  | { kind: 'ok'; row: Row; related: Row[] }
+  | { kind: 'gone'; row: Row; related: Row[] }
+  | { kind: 'notfound' };
+
+/**
+ * Para el SSR: resuelve una vacante por slug con TODOS los estados.
+ *  - `ok`       → publicada y vigente → render normal + JobPosting.
+ *  - `gone`     → expirada / retirada / cerrada → lápida HTTP 410, sin JobPosting.
+ *  - `notfound` → no existe, o borrador / pendiente / posible-duplicado (nunca fue pública).
+ */
+export async function getJobForRender(slug: string): Promise<JobRenderResult> {
+  const [row] = await db.select().from(J).where(eq(J.slug, slug)).limit(1);
+  if (!row) return { kind: 'notfound' };
+  if (PUBLIC_VISIBLE(row)) return { kind: 'ok', row, related: await relatedJobs(row) };
+  const goneByExpiry = row.status === 'published' && !!row.expiresAt;
+  if (GONE_STATUSES.has(row.status) || goneByExpiry) {
+    return { kind: 'gone', row, related: await relatedJobs(row) };
+  }
+  return { kind: 'notfound' };
+}
+
+/** Slug estable a partir del nombre de una empresa (para `/empleos/empresa/:slug`). */
+export function companySlugify(name: string): string {
+  return normalizeText(name).replace(/\s+/g, '-').slice(0, 80) || 'empresa';
+}
+
+/** Empleos activos de una empresa por su slug de nombre (para la landing de empresa). */
+export async function getCompanyJobsBySlug(
+  slug: string,
+): Promise<{ companyName: string; province: string | null; jobs: JobCard[] } | null> {
+  const rows = await db
+    .select()
+    .from(J)
+    .where(visibleCond())
+    .orderBy(desc(J.publishedAt))
+    .limit(500);
+  const match = rows.filter((r) => companySlugify(r.companyName) === slug);
+  if (!match.length) return null;
+  return {
+    companyName: match[0]!.companyName,
+    province: match[0]!.province,
+    jobs: match.map(toJobCard),
+  };
 }
 
 /** Empleos activos de un negocio (para su ficha `/p/:id`). */
@@ -241,14 +359,23 @@ export function landingIndexable(
   };
 }
 
-/** Marca como `expired` los empleos publicados cuya fecha de expiración ya pasó. */
-export async function expireStaleJobs(): Promise<number> {
-  const res = await db
+/**
+ * Marca como `expired` los empleos publicados cuya fecha de expiración ya pasó y
+ * pide a Google que despublique sus URLs. Devuelve los slugs afectados para que el
+ * llamador (cron) los registre.
+ */
+export async function expireStaleJobs(): Promise<{ expired: string[] }> {
+  const rows = await db
     .update(J)
-    .set({ status: 'expired', updatedAt: new Date() })
+    .set({ status: 'expired', updatedAt: new Date(), removedAt: new Date(), removedReason: 'expired' })
     .where(and(eq(J.status, 'published'), sql`${J.expiresAt} is not null`, lt(J.expiresAt, sql`now()`)))
-    .returning({ id: J.id });
-  return res.length;
+    .returning({ slug: J.slug });
+  const expired = rows.map((r) => r.slug);
+  if (expired.length) {
+    const { queueJobIndexing } = await import('./googleIndexing');
+    await queueJobIndexing(expired, 'URL_DELETED').catch(() => {});
+  }
+  return { expired };
 }
 
 let lastExpireRun = 0;

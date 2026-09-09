@@ -17,7 +17,16 @@ import {
 } from '../../shared/categories';
 import { PROVINCE_SLUGS, NATIONAL_SLUG, provinceName, isRealProvince } from '../../shared/provinces';
 import { jobCategoryLabel, isJobCategory } from '../../shared/job-categories';
-import { listJobs, getJobBySlug, jobFacetCounts, landingIndexable } from './jobs';
+import {
+  listJobs,
+  getJobForRender,
+  jobFacetCounts,
+  landingIndexable,
+  toJobSeoInput,
+  getCompanyJobsBySlug,
+} from './jobs';
+import { editorialIntro, JOB_TYPE_LABELS, WORK_MODE_LABELS, formatSalary } from '../../shared/jobs';
+import { sanitizePlainText } from '../../shared/sanitize';
 import {
   homeSeo,
   categorySeo,
@@ -30,6 +39,7 @@ import {
   directorioSeo,
   empleosSeo,
   jobPostingSeo,
+  jobGoneSeo,
   organizationLd,
   websiteLd,
   categoryIntro,
@@ -410,58 +420,112 @@ async function resolve(pathname: string): Promise<Resolved> {
   }
 
   if (head === 'empleo' && segs[1]) {
-    let job = null;
+    let result: Awaited<ReturnType<typeof getJobForRender>> = { kind: 'notfound' };
     try {
-      job = await getJobBySlug(segs[1]);
+      result = await getJobForRender(segs[1]);
     } catch {
-      job = null;
+      result = { kind: 'notfound' };
     }
-    if (!job) return notFound(pathname);
-    const seo = jobPostingSeo({
-      slug: job.slug,
-      title: job.title,
-      description: job.description,
-      companyId: job.companyId,
-      companyName: job.companyName,
-      category: job.category,
-      province: job.province,
-      provinceName: job.provinceName,
-      city: job.city,
-      jobType: job.jobType,
-      workMode: job.workMode,
-      salaryMin: job.salaryMin,
-      salaryMax: job.salaryMax,
-      salaryCurrency: job.salaryCurrency,
-      salaryPeriod: job.salaryPeriod,
-      publishedAt: job.publishedAt,
-      expiresAt: job.expiresAt,
+    if (result.kind === 'notfound') return notFound(pathname);
+
+    const row = result.row;
+    const provName = row.province ? provinceName(row.province) || '' : '';
+    const relatedLis = result.related
+      .map(
+        (j) =>
+          `<li><a href="/empleo/${esc(j.slug)}" style="color:#e8c874">${esc(j.title)}</a> ` +
+          `<span style="color:#9aa4b2">— ${esc(j.companyName)}</span></li>`,
+      )
+      .join('');
+    const relatedBlock = relatedLis
+      ? `<h2 style="font-size:1rem;margin:1.2rem 0 .4rem">Ofertas similares</h2>` +
+        `<ul style="list-style:none;padding:0;margin:0;display:grid;gap:.35rem;font-size:.9rem">${relatedLis}</ul>`
+      : '';
+
+    const crumbs = crumbNav([
+      { name: 'Inicio', href: '/' },
+      { name: 'Empleos', href: '/empleos' },
+      { name: jobCategoryLabel(row.category) || 'Empleos', href: `/empleos/${row.category}` },
+      { name: row.title },
+    ]);
+
+    // Vacante retirada / expirada / cerrada → "lápida" 410, sin JobPosting.
+    if (result.kind === 'gone') {
+      return {
+        seo: jobGoneSeo({ slug: row.slug, title: row.title, category: row.category }),
+        status: 410,
+        cache: 300,
+        body: hero(
+          esc(row.title),
+          'Esta vacante ya no está disponible. La oferta fue retirada o expiró.',
+          `<p style="${P_STYLE}">Puedes explorar otras oportunidades activas en <a href="/empleos" style="color:#e8c874">Empleos</a>.</p>${relatedBlock}`,
+          crumbs,
+        ),
+      };
+    }
+
+    const zone = row.city || provName || (row.workMode === 'remote' ? 'Remoto' : RD);
+    const jobTypeLabel = JOB_TYPE_LABELS[row.jobType as keyof typeof JOB_TYPE_LABELS] ?? row.jobType;
+    const workModeLabel = WORK_MODE_LABELS[row.workMode as keyof typeof WORK_MODE_LABELS] ?? row.workMode;
+    const seo = jobPostingSeo(toJobSeoInput(row));
+    const salaryLabel = formatSalary({
+      min: row.salaryMin == null ? null : Number(row.salaryMin),
+      max: row.salaryMax == null ? null : Number(row.salaryMax),
+      currency: row.salaryCurrency,
+      period: row.salaryPeriod,
     });
-    const zone = job.city || job.provinceName || (job.workMode === 'remote' ? 'Remoto' : RD);
-    const meta = [job.companyName, zone, job.jobTypeLabel, job.workModeLabel]
-      .filter(Boolean)
-      .join(' · ');
-    const salary = job.salaryLabel ? `<p style="${P_STYLE}">💰 ${esc(job.salaryLabel)}</p>` : '';
-    const apply =
-      job.applicationUrl || job.applicationEmail || job.contactWhatsapp
-        ? `<p style="font-size:.9rem"><a href="${esc(
-            job.applicationUrl ||
-              (job.applicationEmail ? `mailto:${job.applicationEmail}` : whatsappLink(job.contactWhatsapp!)),
-          )}" style="color:#34d399">Aplicar ahora</a></p>`
+
+    const metaRows: string[] = [
+      `<strong>${esc(row.companyName)}</strong>`,
+      `📍 ${esc([row.city, provName].filter(Boolean).join(', ') || zone)}`,
+      `🕒 ${esc(jobTypeLabel)} · ${esc(workModeLabel)}`,
+    ];
+    if (salaryLabel) metaRows.push(`💰 ${esc(salaryLabel)}`);
+    if (row.streetAddress) metaRows.push(`🏢 ${esc(row.streetAddress)}${row.postalCode ? `, ${esc(row.postalCode)}` : ''}`);
+    if (row.expiresAt) metaRows.push(`⏳ Válido hasta ${new Date(row.expiresAt).toLocaleDateString('es-DO')}`);
+
+    const section = (title: string, textHtml: string) =>
+      textHtml ? `<h2 style="font-size:1rem;margin:1.2rem 0 .4rem">${title}</h2><div style="font-size:.92rem;line-height:1.6;color:#c8cfda;white-space:pre-wrap">${textHtml}</div>` : '';
+
+    const descText = sanitizePlainText(row.description);
+    const about = descText.length >= 120 ? esc(descText) : esc(editorialIntro({
+      title: row.title,
+      companyName: row.companyName,
+      city: row.city,
+      provinceName: provName || null,
+      workMode: row.workMode,
+      jobType: row.jobType,
+      sourceName: row.sourceName,
+    }) + (descText ? `\n\n${descText}` : ''));
+
+    const applyHref =
+      row.applicationUrl ||
+      (row.applicationEmail ? `mailto:${row.applicationEmail}` : row.contactWhatsapp ? whatsappLink(row.contactWhatsapp) : '');
+    const applyBlock = applyHref
+      ? `<p style="margin:1rem 0"><a href="${esc(applyHref)}" rel="nofollow noopener noreferrer" style="display:inline-block;background:#e8c874;color:#1a1a1a;padding:.6rem 1.1rem;border-radius:.5rem;font-weight:700;text-decoration:none">Aplicar a esta vacante</a></p>`
+      : '';
+    const sourceBlock =
+      row.sourcePlatform && row.sourcePlatform !== 'direct'
+        ? `<p style="font-size:.8rem;color:#8a93a2;margin-top:1rem">Fuente de la oferta: ${esc(row.sourceName || row.sourcePlatform)}${
+            row.sourceUrl ? ` · <a href="${esc(row.sourceUrl)}" rel="nofollow noopener noreferrer" style="color:#8a93a2">ver publicación original</a>` : ''
+          }</p>`
         : '';
+
     return {
       seo,
       status: 200,
       cache: 600,
       body: hero(
-        esc(job.title),
-        `${meta}. ${(job.description || '').replace(/\s+/g, ' ').trim().slice(0, 400)}`,
-        salary + apply,
-        crumbNav([
-          { name: 'Inicio', href: '/' },
-          { name: 'Empleos', href: '/empleos' },
-          { name: jobCategoryLabel(job.category) || 'Empleos', href: `/empleos/${job.category}` },
-          { name: job.title },
-        ]),
+        esc(row.title),
+        metaRows.join(' · ').replace(/<\/?strong>/g, ''),
+        `<div style="font-size:.9rem;color:#c8cfda">${metaRows.join('<br>')}</div>` +
+          applyBlock +
+          section('Sobre esta oportunidad', about) +
+          section('Responsabilidades', esc(sanitizePlainText(row.responsibilities))) +
+          section('Requisitos', esc(sanitizePlainText(row.requirements))) +
+          sourceBlock +
+          relatedBlock,
+        crumbs,
       ),
     };
   }
@@ -476,10 +540,82 @@ async function resolve(pathname: string): Promise<Resolved> {
       };
     }
 
-    const filtro = segs[1];
-    const provSeg = isRealProvince(segs[2]) ? segs[2] : null;
+    // Landing de empresa: /empleos/empresa/:slug
+    if (segs[1] === 'empresa' && segs[2]) {
+      let data: Awaited<ReturnType<typeof getCompanyJobsBySlug>> = null;
+      try {
+        data = await getCompanyJobsBySlug(segs[2]);
+      } catch {
+        data = null;
+      }
+      const canonical = `${SITE_URL}/empleos/empresa/${esc(segs[2])}`;
+      if (!data) {
+        return {
+          seo: {
+            title: 'Empresa · Empleos | Top.com.do',
+            description: 'Vacantes por empresa en Top.com.do.',
+            canonical,
+            noindex: true,
+            jsonLd: [],
+          },
+          status: 200,
+          cache: 300,
+          body: hero('Sin vacantes activas', 'Esta empresa no tiene vacantes activas ahora mismo.'),
+        };
+      }
+      const indexable = data.jobs.length >= 3;
+      const lis = data.jobs
+        .map(
+          (j) =>
+            `<li><a href="/empleo/${esc(j.slug)}" style="color:#e8c874">${esc(j.title)}</a> ` +
+            `<span style="color:#9aa4b2">— ${esc(j.provinceName || j.city || RD)}</span></li>`,
+        )
+        .join('');
+      return {
+        seo: {
+          title: `Empleos en ${data.companyName} | Top.com.do`.slice(0, 110),
+          description: `${data.jobs.length} vacante${data.jobs.length === 1 ? '' : 's'} activa${
+            data.jobs.length === 1 ? '' : 's'
+          } en ${data.companyName}. Postúlate directo en Top.com.do.`,
+          canonical,
+          image: `${SITE_URL}/og.png`,
+          noindex: !indexable,
+          jsonLd: [
+            {
+              '@context': 'https://schema.org',
+              '@type': 'ItemList',
+              url: canonical,
+              numberOfItems: data.jobs.length,
+              itemListElement: data.jobs.map((j, i) => ({
+                '@type': 'ListItem',
+                position: i + 1,
+                url: `${SITE_URL}/empleo/${j.slug}`,
+                name: j.title,
+              })),
+            },
+          ],
+        },
+        status: 200,
+        cache: 600,
+        body: hero(
+          `Empleos en ${esc(data.companyName)}`,
+          `${data.jobs.length} vacantes activas`,
+          `<ul style="list-style:none;padding:0;margin:0;display:grid;gap:.4rem;font-size:.9rem">${lis}</ul>`,
+          crumbNav([
+            { name: 'Inicio', href: '/' },
+            { name: 'Empleos', href: '/empleos' },
+            { name: data.companyName },
+          ]),
+        ),
+      };
+    }
+
+    // /empleos/categoria/:cat  →  desambigua categoría de provincia
+    const catPrefix = segs[1] === 'categoria';
+    const filtro = catPrefix ? segs[2] : segs[1];
+    const provSeg = isRealProvince(catPrefix ? segs[3] : segs[2]) ? (catPrefix ? segs[3] : segs[2]) : null;
     const catSlug = isJobCategory(filtro) ? filtro : null;
-    const provSlug = !catSlug && isRealProvince(filtro) ? filtro : provSeg;
+    const provSlug = !catSlug && !catPrefix && isRealProvince(filtro) ? filtro : provSeg;
 
     if (segs.length > 1 && !catSlug && !provSlug) return notFound(pathname);
 

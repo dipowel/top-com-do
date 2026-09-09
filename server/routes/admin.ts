@@ -13,9 +13,11 @@ import {
   reviews,
   jobs as J,
   jobReports,
+  jobSources,
+  jobImportRuns,
 } from '../../shared/schema';
-import { toJobCard } from '../lib/jobs';
-import { expireStaleJobs } from '../lib/jobs';
+import { toJobCard, toJobDetail, expireStaleJobs } from '../lib/jobs';
+import { pingIndexNow } from '../lib/indexnow';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
@@ -424,25 +426,61 @@ r.delete(
 
 // ---------------- Empleos ----------------
 
+const JOB_STATUSES = [
+  'draft',
+  'pending_review',
+  'possible_duplicate',
+  'published',
+  'expired',
+  'removed',
+  'closed',
+] as const;
+type JobStatusValue = (typeof JOB_STATUSES)[number];
+
 r.get(
   '/jobs',
   ah(async (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const status = typeof req.query.status === 'string' ? req.query.status : '';
+    const source = typeof req.query.source === 'string' ? req.query.source : '';
     const rows = await db
       .select()
       .from(J)
       .where(
         and(
-          q
-            ? sql`(${J.title} ilike ${`%${q}%`} or ${J.companyName} ilike ${`%${q}%`})`
+          q ? sql`(${J.title} ilike ${`%${q}%`} or ${J.companyName} ilike ${`%${q}%`})` : undefined,
+          status && (JOB_STATUSES as readonly string[]).includes(status)
+            ? eq(J.status, status as JobStatusValue)
             : undefined,
-          status ? eq(J.status, status as 'draft' | 'published' | 'expired' | 'closed') : undefined,
+          source ? eq(J.sourcePlatform, source) : undefined,
         ),
       )
-      .orderBy(desc(J.createdAt))
+      .orderBy(desc(J.updatedAt))
       .limit(300);
-    res.json(rows.map((row) => ({ ...toJobCard(row), status: row.status, createdAt: row.createdAt })));
+    res.json(
+      rows.map((row) => ({
+        ...toJobCard(row),
+        status: row.status,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        firstSeenAt: row.firstSeenAt,
+        sourcePlatform: row.sourcePlatform,
+        sourceName: row.sourceName,
+        sourceUrl: row.sourceUrl,
+        applicationUrl: row.applicationUrl,
+        duplicateOfId: row.duplicateOfId,
+        indexingStatus: row.indexingStatus,
+      })),
+    );
+  }),
+);
+
+r.get(
+  '/jobs/:id',
+  ah(async (req, res) => {
+    const [row] = await db.select().from(J).where(eq(J.id, req.params.id)).limit(1);
+    if (!row) throw new HttpError(404, 'Vacante no encontrada');
+    res.json(toJobDetail(row, []));
   }),
 );
 
@@ -451,10 +489,20 @@ const adminJobPatch = z.object({
   companyName: z.string().min(2).max(120).optional(),
   category: z.string().max(60).optional(),
   province: z.string().max(40).optional(),
-  status: z.enum(['draft', 'published', 'expired', 'closed']).optional(),
+  status: z.enum(JOB_STATUSES).optional(),
   isFeatured: z.boolean().optional(),
   expiresAt: z.string().datetime().nullable().optional(),
 });
+
+async function afterJobStatusChange(slug: string, before: string, after: string) {
+  const { queueJobIndexing } = await import('../lib/googleIndexing');
+  if (after === 'published' && before !== 'published') {
+    pingIndexNow([`/empleo/${slug}`, '/empleos']);
+    await queueJobIndexing([slug], 'URL_UPDATED');
+  } else if (before === 'published' && after !== 'published') {
+    await queueJobIndexing([slug], 'URL_DELETED');
+  }
+}
 
 r.patch(
   '/jobs/:id',
@@ -474,10 +522,17 @@ r.patch(
     if (body.status !== undefined) {
       patch.status = body.status;
       if (body.status === 'published' && !existing.publishedAt) patch.publishedAt = new Date();
+      if (['expired', 'removed', 'closed'].includes(body.status)) {
+        patch.removedAt = new Date();
+        patch.removedReason = 'admin';
+      }
     }
 
     const [row] = await db.update(J).set(patch).where(eq(J.id, existing.id)).returning();
     await audit(req.user!.id, 'admin.job.edit', 'job', existing.id, { changes: body });
+    if (body.status && body.status !== existing.status) {
+      await afterJobStatusChange(row!.slug, existing.status, body.status);
+    }
     res.json({ ...toJobCard(row!), status: row!.status });
   }),
 );
@@ -485,11 +540,146 @@ r.patch(
 r.delete(
   '/jobs/:id',
   ah(async (req, res) => {
-    const [existing] = await db.select({ id: J.id }).from(J).where(eq(J.id, req.params.id)).limit(1);
+    const [existing] = await db
+      .select({ id: J.id, slug: J.slug, status: J.status })
+      .from(J)
+      .where(eq(J.id, req.params.id))
+      .limit(1);
     if (!existing) throw new HttpError(404, 'Vacante no encontrada');
-    await db.update(J).set({ status: 'closed', updatedAt: new Date() }).where(eq(J.id, existing.id));
-    await audit(req.user!.id, 'admin.job.close', 'job', existing.id, {});
+    await db
+      .update(J)
+      .set({ status: 'removed', updatedAt: new Date(), removedAt: new Date(), removedReason: 'admin' })
+      .where(eq(J.id, existing.id));
+    await audit(req.user!.id, 'admin.job.remove', 'job', existing.id, {});
+    await afterJobStatusChange(existing.slug, existing.status, 'removed');
     res.json({ ok: true });
+  }),
+);
+
+/** Acciones rápidas de moderación. */
+r.post(
+  '/jobs/:id/:action',
+  ah(async (req, res) => {
+    const action = req.params.action;
+    const [existing] = await db.select().from(J).where(eq(J.id, req.params.id)).limit(1);
+    if (!existing) throw new HttpError(404, 'Vacante no encontrada');
+
+    let next: JobStatusValue | null = null;
+    if (action === 'approve' || action === 'not-duplicate') next = 'published';
+    else if (action === 'reject') next = 'removed';
+    else if (action === 'reimport') {
+      if (!existing.sourceId) throw new HttpError(400, 'Vacante sin fuente');
+      const [src] = await db.select().from(jobSources).where(eq(jobSources.id, existing.sourceId)).limit(1);
+      if (!src) throw new HttpError(404, 'Fuente no encontrada');
+      const { runSource } = await import('../lib/jobImport');
+      const out = await runSource(src, 15_000);
+      await audit(req.user!.id, 'admin.job.reimport', 'job', existing.id, out);
+      return res.json({ ok: true, run: out });
+    } else {
+      throw new HttpError(400, 'Acción no válida');
+    }
+
+    const patch: Record<string, unknown> = { status: next, updatedAt: new Date() };
+    if (next === 'published' && !existing.publishedAt) patch.publishedAt = new Date();
+    if (next === 'removed') {
+      patch.removedAt = new Date();
+      patch.removedReason = 'admin';
+    }
+    if (action === 'not-duplicate') patch.duplicateOfId = null;
+    const [row] = await db.update(J).set(patch).where(eq(J.id, existing.id)).returning();
+    await audit(req.user!.id, `admin.job.${action}`, 'job', existing.id, {});
+    await afterJobStatusChange(row!.slug, existing.status, next);
+    res.json({ ok: true, status: next });
+  }),
+);
+
+// ---------------- Fuentes de empleo ----------------
+
+r.get(
+  '/job-sources',
+  ah(async (_req, res) => {
+    const rows = await db.select().from(jobSources).orderBy(jobSources.name);
+    const counts = await db
+      .select({ platform: J.sourcePlatform, n: sql<number>`count(*)::int` })
+      .from(J)
+      .where(eq(J.status, 'published'))
+      .groupBy(J.sourcePlatform);
+    const byPlatform = Object.fromEntries(counts.map((c) => [c.platform, c.n]));
+    res.json(rows.map((s) => ({ ...s, activeJobs: byPlatform[s.platform] ?? 0 })));
+  }),
+);
+
+const jobSourcePatch = z.object({
+  name: z.string().min(2).max(120).optional(),
+  isEnabled: z.boolean().optional(),
+  autoPublish: z.boolean().optional(),
+  authorizationStatus: z.enum(['none', 'requested', 'authorized', 'denied']).optional(),
+  defaultCategory: z.string().max(60).nullable().optional(),
+  feedUrl: z.string().url().max(500).nullable().optional(),
+  config: z.record(z.unknown()).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+r.patch(
+  '/job-sources/:id',
+  ah(async (req, res) => {
+    const body = jobSourcePatch.parse(req.body);
+    const [existing] = await db.select().from(jobSources).where(eq(jobSources.id, req.params.id)).limit(1);
+    if (!existing) throw new HttpError(404, 'Fuente no encontrada');
+    if (existing.platform === 'direct' && body.isEnabled === false) {
+      throw new HttpError(400, 'La publicación directa no se puede desactivar');
+    }
+    const [row] = await db
+      .update(jobSources)
+      .set({ ...body, updatedAt: new Date() } as Record<string, unknown>)
+      .where(eq(jobSources.id, existing.id))
+      .returning();
+    await audit(req.user!.id, 'admin.jobSource.edit', 'jobSource', existing.id, { changes: Object.keys(body) });
+    res.json(row);
+  }),
+);
+
+const jobSourceCreate = jobSourcePatch.extend({
+  platform: z.enum(['greenhouse', 'lever', 'csv', 'jooble']),
+  name: z.string().min(2).max(120),
+  sourceType: z.enum(['direct', 'ats', 'api', 'feed', 'partner']).default('feed'),
+});
+
+r.post(
+  '/job-sources',
+  ah(async (req, res) => {
+    const body = jobSourceCreate.parse(req.body);
+    const [row] = await db
+      .insert(jobSources)
+      .values({
+        platform: body.platform,
+        name: body.name,
+        sourceType: body.sourceType,
+        isEnabled: body.isEnabled ?? false,
+        autoPublish: body.autoPublish ?? false,
+        authorizationStatus: body.authorizationStatus ?? 'none',
+        defaultCategory: body.defaultCategory ?? null,
+        feedUrl: body.feedUrl ?? null,
+        config: (body.config ?? null) as never,
+        notes: body.notes ?? null,
+      })
+      .onConflictDoNothing({ target: jobSources.platform })
+      .returning();
+    if (!row) throw new HttpError(409, 'Ya existe una fuente con esa plataforma');
+    await audit(req.user!.id, 'admin.jobSource.create', 'jobSource', row.id, { platform: body.platform });
+    res.status(201).json(row);
+  }),
+);
+
+r.get(
+  '/job-import-runs',
+  ah(async (_req, res) => {
+    const rows = await db
+      .select()
+      .from(jobImportRuns)
+      .orderBy(desc(jobImportRuns.startedAt))
+      .limit(60);
+    res.json(rows);
   }),
 );
 
@@ -532,9 +722,19 @@ r.post(
 r.post(
   '/jobs/expire',
   ah(async (req, res) => {
-    const n = await expireStaleJobs();
-    await audit(req.user!.id, 'admin.jobs.expire', 'job', null, { expired: n });
-    res.json({ expired: n });
+    const { expired } = await expireStaleJobs();
+    await audit(req.user!.id, 'admin.jobs.expire', 'job', null, { expired: expired.length });
+    res.json({ expired: expired.length, slugs: expired });
+  }),
+);
+
+r.post(
+  '/jobs/import',
+  ah(async (req, res) => {
+    const { runDueSources } = await import('../lib/jobImport');
+    const runs = await runDueSources();
+    await audit(req.user!.id, 'admin.jobs.import', 'job', null, { runs: runs.length });
+    res.json({ runs });
   }),
 );
 

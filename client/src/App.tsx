@@ -27,6 +27,7 @@ const EmpleosPage = lazy(() => import('./pages/jobs/EmpleosPage'));
 const EmpleoDetailPage = lazy(() => import('./pages/jobs/EmpleoDetailPage'));
 const PublicarEmpleoPage = lazy(() => import('./pages/jobs/PublicarEmpleoPage'));
 const MisVacantesPage = lazy(() => import('./pages/jobs/MisVacantesPage'));
+const EmpresaEmpleosPage = lazy(() => import('./pages/jobs/EmpresaEmpleosPage'));
 const AdminLayout = lazy(() => import('./admin/AdminLayout'));
 
 export default function App() {
@@ -62,6 +63,8 @@ export default function App() {
           <Route path="/empleos" element={<EmpleosPage />} />
           <Route path="/empleos/publicar" element={<PublicarEmpleoPage />} />
           <Route path="/empleos/mis-vacantes" element={<MisVacantesPage />} />
+          <Route path="/empleos/empresa/:slug" element={<EmpresaEmpleosPage />} />
+          <Route path="/empleos/categoria/:filtro" element={<EmpleosPage />} />
           <Route path="/empleos/:filtro" element={<EmpleosPage />} />
           <Route path="/empleos/:filtro/:provincia" element={<EmpleosPage />} />
           <Route path="/empleo/:slug" element={<EmpleoDetailPage />} />

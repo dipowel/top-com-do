@@ -15,6 +15,7 @@ import { sitemapUrls, renderSitemap, type JobSitemapInput } from '../shared/seo'
 import { subSlug } from '../shared/categories';
 import { isRealProvince } from '../shared/provinces';
 import { hasEnoughJobsForIndexing } from '../shared/jobs';
+import { companySlugify } from './lib/jobs';
 import { renderPage } from './lib/renderPage';
 
 import health from './routes/health';
@@ -123,7 +124,7 @@ export function createApp() {
       try {
         const jobLastmod = sql<string | null>`max(coalesce(${jobsTable.publishedAt}, ${jobsTable.updatedAt}))`;
         const active = sql`${jobsTable.status} = 'published' and (${jobsTable.expiresAt} is null or ${jobsTable.expiresAt} > now())`;
-        const [slugRows, catRows, provRows, comboRows] = await Promise.all([
+        const [slugRows, catRows, provRows, comboRows, companyRows] = await Promise.all([
           db
             .select({ slug: jobsTable.slug, publishedAt: jobsTable.publishedAt, updatedAt: jobsTable.updatedAt })
             .from(jobsTable)
@@ -161,6 +162,16 @@ export function createApp() {
             .from(jobsTable)
             .where(sql`${active} and ${jobsTable.province} is not null`)
             .groupBy(jobsTable.category, jobsTable.province),
+          db
+            .select({
+              name: jobsTable.companyName,
+              n: sql<number>`count(*)::int`,
+              m: jobLastmod,
+            })
+            .from(jobsTable)
+            .where(active)
+            .groupBy(jobsTable.companyName)
+            .having(sql`count(*) >= 3`),
         ]);
         const pass = (n: number, c: number, m: string | null) =>
           hasEnoughJobsForIndexing({ activeCount: n, distinctCompanies: c, newestPublishedAt: m });
@@ -175,6 +186,9 @@ export function createApp() {
           comboLandings: comboRows
             .filter((x) => x.prov && isRealProvince(x.prov) && pass(x.n, x.c, x.m))
             .map((x) => ({ category: x.cat, province: x.prov as string, lastmod: day(x.m) })),
+          companyLandings: companyRows
+            .filter((x) => x.name && x.n >= 3)
+            .map((x) => ({ slug: companySlugify(x.name), lastmod: day(x.m) })),
         };
       } catch {
         jobSitemap = undefined;
