@@ -54,7 +54,13 @@ export default function AppShell() {
     <div className="min-h-full">
       <TopBar />
       <RefBanner />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-44 pt-5">
+      <main
+        className={`mx-auto w-full max-w-3xl px-4 pt-5 ${
+          canBid
+            ? 'pb-[calc(8.5rem+env(safe-area-inset-bottom))]'
+            : 'pb-[calc(6rem+env(safe-area-inset-bottom))]'
+        }`}
+      >
         <Outlet context={ctx} />
         <Footer />
       </main>
