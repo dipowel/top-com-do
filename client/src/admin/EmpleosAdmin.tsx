@@ -15,7 +15,7 @@ const NEW_PLATFORMS: { v: SourcePlatform; label: string; type: string }[] = [
   { v: 'csv', label: 'CSV curado (URL)', type: 'feed' },
   { v: 'greenhouse', label: 'Greenhouse (ATS)', type: 'ats' },
   { v: 'lever', label: 'Lever (ATS)', type: 'ats' },
-  { v: 'jooble', label: 'Jooble (API)', type: 'api' },
+  { v: 'jooble', label: 'Jooble (API · requiere key)', type: 'api' },
 ];
 
 interface JoobleQuery {
@@ -627,7 +627,9 @@ function SourceForm({
   const [companyName, setCompanyName] = useState(cfg.companyName ?? '');
   const [greenhouseToken, setGreenhouseToken] = useState(cfgListToText(cfg.greenhouseToken));
   const [leverHandle, setLeverHandle] = useState(cfgListToText(cfg.leverHandle));
-  const [jooble, setJooble] = useState(joobleQueriesToText(cfg.joobleQueries));
+  const [jooble, setJooble] = useState(
+    joobleQueriesToText(cfg.joobleQueries) || (initial ? '' : 'empleo'),
+  );
 
   const canSubmit =
     (isEdit || name.trim().length > 1) &&
@@ -751,16 +753,21 @@ function SourceForm({
       {platform === 'jooble' && (
         <label className="block">
           <span className="text-white/40">
-            Búsquedas (una por línea, formato <code>palabras | ubicación</code>) — requiere{' '}
-            <code>JOOBLE_API_KEY</code> en el servidor
+            Búsquedas (una por línea; <code>palabras</code> o <code>palabras | ubicación</code>).
+            Si omites la ubicación, se usa "República Dominicana".
           </span>
           <textarea
             className="input mt-1 w-full !py-1"
             rows={3}
             value={jooble}
             onChange={(e) => setJooble(e.target.value)}
-            placeholder={'desarrollador | Santo Domingo\ncontador | Santiago'}
+            placeholder={'desarrollador\nventas\ncontabilidad\natención al cliente'}
           />
+          <span className="mt-1 block text-[10px] text-white/35">
+            Jooble consulta el índice de RD, filtra a República Dominicana automáticamente y sus
+            vacantes <b>siempre entran a revisión manual</b> (el toggle "auto-publica" no aplica).
+            Requiere <code>JOOBLE_API_KEY</code> en el servidor.
+          </span>
         </label>
       )}
 

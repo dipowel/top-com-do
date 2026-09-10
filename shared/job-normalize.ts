@@ -27,6 +27,17 @@ export function matchProvince(text: string | null | undefined): string | null {
   return null;
 }
 
+/**
+ * true solo si el texto de ubicación pertenece a la República Dominicana: casa una
+ * provincia/municipio real (vía `matchProvince`) o menciona explícitamente el país.
+ * NO acepta `''` ni "remoto"/"remote" a secas ni ubicaciones de otros países.
+ */
+export function isDominicanLocation(text: string | null | undefined): boolean {
+  if (matchProvince(text)) return true;
+  const n = normalizeText(text || '');
+  return /\b(republica dominicana|dominican republic)\b/.test(n);
+}
+
 export function cityToProvince(citySlug: string | null | undefined): string | null {
   const c = CITY_DEFS.find((x) => x.slug === citySlug);
   return c && isRealProvince(c.provinceSlug) ? c.provinceSlug : null;

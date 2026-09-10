@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildAdapter, hasAdapter, importEnabled } from './adapters/registry';
 import { SourceNotAuthorizedError } from './adapters/types';
 import { GreenhouseAdapter } from './adapters/greenhouse';
+import { JoobleAdapter } from './adapters/jooble';
 import { LinkedInAdapter, ComputrabajoAdapter } from './adapters/_skeletons';
 import type { JobSource } from '../shared/schema';
 
@@ -95,5 +96,58 @@ describe('adapters · registry', () => {
     expect(calls).toHaveLength(2);
     expect(calls[0]).toContain('/boards/acme/');
     expect(calls[1]).toContain('/boards/globex/');
+  });
+});
+
+describe('adapters · Jooble', () => {
+  const prevImport = process.env.IMPORT_ENABLED;
+  const prevKey = process.env.JOOBLE_API_KEY;
+  beforeEach(() => {
+    process.env.IMPORT_ENABLED = 'true';
+    process.env.JOOBLE_API_KEY = 'test-key';
+  });
+  afterEach(() => {
+    process.env.IMPORT_ENABLED = prevImport;
+    process.env.JOOBLE_API_KEY = prevKey;
+  });
+
+  it('exige JOOBLE_API_KEY y authorization_status=authorized', () => {
+    delete process.env.JOOBLE_API_KEY;
+    expect(() => new JoobleAdapter(fakeSource({ platform: 'jooble' }))).toThrow(SourceNotAuthorizedError);
+    process.env.JOOBLE_API_KEY = 'test-key';
+    expect(
+      () => new JoobleAdapter(fakeSource({ platform: 'jooble', authorizationStatus: 'requested' })),
+    ).toThrow(SourceNotAuthorizedError);
+  });
+
+  it('usa do.jooble.org y solo emite ofertas de RD con descripción suficiente', async () => {
+    const longSnippet = 'Buscamos personal con experiencia. '.repeat(6); // > 120 chars
+    const page1 = [
+      { id: 1, title: 'Desarrollador', company: 'ACME', location: 'Santo Domingo', snippet: longSnippet, link: 'https://jooble.org/desc/1', type: 'Full-time', updated: '2026-09-09' },
+      { id: 2, title: 'Cajero', company: 'Beta', location: 'Santiago', snippet: 'Corto', link: 'https://jooble.org/desc/2' },
+      { id: 3, title: 'Analista', company: 'Gamma', location: 'Ciudad de Panamá', snippet: longSnippet, link: 'https://jooble.org/desc/3' },
+    ];
+    const calls: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+      calls.push(String(url));
+      const body = JSON.parse(String(init?.body ?? '{}')) as { page?: number };
+      return { ok: true, json: async () => ({ jobs: body.page === 1 ? page1 : [] }) } as Response;
+    }) as typeof fetch;
+
+    const out: string[] = [];
+    try {
+      const jb = new JoobleAdapter(
+        fakeSource({ platform: 'jooble', config: { joobleQueries: [{ keywords: 'it' }] } as never }),
+      );
+      for await (const raw of jb.fetchJobs({ maxJobs: 50, deadline: Date.now() + 5000 })) {
+        out.push(raw.title);
+      }
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+
+    expect(calls[0]).toContain('https://do.jooble.org/api/test-key');
+    expect(out).toEqual(['Desarrollador']);
   });
 });

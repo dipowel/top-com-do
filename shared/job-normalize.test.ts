@@ -3,6 +3,7 @@ import {
   matchProvince,
   cityToProvince,
   normalizeLocation,
+  isDominicanLocation,
   mapSourceCategory,
   detectWorkMode,
   contentHash,
@@ -25,6 +26,16 @@ describe('job-normalize · ubicación', () => {
     expect(normalizeLocation({ locationText: 'Trabajo en Santo Domingo Este' }).province).toBe('santo-domingo');
     expect(normalizeLocation({ city: 'Higüey' }).province).toBe('la-altagracia');
     expect(normalizeLocation({ locationText: 'remoto' }).province).toBeNull();
+  });
+
+  it('isDominicanLocation: solo RD (provincia real o país explícito)', () => {
+    expect(isDominicanLocation('Santo Domingo')).toBe(true);
+    expect(isDominicanLocation('Santiago, República Dominicana')).toBe(true);
+    expect(isDominicanLocation('Punta Cana')).toBe(true);
+    expect(isDominicanLocation('Remoto')).toBe(false);
+    expect(isDominicanLocation('Ciudad de Panamá')).toBe(false);
+    expect(isDominicanLocation('')).toBe(false);
+    expect(isDominicanLocation(null)).toBe(false);
   });
 });
 

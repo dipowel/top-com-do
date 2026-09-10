@@ -8,10 +8,20 @@
  * Se re-publican con canonical propio a Top y `directApply` NO (el enlace lleva a
  * Jooble / al portal de origen). Antes de habilitar, revisa los términos de la API
  * de Jooble para tu caso de uso.
+ *
+ * Este adaptador usa el índice de RD (`do.jooble.org`), filtra ESTRICTAMENTE a
+ * ubicaciones dominicanas y descarta avisos "thin content". Sus vacantes SIEMPRE
+ * entran como `pending_review` (ver `CURATED_ONLY` en `server/lib/jobImport.ts`).
  */
 import type { ImportContext, JobSourceAdapter, RawJob, SourceConfig } from './types';
 import { SourceNotAuthorizedError } from './types';
+import { isDominicanLocation } from '../../shared/job-normalize';
 import type { JobSource } from '../../shared/schema';
+
+/** Índice del sitio de RD de Jooble (el endpoint del ejemplo oficial del publisher). */
+const JOOBLE_DR_HOST = 'https://do.jooble.org/api/';
+/** Descripción mínima para no indexar avisos "thin content" que dañan el SEO. */
+const MIN_SNIPPET_LEN = 120;
 
 interface JoobleJob {
   title: string;
@@ -41,9 +51,9 @@ export class JoobleAdapter implements JobSourceAdapter {
     }
     const cfg = (source.config ?? {}) as SourceConfig;
     this.key = key;
-    this.queries = cfg.joobleQueries?.length
-      ? cfg.joobleQueries
-      : [{ keywords: 'empleo', location: 'República Dominicana' }];
+    this.queries = (
+      cfg.joobleQueries?.length ? cfg.joobleQueries : [{ keywords: 'empleo' }]
+    ).map((q) => ({ keywords: q.keywords, location: q.location || 'República Dominicana' }));
     this.platform = source.platform;
     this.displayName = source.name;
   }
@@ -53,7 +63,7 @@ export class JoobleAdapter implements JobSourceAdapter {
     for (const q of this.queries) {
       for (let page = 1; page <= 5; page++) {
         if (emitted >= ctx.maxJobs || Date.now() > ctx.deadline) return;
-        const res = await fetch(`https://jooble.org/api/${this.key}`, {
+        const res = await fetch(`${JOOBLE_DR_HOST}${this.key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ keywords: q.keywords, location: q.location ?? '', page }),
@@ -66,6 +76,10 @@ export class JoobleAdapter implements JobSourceAdapter {
         for (const j of jobs) {
           if (emitted >= ctx.maxJobs || Date.now() > ctx.deadline) return;
           if (!j.company || !j.title) continue;
+          // Filtro geográfico ESTRICTO: solo ofertas de la República Dominicana.
+          if (!isDominicanLocation(j.location)) continue;
+          // Guarda de calidad: descarta avisos con snippet demasiado corto (thin content).
+          if ((j.snippet ?? '').trim().length < MIN_SNIPPET_LEN) continue;
           emitted++;
           yield {
             sourceJobId: String(j.id),

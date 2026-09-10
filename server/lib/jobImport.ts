@@ -27,6 +27,8 @@ import { pingIndexNow } from './indexnow';
 
 const RUN_BUDGET_MS = 20_000;
 const MAX_JOBS_PER_RUN = 150;
+/** Fuentes agregadoras: se curan siempre a mano (ToS + calidad SEO), ignoran `autoPublish`. */
+const CURATED_ONLY = new Set(['jooble']);
 /** Cada cuánto se vuelve a consultar una fuente. */
 const REFRESH_EVERY_MS = 5.5 * 60 * 60 * 1000;
 /** Gracia antes de dar por "retirada" una oferta que ya no aparece en la fuente. */
@@ -280,7 +282,8 @@ export async function runSource(source: JobSource, budgetMs = RUN_BUDGET_MS): Pr
           }
           result.duplicate++;
         } else {
-          const status = source.autoPublish ? 'published' : 'pending_review';
+          const status =
+            source.autoPublish && !CURATED_ONLY.has(source.platform) ? 'published' : 'pending_review';
           const slug = await insertJob(n, source, status);
           if (status === 'published') publishedSlugs.push(slug);
           result.created++;
