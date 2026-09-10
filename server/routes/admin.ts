@@ -470,6 +470,7 @@ r.get(
         applicationUrl: row.applicationUrl,
         duplicateOfId: row.duplicateOfId,
         indexingStatus: row.indexingStatus,
+        indexingLastError: row.indexingLastError,
       })),
     );
   }),
@@ -575,6 +576,12 @@ r.post(
       const out = await runSource(src, 15_000);
       await audit(req.user!.id, 'admin.job.reimport', 'job', existing.id, out);
       return res.json({ ok: true, run: out });
+    } else if (action === 'reindex') {
+      const { reindexJob } = await import('../lib/googleIndexing');
+      const type = existing.status === 'published' ? 'URL_UPDATED' : 'URL_DELETED';
+      const out = await reindexJob(existing.slug, type);
+      await audit(req.user!.id, 'admin.job.reindex', 'job', existing.id, out);
+      return res.json(out);
     } else {
       throw new HttpError(400, 'Acción no válida');
     }

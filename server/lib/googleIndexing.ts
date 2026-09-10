@@ -100,6 +100,41 @@ export async function queueJobIndexing(slugs: string[], type: IndexingType): Pro
 }
 
 /**
+ * Re-notifica UNA vacante a Google de forma síncrona (botón "Reindexar" del panel).
+ * Devuelve el resultado para mostrarlo en el acto; no lanza.
+ */
+export async function reindexJob(
+  slug: string,
+  type: IndexingType = 'URL_UPDATED',
+): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  if (!googleIndexingConfigured()) return { ok: false, skipped: true };
+  try {
+    await notifyOne(jobUrl(slug), type);
+    await db
+      .update(J)
+      .set({
+        indexingStatus: 'ok',
+        indexingType: type,
+        indexingLastError: null,
+        indexingRequestedAt: new Date(),
+      })
+      .where(eq(J.slug, slug));
+    return { ok: true };
+  } catch (e) {
+    await db
+      .update(J)
+      .set({
+        indexingStatus: 'error',
+        indexingType: type,
+        indexingLastError: String((e as Error).message).slice(0, 300),
+        indexingRequestedAt: new Date(),
+      })
+      .where(eq(J.slug, slug));
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/**
  * Notifica a Google las vacantes con `indexing_status IN ('pending','error')`,
  * priorizando las bajas (`URL_DELETED`) y respetando el tope diario.
  */

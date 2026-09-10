@@ -186,5 +186,6 @@ describe('API base', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('firebaseProjectId');
     expect(res.body).toHaveProperty('database');
+    expect(res.body.jobsImport).toHaveProperty('googleIndexingSet');
   });
 });

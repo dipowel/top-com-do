@@ -5,6 +5,7 @@ import { ah } from '../lib/asyncHandler';
 import { verifyIdToken, firebaseProjectId } from '../lib/firebaseAuth';
 import { probeProduct, listRecentPayments } from '../lib/dodo';
 import { importEnabled } from '../adapters/registry';
+import { googleIndexingConfigured } from '../lib/googleIndexing';
 
 const r = Router();
 
@@ -38,6 +39,7 @@ r.get(
         schedule: '0 6 * * *',
         joobleKeySet: Boolean(process.env.JOOBLE_API_KEY?.trim()),
         cronSecretSet: Boolean(process.env.CRON_SECRET?.trim()),
+        googleIndexingSet: googleIndexingConfigured(),
       },
       paymentProvider: (process.env.PAYMENT_PROVIDER || 'azul').toLowerCase(),
       azul: {

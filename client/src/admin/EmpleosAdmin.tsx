@@ -56,6 +56,7 @@ interface AdminJobRow {
   applicationUrl: string | null;
   duplicateOfId: string | null;
   indexingStatus: string | null;
+  indexingLastError: string | null;
   updatedAt: string;
   firstSeenAt: string;
 }
@@ -83,6 +84,7 @@ interface ImportStatus {
   schedule: string;
   cronSecretSet: boolean;
   joobleKeySet: boolean;
+  googleIndexingSet: boolean;
 }
 
 interface RunRow {
@@ -174,6 +176,29 @@ export default function EmpleosAdmin() {
     setMsg(null);
     try {
       await api(`/admin/jobs/${id}/${action}`, { method: 'POST', auth: true });
+      loadJobs();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function reindex(id: string) {
+    setBusy(id);
+    setMsg(null);
+    try {
+      const out = await api<{ ok: boolean; skipped?: boolean; error?: string }>(
+        `/admin/jobs/${id}/reindex`,
+        { method: 'POST', auth: true },
+      );
+      setMsg(
+        out.ok
+          ? 'URL reenviada a Google Indexing.'
+          : out.skipped
+            ? 'Falta configurar la Indexing API (GOOGLE_INDEXING_* en Vercel).'
+            : `Google rechazó la notificación: ${out.error ?? 'error'}`,
+      );
       loadJobs();
     } catch (e) {
       setMsg((e as Error).message);
@@ -353,7 +378,17 @@ export default function EmpleosAdmin() {
                       >
                         {j.status}
                       </span>
-                      {j.indexingStatus && <div className="text-[10px] text-white/30">idx: {j.indexingStatus}</div>}
+                      {j.indexingStatus && (
+                        <div
+                          className={`text-[10px] ${j.indexingStatus === 'error' ? 'text-red-300' : 'text-white/30'}`}
+                          title={j.indexingLastError ?? undefined}
+                        >
+                          idx: {j.indexingStatus}
+                          {j.indexingStatus === 'error' && j.indexingLastError
+                            ? ` — ${j.indexingLastError.slice(0, 50)}`
+                            : ''}
+                        </div>
+                      )}
                     </td>
                     <td className="p-2">{new Date(j.updatedAt).toLocaleDateString('es-DO')}</td>
                     <td className="p-2">
@@ -381,6 +416,16 @@ export default function EmpleosAdmin() {
                             className="rounded border border-white/20 px-2 py-0.5 text-[10px] text-white/60"
                           >
                             ↻ Reimportar
+                          </button>
+                        )}
+                        {j.status === 'published' && (
+                          <button
+                            onClick={() => reindex(j.id)}
+                            disabled={busy === j.id}
+                            className="rounded border border-white/20 px-2 py-0.5 text-[10px] text-white/60"
+                            title="Re-notificar esta URL a la Google Indexing API"
+                          >
+                            ↻ Indexar
                           </button>
                         )}
                         {j.status !== 'removed' && (
@@ -416,6 +461,14 @@ export default function EmpleosAdmin() {
           {importStatus?.enabled && (
             <div className="rounded-xl border border-emerald/25 bg-emerald/10 p-3 text-[11px] text-emerald-soft">
               Importación automática <b>activa</b> — el cron corre a las {importStatus.schedule} UTC.
+            </div>
+          )}
+          {importStatus && !importStatus.googleIndexingSet && (
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3 text-[11px] text-white/55">
+              <b>Google Indexing API sin credenciales.</b> Las vacantes aprobadas se avisan a Bing
+              (IndexNow) pero no a Google. Pon <code>GOOGLE_INDEXING_CLIENT_EMAIL</code> y{' '}
+              <code>GOOGLE_INDEXING_PRIVATE_KEY</code> (cuenta de servicio, propietaria en Search
+              Console) en Vercel. El disparo aprobar → Google ya está en el código.
             </div>
           )}
 
