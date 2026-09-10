@@ -1,0 +1,12 @@
+{
+  "name": "Top.com.do",
+  "short_name": "Top.com.do",
+  "start_url": "/",
+  "display": "browser",
+  "theme_color": "#070b14",
+  "background_color": "#070b14",
+  "icons": [
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ]
+}
