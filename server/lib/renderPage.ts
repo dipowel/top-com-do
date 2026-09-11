@@ -111,10 +111,8 @@ function hero(h1Html: string, pText: string, extra = '', crumbsHtml = ''): strin
 
 function homeBody(): string {
   return hero(
-    `<span style="color:#d4af37">Publicidad efectiva:</span> domina el puesto ` +
-      `<span style="color:#d4af37">#1</span> de tu categoría y consigue ` +
-      `<span style="color:#d4af37">más clientes potenciales</span>.`,
-    'Solo hay un líder por provincia y categoría. Supera a tu competencia con tu puja y recibe llamadas directas a tu WhatsApp.',
+    `El ranking <span style="color:#d4af37">#1</span> de negocios de la República Dominicana`,
+    'Encuentra negocios y empleos gratis. Si tienes un negocio, compite por el #1 desde RD$100 y llévate las llamadas.',
   );
 }
 

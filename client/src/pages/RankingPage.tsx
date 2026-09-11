@@ -120,7 +120,7 @@ export default function RankingPage() {
             El ranking <span className="text-gold">#1</span> de negocios de la República Dominicana
           </h1>
           <p className="text-sm leading-relaxed text-white/60">
-            Un solo líder por categoría y provincia. Compite por el primer lugar desde
+            Encuentra negocios y empleos gratis. Si tienes un negocio, compite por el #1 desde
             <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
           </p>
           <Link
