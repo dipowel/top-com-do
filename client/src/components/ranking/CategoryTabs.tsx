@@ -24,7 +24,7 @@ export default function CategoryTabs({
   return (
     <div>
       <p className="mb-1.5 text-[11px] text-white/40">
-        Elige tu rubro — el #1 aparece de primero cuando te buscan
+        Explora los negocios líderes de cada sector
       </p>
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1">
         {list.map((c) => {
