@@ -188,25 +188,37 @@ export default function RankingPage() {
       )}
 
       {/* Búsqueda rápida */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const term = search.trim();
-          navigate(term ? `/explorar?q=${encodeURIComponent(term)}` : '/explorar');
-        }}
-        className="flex gap-2"
-      >
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar categoría o negocio"
-          aria-label="Buscar categoría o negocio"
-          className="input flex-1"
-        />
-        <Link to="/explorar" className="btn-ghost shrink-0 !px-3 !py-2 text-[11px]">
-          ⊞ Todas las categorías
+      <div className="space-y-1.5">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const term = search.trim();
+            navigate(term ? `/explorar?q=${encodeURIComponent(term)}` : '/explorar');
+          }}
+          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-4 pr-1.5"
+        >
+          <span aria-hidden className="text-white/35">
+            🔎
+          </span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="¿Qué negocio o servicio buscas?"
+            aria-label="Buscar categoría o negocio"
+            className="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none placeholder:text-white/35"
+          />
+          <button
+            type="submit"
+            aria-label="Buscar"
+            className="btn-gold flex h-9 w-9 shrink-0 items-center justify-center !rounded-full !p-0 text-base"
+          >
+            →
+          </button>
+        </form>
+        <Link to="/explorar" className="inline-block text-[11px] font-semibold text-white/45 hover:text-white/75">
+          ⊞ Ver todas las categorías
         </Link>
-      </form>
+      </div>
 
       {/* Categoría */}
       <nav aria-label="Filtrar por categoría">

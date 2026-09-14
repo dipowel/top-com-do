@@ -47,12 +47,12 @@ export default function LeaderCard({
           <img
             src={p.avatarUrl || avatarFallback(p.name)}
             alt={p.name}
-            width={56}
-            height={56}
+            width={80}
+            height={80}
             loading={entry.isChampion ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={entry.isChampion ? 'high' : undefined}
-            className="h-14 w-14 rounded-2xl object-cover ring-1 ring-white/10"
+            className="h-20 w-20 rounded-2xl object-cover ring-1 ring-white/10"
           />
         </Link>
         <div className="min-w-0 flex-1">

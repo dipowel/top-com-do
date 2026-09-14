@@ -1,7 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useCategories } from '../../hooks/useCategories';
 
-const FALLBACK = [{ slug: 'todo-rd', name: 'Todo RD' }];
+const FALLBACK = [{ slug: 'todo-rd', name: '🔥 Todo RD' }];
+
+/** Los nombres de categoría llevan un emoji-prefijo ("🍗 Gastronomía y Comida"); lo separamos
+ *  para pintarlo como ícono de la tarjeta en vez de repetirlo dentro del texto. */
+function splitEmoji(name: string): { icon: string; label: string } {
+  const m = name.match(/^(\p{Extended_Pictographic}️?)\s*(.*)$/u);
+  return m && m[2] ? { icon: m[1]!, label: m[2] } : { icon: '🏷️', label: name };
+}
 
 export default function CategoryTabs({
   value,
@@ -20,19 +27,26 @@ export default function CategoryTabs({
         Elige tu rubro — el #1 aparece de primero cuando te buscan
       </p>
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1">
-        {list.map((c) => (
-          <Link
-            key={c.slug}
-            to={hrefFor(c.slug)}
-            className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
-              value === c.slug
-                ? 'border-gold/60 bg-gold/15 text-gold'
-                : 'border-white/10 bg-white/5 text-white/55 hover:text-white/80'
-            }`}
-          >
-            {c.name}
-          </Link>
-        ))}
+        {list.map((c) => {
+          const { icon, label } = splitEmoji(c.name);
+          const active = value === c.slug;
+          return (
+            <Link
+              key={c.slug}
+              to={hrefFor(c.slug)}
+              className={`flex w-[74px] shrink-0 flex-col items-center gap-1 rounded-2xl border px-1.5 py-2.5 text-center transition ${
+                active
+                  ? 'border-gold/60 bg-gold/10 text-gold'
+                  : 'border-white/10 bg-white/5 text-white/55 hover:text-white/80'
+              }`}
+            >
+              <span className="text-xl leading-none" aria-hidden>
+                {icon}
+              </span>
+              <span className="line-clamp-2 text-[10px] font-semibold leading-tight">{label}</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
