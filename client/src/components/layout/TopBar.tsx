@@ -14,66 +14,46 @@ export default function TopBar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/5 bg-base/70 backdrop-blur-xl">
-      <div className="mx-auto max-w-3xl px-4 pt-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <Link to="/" className="flex shrink-0 items-center" aria-label="Top.com.do — Inicio">
-            {logoOk ? (
-              <img
-                src="/logo.png"
-                alt="Top.com.do"
-                width={560}
-                height={127}
-                className="h-7 w-auto sm:h-8"
-                onError={() => setLogoOk(false)}
-              />
-            ) : (
-              <span className="text-lg font-extrabold tracking-tight">
-                Top<span className="text-gold">.com.do</span>
-              </span>
-            )}
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-2.5">
+        <Link to="/" className="flex shrink-0 items-center" aria-label="Top.com.do — Inicio">
+          {logoOk ? (
+            <img
+              src="/logo.png"
+              alt="Top.com.do"
+              width={560}
+              height={127}
+              className="h-7 w-auto sm:h-8"
+              onError={() => setLogoOk(false)}
+            />
+          ) : (
+            <span className="text-lg font-extrabold tracking-tight">
+              Top<span className="text-gold">.com.do</span>
+            </span>
+          )}
+        </Link>
+        <div className="flex items-center gap-1.5">
+          <Link
+            to="/empleos"
+            className="btn-ghost hidden !px-3 !py-1.5 text-xs sm:inline-flex"
+          >
+            Empleos
           </Link>
-          <div className="flex items-center gap-1.5">
-            <Link
-              to="/empleos"
-              className="btn-ghost hidden !px-3 !py-1.5 text-xs sm:inline-flex"
-            >
-              Empleos
+          <Link
+            to="/publicar"
+            className="btn-ghost hidden !px-3 !py-1.5 text-xs sm:inline-flex"
+          >
+            Anunciar
+          </Link>
+          <NotificationBell />
+          {isAdmin && (
+            <Link to="/admin" className="btn-ghost !px-3 !py-1.5 text-xs">
+              Admin
             </Link>
-            <Link
-              to="/publicar"
-              className="btn-ghost hidden !px-3 !py-1.5 text-xs sm:inline-flex"
-            >
-              Anunciar
-            </Link>
-            <NotificationBell />
-            {isAdmin && (
-              <Link to="/admin" className="btn-ghost !px-3 !py-1.5 text-xs">
-                Admin
-              </Link>
-            )}
-            <Link to="/perfil" className="btn-ghost !px-3 !py-1.5 text-xs">
-              {user ? shortName || 'Mi perfil' : 'Iniciar sesión'}
-            </Link>
-          </div>
+          )}
+          <Link to="/perfil" className="btn-ghost !px-3 !py-1.5 text-xs">
+            {user ? shortName || 'Mi perfil' : 'Iniciar sesión'}
+          </Link>
         </div>
-        {/* Sub-nav siempre visible (incluso en móvil, donde los botones de arriba se ocultan). */}
-        <nav aria-label="Secciones" className="flex gap-3 py-1.5 text-[11px] font-bold tracking-wide text-white/45">
-          <Link to="/" className="hover:text-white/80">
-            NEGOCIOS
-          </Link>
-          <span aria-hidden className="text-white/20">
-            ·
-          </span>
-          <Link to="/empleos" className="hover:text-gold">
-            EMPLEOS
-          </Link>
-          <span aria-hidden className="text-white/20">
-            ·
-          </span>
-          <Link to="/" className="hover:text-white/80">
-            TODO RD
-          </Link>
-        </nav>
       </div>
     </header>
   );
