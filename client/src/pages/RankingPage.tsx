@@ -151,12 +151,6 @@ export default function RankingPage() {
               <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
             </p>
           </div>
-          <Link
-            to="/explorar"
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white/70 underline decoration-white/30 underline-offset-2 hover:text-white hover:decoration-white/60"
-          >
-            🔎 ¿Solo quieres aparecer en el directorio? Explóralo gratis <span aria-hidden>→</span>
-          </Link>
         </header>
       ) : (
         <div className="space-y-1.5">
@@ -167,23 +161,6 @@ export default function RankingPage() {
             cercano · datos en vivo
           </p>
         </div>
-      )}
-
-      {/* Provincia (chips + "Cerca de mí" + "Más") */}
-      <nav aria-label="Filtrar por provincia">
-        <ProvinceChips
-          value={province}
-          hrefFor={(p) => rankingHref(cat, p)}
-          nearbyActive={nearbyActive}
-          nearbyBusy={geoBusy}
-          onNearby={activateNearby}
-        />
-      </nav>
-      {geoFailed && (
-        <p className="-mt-1 text-[11px] text-white/40">
-          No pudimos acceder a tu ubicación. Actívala en los ajustes del navegador para ver negocios
-          cerca de ti.
-        </p>
       )}
 
       {/* Búsqueda rápida */}
@@ -267,6 +244,23 @@ export default function RankingPage() {
             </div>
           </div>
         )
+      )}
+
+      {/* Provincia (chips + "Cerca de mí" + "Más") — pegado al listado que filtra */}
+      <nav aria-label="Filtrar por provincia">
+        <ProvinceChips
+          value={province}
+          hrefFor={(p) => rankingHref(cat, p)}
+          nearbyActive={nearbyActive}
+          nearbyBusy={geoBusy}
+          onNearby={activateNearby}
+        />
+      </nav>
+      {geoFailed && (
+        <p className="-mt-1 text-[11px] text-white/40">
+          No pudimos acceder a tu ubicación. Actívala en los ajustes del navegador para ver negocios
+          cerca de ti.
+        </p>
       )}
 
       {loading && !data.length && <Spinner />}
