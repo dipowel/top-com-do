@@ -131,32 +131,31 @@ export default function RankingPage() {
   return (
     <div className="space-y-4">
       {isHome ? (
-        <header aria-labelledby="hero-title" className="space-y-3 pt-1">
-          <h1
-            id="hero-title"
-            className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl"
+        <header aria-labelledby="hero-title" className="space-y-2.5 pt-1">
+          <div
+            className="space-y-2 rounded-2xl border border-white/10 p-4"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 25% 15%, rgba(212,175,55,0.18), transparent 55%),' +
+                'linear-gradient(160deg, #16264a 0%, #0a1226 60%, #070b14 100%)',
+            }}
           >
-            El ranking <span className="text-gold">#1</span> de negocios de la República Dominicana
-          </h1>
-          <p className="text-sm leading-relaxed text-white/60">
-            Encuentra negocios y empleos gratis. Si tienes un negocio, compite por el #1 desde
-            <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
-          </p>
+            <h1
+              id="hero-title"
+              className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl"
+            >
+              El ranking <span className="text-gold">#1</span> de negocios de la República Dominicana
+            </h1>
+            <p className="text-sm leading-relaxed text-white/70">
+              Encuentra negocios y empleos gratis. Si tienes un negocio, compite por el #1 desde
+              <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
+            </p>
+          </div>
           <Link
             to="/explorar"
             className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-white/70 underline decoration-white/30 underline-offset-2 hover:text-white hover:decoration-white/60"
           >
             🔎 ¿Solo quieres aparecer en el directorio? Explóralo gratis <span aria-hidden>→</span>
-          </Link>
-          <Link
-            to="/empleos"
-            className="glass flex items-center justify-between gap-3 border border-white/10 p-3 text-sm transition hover:border-gold/40"
-          >
-            <span className="min-w-0">
-              <span className="font-bold text-white">💼 Empleos en RD</span>
-              <span className="block text-[11px] text-white/50">Encuentra o publica trabajo gratis</span>
-            </span>
-            <span aria-hidden className="shrink-0 text-white/40">→</span>
           </Link>
         </header>
       ) : (
@@ -188,37 +187,32 @@ export default function RankingPage() {
       )}
 
       {/* Búsqueda rápida */}
-      <div className="space-y-1.5">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const term = search.trim();
-            navigate(term ? `/explorar?q=${encodeURIComponent(term)}` : '/explorar');
-          }}
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-4 pr-1.5"
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const term = search.trim();
+          navigate(term ? `/explorar?q=${encodeURIComponent(term)}` : '/explorar');
+        }}
+        className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-4 pr-1.5"
+      >
+        <span aria-hidden className="text-white/35">
+          🔎
+        </span>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="¿Qué negocio o servicio buscas?"
+          aria-label="Buscar categoría o negocio"
+          className="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none placeholder:text-white/35"
+        />
+        <button
+          type="submit"
+          aria-label="Buscar"
+          className="btn-gold flex h-9 w-9 shrink-0 items-center justify-center !rounded-full !p-0 text-base"
         >
-          <span aria-hidden className="text-white/35">
-            🔎
-          </span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="¿Qué negocio o servicio buscas?"
-            aria-label="Buscar categoría o negocio"
-            className="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none placeholder:text-white/35"
-          />
-          <button
-            type="submit"
-            aria-label="Buscar"
-            className="btn-gold flex h-9 w-9 shrink-0 items-center justify-center !rounded-full !p-0 text-base"
-          >
-            →
-          </button>
-        </form>
-        <Link to="/explorar" className="inline-block text-[11px] font-semibold text-white/45 hover:text-white/75">
-          ⊞ Ver todas las categorías
-        </Link>
-      </div>
+          →
+        </button>
+      </form>
 
       {/* Categoría */}
       <nav aria-label="Filtrar por categoría">
@@ -331,11 +325,19 @@ export default function RankingPage() {
       {/* Sección secundaria y discreta: no compite visualmente con el ranking de negocios. */}
       {isHome && homeJobs.length > 0 && (
         <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[11px] font-bold uppercase tracking-wide text-white/45">
-              💼 Últimas vacantes en RD
-            </h2>
-            <Link to="/empleos" className="text-[11px] font-semibold text-white/50 hover:text-white/80">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-[11px] font-bold uppercase tracking-wide text-white/45">
+                💼 Empleos en RD
+              </h2>
+              <p className="truncate text-[11px] text-white/35">
+                Las mejores oportunidades laborales, en un solo lugar.
+              </p>
+            </div>
+            <Link
+              to="/empleos"
+              className="shrink-0 text-[11px] font-semibold text-white/50 hover:text-white/80"
+            >
               Ver todos →
             </Link>
           </div>
