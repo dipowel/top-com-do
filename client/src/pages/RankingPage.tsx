@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import CategoryTabs from '../components/ranking/CategoryTabs';
 import ProvinceChips from '../components/ranking/ProvinceChips';
 import LeaderCard from '../components/ranking/LeaderCard';
+import JobCard from '../components/jobs/JobCard';
 import Spinner from '../components/common/Spinner';
 import { useRankings } from '../hooks/useRankings';
 import { useNearbyRankings } from '../hooks/useNearbyRankings';
@@ -11,10 +12,11 @@ import { useAuctionAccess } from '../hooks/useAuctionAccess';
 import { useSeo } from '../hooks/useSeo';
 import { getCurrentPosition, type Coords } from '../lib/geo';
 import { formatDOP } from '../lib/format';
+import { api } from '../lib/api';
 import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
 import { CATEGORY_SLUGS } from '@shared/categories';
 import { categoryLabel, categoryNoun, categoryFaqs, categorySeo, homeSeo } from '@shared/seo';
-import type { NearbyRankingEntry } from '@shared/types';
+import type { JobCard as Job, JobsListResponse, NearbyRankingEntry } from '@shared/types';
 import Breadcrumbs, { type Crumb } from '../components/common/Breadcrumbs';
 
 const MIN_BID = 100;
@@ -38,6 +40,23 @@ export default function RankingPage() {
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoFailed, setGeoFailed] = useState(false);
   const nearby = useNearbyRankings(mode === 'nearby' ? coords : null, cat, province);
+
+  // Solo en la portada nacional: vitrina secundaria de las últimas vacantes (no compite con
+  // el ranking de negocios, que sigue siendo la propuesta principal de la página).
+  const isHomeRoute = cat === 'todo-rd' && province === 'todo-rd';
+  const [homeJobs, setHomeJobs] = useState<Job[]>([]);
+  useEffect(() => {
+    if (!isHomeRoute) return;
+    let alive = true;
+    api<JobsListResponse>('/jobs?limit=3')
+      .then((res) => {
+        if (alive) setHomeJobs(res.items);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [isHomeRoute]);
 
   // Cualquier cambio de ruta (provincia, categoría, botón atrás) sale del modo cercano.
   useEffect(() => {
@@ -296,6 +315,25 @@ export default function RankingPage() {
           />
         ))}
       </div>
+
+      {/* Sección secundaria y discreta: no compite visualmente con el ranking de negocios. */}
+      {isHome && homeJobs.length > 0 && (
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[11px] font-bold uppercase tracking-wide text-white/45">
+              💼 Últimas vacantes en RD
+            </h2>
+            <Link to="/empleos" className="text-[11px] font-semibold text-white/50 hover:text-white/80">
+              Ver todos →
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {homeJobs.map((j) => (
+              <JobCard key={j.id} job={j} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {faqs.length > 0 && (
         <section className="glass space-y-3 p-4">

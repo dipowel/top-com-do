@@ -4,7 +4,7 @@
  * estructurados JSON-LD. Todo es puro (sin DOM): lo consume el cliente vía
  * `useSeo` y el servidor para `GET /sitemap.xml`.
  */
-import { SITE_URL, SOCIAL_URLS, profileShareUrl, profileAvatarUrl } from './site';
+import { SITE_URL, SOCIAL_URLS, profileShareUrl } from './site';
 import { CATEGORY_DEFS, subcategoryLabel } from './categories';
 import { NATIONAL_SLUG, provinceName } from './provinces';
 import { jobCategoryLabel } from './job-categories';
@@ -755,8 +755,9 @@ export function jobGoneSeo(job: Pick<JobSeoInput, 'slug' | 'title' | 'category'>
 export function jobPostingLd(job: JobSeoInput): Record<string, unknown> | null {
   if (!jobIsPublic(job)) return null;
   const provName = job.provinceName || (job.province ? provinceName(job.province) : '');
-  const orgLogo =
-    job.hiringOrgLogo || (job.companyId ? profileAvatarUrl(job.companyId, 'x') || undefined : undefined);
+  // `hiringOrgLogo` ya viene resuelto y validado por `toJobSeoInput` (solo si el negocio tiene
+  // un avatar real y servible) — NUNCA se fabrica aquí ni se usa un placeholder como logo.
+  const orgLogo = job.hiringOrgLogo || undefined;
   const ld: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',

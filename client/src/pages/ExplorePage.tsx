@@ -216,10 +216,10 @@ export default function ExplorePage() {
                 height={64}
                 loading="lazy"
                 decoding="async"
-                className="mb-2 h-16 w-16 rounded-xl object-cover"
+                className="mb-2 h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10"
                 alt={p.name}
               />
-              <div className="truncate text-sm font-bold">{p.name}</div>
+              <div className="truncate text-[13px] font-bold">{p.name}</div>
               <div className="truncate text-[11px] text-white/40">{p.categoryName}</div>
             </Link>
             {canBid && (

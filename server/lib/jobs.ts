@@ -1,7 +1,8 @@
-import { and, desc, eq, gt, gte, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, gt, gte, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { jobs as J, profiles as P } from '../../shared/schema';
 import { provinceName, isRealProvince } from '../../shared/provinces';
+import { profileAvatarUrl } from '../../shared/site';
 import { jobCategoryLabel, isJobCategory } from '../../shared/job-categories';
 import {
   JOB_TYPE_LABELS,
@@ -18,6 +19,21 @@ import {
 import type { JobCard, JobDetail } from '../../shared/types';
 
 type Row = typeof J.$inferSelect;
+/** `Row` + el avatar del negocio vinculado, cuando la consulta hace el LEFT JOIN a `profiles`. */
+type RowWithLogo = Row & { companyAvatarUrl?: string | null };
+/** Columnas de `jobs` + `profiles.avatar_url` (alias) para las consultas que sí hacen el join. */
+const JOB_WITH_LOGO_SELECT = { ...getTableColumns(J), companyAvatarUrl: P.avatarUrl };
+
+/**
+ * Resuelve el logo REAL del negocio vinculado a una vacante, o `null`.
+ * Nunca fabrica un logo: solo devuelve algo cuando el negocio (`companyId`) tiene un
+ * `avatarUrl` propio y verificable (misma resolución que sirve `GET /api/profiles/:id/avatar`).
+ * La ficha de iniciales del negocio es responsabilidad exclusiva de la UI, nunca de este dato.
+ */
+export function resolveCompanyLogo(companyId: string | null, companyAvatarUrl?: string | null): string | null {
+  if (!companyId || !companyAvatarUrl) return null;
+  return profileAvatarUrl(companyId, companyAvatarUrl);
+}
 
 /** Genera un slug único para `/empleo/:slug` (reintenta con sufijo aleatorio). */
 export async function generateUniqueJobSlug(title: string, locationHint?: string | null): Promise<string> {
@@ -45,7 +61,7 @@ export function mapJobType(raw: string | null | undefined): JobType {
 const iso = (d: Date | string | null): string | null => (d ? new Date(d).toISOString() : null);
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
-export function toJobCard(r: Row): JobCard {
+export function toJobCard(r: RowWithLogo): JobCard {
   return {
     id: r.id,
     slug: r.slug,
@@ -69,10 +85,11 @@ export function toJobCard(r: Row): JobCard {
     }),
     isFeatured: r.isFeatured,
     publishedAt: iso(r.publishedAt),
+    companyLogoUrl: resolveCompanyLogo(r.companyId, r.companyAvatarUrl),
   };
 }
 
-export function toJobDetail(r: Row, related: Row[]): JobDetail {
+export function toJobDetail(r: RowWithLogo, related: Row[]): JobDetail {
   return {
     ...toJobCard(r),
     description: r.description,
@@ -102,8 +119,9 @@ export function toJobDetail(r: Row, related: Row[]): JobDetail {
 }
 
 /** Vacante para SEO/JSON-LD (`shared/seo.ts` `JobSeoInput`). */
-export function toJobSeoInput(r: Row) {
+export function toJobSeoInput(r: RowWithLogo) {
   return {
+    hiringOrgLogo: resolveCompanyLogo(r.companyId, r.companyAvatarUrl),
     slug: r.slug,
     title: r.title,
     description: r.description,
@@ -171,8 +189,9 @@ export async function listJobs(f: JobFilters): Promise<{ items: JobCard[]; nextC
   const cur = f.cursor ? decodeCursor(f.cursor) : null;
 
   const rows = await db
-    .select()
+    .select(JOB_WITH_LOGO_SELECT)
     .from(J)
+    .leftJoin(P, eq(P.id, J.companyId))
     .where(
       and(
         visibleCond(),
@@ -250,7 +269,12 @@ export type JobRenderResult =
  *  - `notfound` → no existe, o borrador / pendiente / posible-duplicado (nunca fue pública).
  */
 export async function getJobForRender(slug: string): Promise<JobRenderResult> {
-  const [row] = await db.select().from(J).where(eq(J.slug, slug)).limit(1);
+  const [row] = await db
+    .select(JOB_WITH_LOGO_SELECT)
+    .from(J)
+    .leftJoin(P, eq(P.id, J.companyId))
+    .where(eq(J.slug, slug))
+    .limit(1);
   if (!row) return { kind: 'notfound' };
   if (PUBLIC_VISIBLE(row)) return { kind: 'ok', row, related: await relatedJobs(row) };
   const goneByExpiry = row.status === 'published' && !!row.expiresAt;
@@ -270,8 +294,9 @@ export async function getCompanyJobsBySlug(
   slug: string,
 ): Promise<{ companyName: string; province: string | null; jobs: JobCard[] } | null> {
   const rows = await db
-    .select()
+    .select(JOB_WITH_LOGO_SELECT)
     .from(J)
+    .leftJoin(P, eq(P.id, J.companyId))
     .where(visibleCond())
     .orderBy(desc(J.publishedAt))
     .limit(500);
@@ -287,8 +312,9 @@ export async function getCompanyJobsBySlug(
 /** Empleos activos de un negocio (para su ficha `/p/:id`). */
 export async function jobsForCompany(companyId: string, limit = 8): Promise<JobCard[]> {
   const rows = await db
-    .select()
+    .select(JOB_WITH_LOGO_SELECT)
     .from(J)
+    .leftJoin(P, eq(P.id, J.companyId))
     .where(and(visibleCond(), eq(J.companyId, companyId)))
     .orderBy(desc(J.publishedAt))
     .limit(limit);

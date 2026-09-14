@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { formatDOP } from '../lib/format';
+import { avatarFallback } from '../lib/share';
 import EditProfileAdminModal, { type AdminProfileRow } from './EditProfileAdminModal';
 
 const FILTERS: Array<{ v: string; label: string }> = [
@@ -71,6 +72,23 @@ export default function NegociosAdmin() {
     }
   }
 
+  async function removeImage(row: AdminProfileRow) {
+    if (!window.confirm(`¿Quitar la imagen de "${row.name}"? El dueño podrá subir otra luego.`)) return;
+    setBusy(row.id);
+    try {
+      await api(`/admin/profiles/${row.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ avatarUrl: null }),
+        auth: true,
+      });
+      load();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -113,10 +131,22 @@ export default function NegociosAdmin() {
             {rows.map((b) => (
               <tr key={b.id} className="border-t border-white/5">
                 <td className="p-2">
-                  <Link to={`/p/${b.id}`} className="font-semibold text-white/85 hover:text-gold">
-                    {b.name}
-                  </Link>
-                  <div className="text-[10px] text-white/35">@{b.handle}</div>
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={b.avatarUrl ? `/api/profiles/${b.id}/avatar` : avatarFallback(b.name)}
+                      alt=""
+                      width={32}
+                      height={32}
+                      loading="lazy"
+                      className="h-8 w-8 shrink-0 rounded-lg object-cover ring-1 ring-white/10"
+                    />
+                    <div className="min-w-0">
+                      <Link to={`/p/${b.id}`} className="font-semibold text-white/85 hover:text-gold">
+                        {b.name}
+                      </Link>
+                      <div className="text-[10px] text-white/35">@{b.handle}</div>
+                    </div>
+                  </div>
                 </td>
                 <td className="p-2">
                   {b.categoryName}
@@ -147,6 +177,15 @@ export default function NegociosAdmin() {
                     >
                       ✎ Editar
                     </button>
+                    {b.avatarUrl && (
+                      <button
+                        onClick={() => removeImage(b)}
+                        disabled={busy === b.id}
+                        className="rounded border border-white/20 px-2 py-0.5 text-[10px] text-white/60"
+                      >
+                        🖼 Quitar imagen
+                      </button>
+                    )}
                     {b.isActive ? (
                       <button
                         onClick={() => deactivate(b)}

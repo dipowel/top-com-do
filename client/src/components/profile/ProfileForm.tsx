@@ -100,7 +100,7 @@ export default function ProfileForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      {/* Logo / foto */}
+      {/* Representación visual del negocio (física o virtual) */}
       <div className="flex items-center gap-3">
         <img
           src={value.avatarUrl || avatarFallback(value.name || 'Nuevo')}
@@ -123,9 +123,13 @@ export default function ProfileForm({
             }}
           />
           <button type="button" onClick={() => fileRef.current?.click()} className="btn-ghost !py-1.5 text-xs">
-            {imgBusy ? 'Procesando…' : value.avatarUrl ? 'Cambiar logo' : '📷 Subir logo / foto'}
+            {imgBusy ? 'Procesando…' : value.avatarUrl ? 'Cambiar imagen' : '📷 Representa tu negocio'}
           </button>
-          <p className="mt-1 text-[11px] text-white/40">Se comprime en tu teléfono.</p>
+          <p className="mt-1 text-[11px] text-white/40">
+            ¿Tienes local? Sube una foto de tu fachada o establecimiento. ¿Tu negocio es virtual
+            (tienda online, freelance, servicio remoto)? Usa tu logo, identidad de marca o una
+            imagen profesional que te represente. Se comprime en tu teléfono.
+          </p>
         </div>
       </div>
 

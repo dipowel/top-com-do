@@ -172,6 +172,8 @@ export interface JobCard {
   salaryLabel: string;
   isFeatured: boolean;
   publishedAt: string | null;
+  /** Logo real del negocio vinculado (solo si tiene avatar propio) — `null` = usar iniciales en UI. */
+  companyLogoUrl: string | null;
 }
 
 export interface JobDetail extends JobCard {

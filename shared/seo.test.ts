@@ -309,6 +309,25 @@ describe('seo · empleos', () => {
     expect(ld.jobLocationType).toBeUndefined();
   });
 
+  it('jobPostingLd: hiringOrganization.logo SOLO si hay un logo real ya resuelto', () => {
+    const conLogo = jobPostingLd({
+      ...baseJob,
+      companyId: 'c1',
+      hiringOrgLogo: 'https://www.top.com.do/api/profiles/c1/avatar',
+    })!;
+    expect((conLogo.hiringOrganization as Record<string, unknown>).logo).toBe(
+      'https://www.top.com.do/api/profiles/c1/avatar',
+    );
+
+    // Con companyId pero SIN logo resuelto (negocio sin avatar real): nunca se inventa uno.
+    const sinLogo = jobPostingLd({ ...baseJob, companyId: 'c1', hiringOrgLogo: null })!;
+    expect((sinLogo.hiringOrganization as Record<string, unknown>).logo).toBeUndefined();
+
+    // Sin companyId ni hiringOrgLogo (caso por defecto de baseJob): tampoco se emite logo.
+    const sinCompania = jobPostingLd(baseJob)!;
+    expect((sinCompania.hiringOrganization as Record<string, unknown>).logo).toBeUndefined();
+  });
+
   it('jobPostingLd: remoto sin ciudad omite jobLocation pero declara TELECOMMUTE', () => {
     const ld = jobPostingLd({
       ...baseJob,

@@ -43,22 +43,22 @@ export default function LeaderCard({
         ) : (
           <PositionBadge position={entry.position} champion={entry.isChampion} />
         )}
-        <Link to={`/p/${p.id}`}>
+        <Link to={`/p/${p.id}`} className="shrink-0">
           <img
             src={p.avatarUrl || avatarFallback(p.name)}
             alt={p.name}
-            width={48}
-            height={48}
+            width={56}
+            height={56}
             loading={entry.isChampion ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={entry.isChampion ? 'high' : undefined}
-            className="h-12 w-12 rounded-xl object-cover"
+            className="h-14 w-14 rounded-2xl object-cover ring-1 ring-white/10"
           />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             {entry.isChampion && <CrownBadge />}
-            <Link to={`/p/${p.id}`} className="truncate font-bold">
+            <Link to={`/p/${p.id}`} className="truncate text-[15px] font-bold">
               {p.name}
             </Link>
           </div>

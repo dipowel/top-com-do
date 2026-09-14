@@ -294,6 +294,7 @@ r.get(
         instagramUrl: profiles.instagramUrl,
         latitude: profiles.latitude,
         longitude: profiles.longitude,
+        avatarUrl: profiles.avatarUrl,
         isActive: profiles.isActive,
         createdAt: profiles.createdAt,
         ownerEmail: owner.email,
@@ -340,6 +341,9 @@ const adminEditProfileSchema = z.object({
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
   isActive: z.boolean().optional(),
+  // Moderación: el admin solo puede QUITAR la imagen (null), nunca fijar una nueva —
+  // subir/cambiar la imagen sigue siendo exclusivo del dueño vía `POST/PATCH /profiles`.
+  avatarUrl: z.null().optional(),
 });
 
 /** Editar cualquier campo clave de un negocio (incluye activarlo/desactivarlo). */
@@ -369,6 +373,7 @@ r.patch(
     if (body.longitude !== undefined)
       patch.longitude = body.longitude != null ? body.longitude.toFixed(7) : null;
     if (body.isActive !== undefined) patch.isActive = body.isActive;
+    if (body.avatarUrl !== undefined) patch.avatarUrl = null;
     if (body.categorySlug) {
       const cat = (
         await db.select().from(categories).where(eq(categories.slug, body.categorySlug)).limit(1)

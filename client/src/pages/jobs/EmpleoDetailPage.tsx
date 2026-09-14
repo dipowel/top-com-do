@@ -8,7 +8,7 @@ import Spinner from '../../components/common/Spinner';
 import Breadcrumbs, { type Crumb } from '../../components/common/Breadcrumbs';
 import RelatedJobs from '../../components/jobs/RelatedJobs';
 import RichText from '../../components/jobs/RichText';
-import { whatsappLink } from '../../lib/share';
+import { whatsappLink, avatarFallback } from '../../lib/share';
 import { jobPostingSeo, jobGoneSeo } from '@shared/seo';
 import { jobCategoryLabel } from '@shared/job-categories';
 import type { JobDetail, JobGone } from '@shared/types';
@@ -151,26 +151,40 @@ export default function EmpleoDetailPage() {
     <div className="space-y-4">
       <Breadcrumbs items={crumbs} />
 
-      <div className="glass space-y-2 p-4">
-        <h1 className="text-xl font-extrabold text-white">{job.title}</h1>
-        <div className="text-sm text-white/70">
-          {job.companyId ? (
-            <Link to={`/p/${job.companyId}`} className="text-gold underline">
-              {job.companyName}
-            </Link>
-          ) : (
-            job.companyName
-          )}
+      <div className="glass p-4">
+        <div className="flex gap-3">
+          {/* Logo real del negocio cuando existe; si no, ficha de iniciales — nunca una foto inventada. */}
+          <img
+            src={job.companyLogoUrl || avatarFallback(job.companyName)}
+            alt=""
+            width={64}
+            height={64}
+            decoding="async"
+            fetchPriority="high"
+            className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-1 ring-white/10"
+          />
+          <div className="min-w-0 flex-1 space-y-2">
+            <h1 className="text-xl font-extrabold text-white">{job.title}</h1>
+            <div className="text-sm text-white/70">
+              {job.companyId ? (
+                <Link to={`/p/${job.companyId}`} className="text-gold underline">
+                  {job.companyName}
+                </Link>
+              ) : (
+                job.companyName
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/55">
           <span>📍 {location}</span>
           {job.salaryLabel && <span>💰 {job.salaryLabel}</span>}
           <span>🕐 {job.jobTypeLabel}</span>
           <span>🏢 {job.workModeLabel}</span>
         </div>
-        {address && <p className="text-xs text-white/45">🏢 {address}</p>}
-        {job.locationText && !address && <p className="text-xs text-white/45">📌 {job.locationText}</p>}
-        {validThrough && <p className="text-xs text-white/45">⏳ Válido hasta el {validThrough}</p>}
+        {address && <p className="mt-2 text-xs text-white/45">🏢 {address}</p>}
+        {job.locationText && !address && <p className="mt-2 text-xs text-white/45">📌 {job.locationText}</p>}
+        {validThrough && <p className="mt-2 text-xs text-white/45">⏳ Válido hasta el {validThrough}</p>}
       </div>
 
       <div className="flex flex-wrap gap-2">

@@ -15,7 +15,11 @@ export function avatarFallback(seed: string): string {
       .join('') || '?';
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">` +
-    `<rect width="128" height="128" rx="24" fill="#0f172a"/>` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset="0%" stop-color="#132241"/><stop offset="100%" stop-color="#070b14"/>` +
+    `</linearGradient></defs>` +
+    `<rect width="128" height="128" rx="24" fill="url(#g)"/>` +
+    `<rect x="1.5" y="1.5" width="125" height="125" rx="22.5" fill="none" stroke="#d4af37" stroke-opacity="0.22"/>` +
     `<text x="64" y="64" dy=".35em" text-anchor="middle" ` +
     `font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="700" fill="#d4af37">` +
     `${initials}</text></svg>`;

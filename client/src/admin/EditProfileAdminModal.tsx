@@ -19,6 +19,7 @@ export interface AdminProfileRow {
   instagramUrl: string | null;
   latitude: number | null;
   longitude: number | null;
+  avatarUrl: string | null;
   isActive: boolean;
   createdAt: string;
   ownerEmail: string | null;
