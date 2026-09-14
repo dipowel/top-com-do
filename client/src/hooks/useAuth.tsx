@@ -93,15 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           return;
         }
-        const { onAuthStateChanged, getRedirectResult } = await import('firebase/auth');
+        const { onAuthStateChanged } = await import('firebase/auth');
         if (cancelled) return;
-        // Captura limpiamente la sesión al volver de signInWithRedirect (Google), en
-        // móvil y desktop. onAuthStateChanged (abajo) ya refleja el usuario resultante;
-        // esto solo existe para no perder en silencio un error propio del redirect
-        // (p. ej. cuenta ya existente con otro proveedor).
-        getRedirectResult(auth).catch((e) => {
-          console.warn('[auth] getRedirectResult:', (e as Error).message);
-        });
         unsub = onAuthStateChanged(auth, async (u) => {
           setUser(u);
           setLoading(false);
@@ -162,15 +155,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     ready: firebaseReady,
     loginGoogle: async () => {
-      // Redirect (no popup): más confiable en móvil/navegadores in-app, donde los
-      // popups suelen bloquearse. La sesión se captura al volver vía
-      // getRedirectResult()/onAuthStateChanged() en el efecto de montaje, arriba.
-      const [auth, provider, { signInWithRedirect }] = await Promise.all([
+      // Popup, no redirect: el authDomain de este proyecto
+      // (genuine-xray-5dckx.firebaseapp.com) es distinto al dominio del sitio
+      // (www.top.com.do). signInWithRedirect necesita un iframe entre-orígenes hacia
+      // authDomain para recuperar la sesión al volver, y navegadores con protección
+      // contra rastreo de terceros (Safari, in-app, Chrome) lo bloquean en silencio —
+      // la sesión nunca se completa. El popup evita ese salto (usa postMessage en
+      // vivo) y es el método que funciona de forma fiable con este authDomain.
+      const [auth, provider, { signInWithPopup }] = await Promise.all([
         loadAuth(),
         loadGoogleProvider(),
         import('firebase/auth'),
       ]);
-      await signInWithRedirect(auth!, provider);
+      await signInWithPopup(auth!, provider);
     },
     loginEmail: async (email, pass) => {
       const [auth, { signInWithEmailAndPassword }] = await Promise.all([
