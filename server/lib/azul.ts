@@ -210,7 +210,9 @@ export function buildAzulSaleForm(input: {
     ...hashFields,
     AuthHash: azulRequestHash(hashFields, c.authKey),
     // No entran en el hash:
-    ShowTransactionResult: '1',
+    // '0' = AZUL redirige directo a ApprovedUrl/DeclinedUrl sin mostrar su propia
+    // pantalla de resultado (evita depender de un clic manual del cliente ahí).
+    ShowTransactionResult: '0',
     Locale: c.locale,
     AltMerchantName: c.altMerchantName,
     LogoImageUrl: `${SITE_URL}/logo.png`,

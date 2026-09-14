@@ -187,6 +187,8 @@ describe('azul · buildAzulSaleForm', () => {
     expect(fields.ITBIS).toBe('000');
     expect(fields.Amount).toBe('60000');
     expect(fields.AuthHash).toMatch(/^[0-9a-f]{128}$/);
+    // Sin pantalla propia de AZUL: redirige directo a ApprovedUrl/DeclinedUrl, sin clic manual.
+    expect(fields.ShowTransactionResult).toBe('0');
 
     const recomputed = azulRequestHash(
       {
