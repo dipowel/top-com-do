@@ -93,8 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           return;
         }
-        const { onAuthStateChanged } = await import('firebase/auth');
+        const { onAuthStateChanged, getRedirectResult } = await import('firebase/auth');
         if (cancelled) return;
+        // Captura limpiamente la sesión al volver de signInWithRedirect (Google), en
+        // móvil y desktop. onAuthStateChanged (abajo) ya refleja el usuario resultante;
+        // esto solo existe para no perder en silencio un error propio del redirect
+        // (p. ej. cuenta ya existente con otro proveedor).
+        getRedirectResult(auth).catch((e) => {
+          console.warn('[auth] getRedirectResult:', (e as Error).message);
+        });
         unsub = onAuthStateChanged(auth, async (u) => {
           setUser(u);
           setLoading(false);
@@ -155,12 +162,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     ready: firebaseReady,
     loginGoogle: async () => {
-      const [auth, provider, { signInWithPopup }] = await Promise.all([
+      // Redirect (no popup): más confiable en móvil/navegadores in-app, donde los
+      // popups suelen bloquearse. La sesión se captura al volver vía
+      // getRedirectResult()/onAuthStateChanged() en el efecto de montaje, arriba.
+      const [auth, provider, { signInWithRedirect }] = await Promise.all([
         loadAuth(),
         loadGoogleProvider(),
         import('firebase/auth'),
       ]);
-      await signInWithPopup(auth!, provider);
+      await signInWithRedirect(auth!, provider);
     },
     loginEmail: async (email, pass) => {
       const [auth, { signInWithEmailAndPassword }] = await Promise.all([
