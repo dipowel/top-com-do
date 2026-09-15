@@ -779,6 +779,11 @@ export function jobPostingLd(job: JobSeoInput): Record<string, unknown> | null {
 
   // Ubicación: se omite si es remoto sin ciudad concreta. streetAddress / postalCode
   // SOLO si el empleador o la fuente los aportaron (Search Console: nunca fabricar).
+  //
+  // addressLocality (Search Console, "Ofertas de trabajo": problema no crítico si falta):
+  // usa la ciudad cuando existe; si la fuente solo dio provincia, usa la provincia como
+  // localidad — sigue siendo un dato real (nunca se inventa una ciudad que no tenemos).
+  const locality = job.city || provName || undefined;
   if (job.city || provName || job.streetAddress) {
     ld.jobLocation = {
       '@type': 'Place',
@@ -787,7 +792,7 @@ export function jobPostingLd(job: JobSeoInput): Record<string, unknown> | null {
         addressCountry: 'DO',
         ...(job.streetAddress ? { streetAddress: job.streetAddress } : {}),
         ...(provName ? { addressRegion: provName } : {}),
-        ...(job.city ? { addressLocality: job.city } : {}),
+        ...(locality ? { addressLocality: locality } : {}),
         ...(job.postalCode ? { postalCode: job.postalCode } : {}),
       },
     };

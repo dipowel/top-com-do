@@ -340,6 +340,13 @@ describe('seo · empleos', () => {
     expect(ld.applicantLocationRequirements).toMatchObject({ '@type': 'Country' });
   });
 
+  it('jobPostingLd: addressLocality usa la provincia cuando no hay ciudad (Search Console)', () => {
+    const ld = jobPostingLd({ ...baseJob, city: null })!;
+    const address = (ld.jobLocation as { address: Record<string, unknown> }).address;
+    expect(address.addressLocality).toBe('Distrito Nacional');
+    expect(address.addressRegion).toBe('Distrito Nacional');
+  });
+
   it('jobPostingLd: sin salario o negociable no emite baseSalary', () => {
     expect(jobPostingLd({ ...baseJob, salaryMin: null })!.baseSalary).toBeUndefined();
     expect(jobPostingLd({ ...baseJob, salaryPeriod: 'negotiable' })!.baseSalary).toBeUndefined();
