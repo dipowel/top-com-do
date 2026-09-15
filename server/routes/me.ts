@@ -26,6 +26,7 @@ import { getRankings } from '../lib/rankings';
 import { minNextBid } from '../../shared/bidding';
 import { provinceName, NATIONAL_SLUG } from '../../shared/provinces';
 import { normalizeRefCode } from '../../shared/referral';
+import { buildOrderNumber } from '../lib/orderNumber';
 import type { RankingEntry } from '../../shared/types';
 
 const r = Router();
@@ -318,9 +319,7 @@ r.get(
     const b = rows[0];
     if (!b) throw new HttpError(404, 'Comprobante no encontrado');
 
-    const d = new Date(b.createdAt);
-    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-    const orderNumber = `TOP-${ymd}-${b.id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+    const orderNumber = buildOrderNumber(b.id, new Date(b.createdAt));
 
     res.json({
       orderNumber,

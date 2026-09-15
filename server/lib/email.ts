@@ -82,6 +82,47 @@ export function dethroneEmailHtml(d: {
 </body></html>`;
 }
 
+/** Plantilla del correo de recibo/factura tras verificar el pago de una puja. */
+export function receiptEmailHtml(d: {
+  businessName: string;
+  concept: string;
+  orderNumber: string;
+  amountDop: number;
+  dateLabel: string;
+  bidId: string;
+}): string {
+  const cta = `${SITE_URL}/recibo/${d.bidId}`;
+  return `<!doctype html><html><body style="margin:0;background:#070b14;padding:24px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <table role="presentation" width="100%" style="max-width:520px;margin:0 auto;background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden">
+    <tr><td style="padding:24px 24px 8px">
+      <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#D4AF37;font-weight:700">Top.com.do</div>
+      <h1 style="margin:12px 0 4px;font-size:22px;color:#e8ecf4">🧾 Recibo de tu pago</h1>
+      <p style="margin:0;color:#9aa4b2;font-size:14px;line-height:1.6">
+        Confirmamos tu pago por <strong style="color:#e8ecf4">${escapeHtml(d.businessName)}</strong>. Aquí está el
+        comprobante de tu transacción.
+      </p>
+    </td></tr>
+    <tr><td style="padding:16px 24px">
+      <div style="background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.3);border-radius:12px;padding:14px 16px">
+        <div style="font-size:12px;color:#9aa4b2">Monto pagado</div>
+        <div style="font-size:24px;font-weight:800;color:#D4AF37;margin-top:2px">${formatDOP(d.amountDop)}</div>
+      </div>
+    </td></tr>
+    <tr><td style="padding:0 24px 8px">
+      <table role="presentation" width="100%" style="font-size:13px;color:#9aa4b2;border-collapse:collapse">
+        <tr><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08)">Concepto</td><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);text-align:right;color:#e8ecf4">${escapeHtml(d.concept)}</td></tr>
+        <tr><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08)">ID de factura</td><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);text-align:right;color:#e8ecf4;font-family:monospace">${escapeHtml(d.orderNumber)}</td></tr>
+        <tr><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08)">Fecha</td><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);text-align:right;color:#e8ecf4">${escapeHtml(d.dateLabel)}</td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:16px 24px 28px" align="center">
+      <a href="${cta}" style="display:inline-block;background:linear-gradient(135deg,#e8c874,#d4af37);color:#000;font-weight:800;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:15px">Ver mi comprobante</a>
+      <p style="margin:16px 0 0;color:#5b6472;font-size:11px">Guarda este correo como respaldo de tu pago en Top.com.do.</p>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
     c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '"' ? '&quot;' : '&#39;',

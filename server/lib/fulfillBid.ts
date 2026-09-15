@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { bids, profiles, categories } from '../../shared/schema';
+import { bids, profiles, categories, users } from '../../shared/schema';
 import { onBidVerified } from './rewards';
 import { checkDethronements, notifyUser } from './notify';
 import { audit } from './audit';
 import { pingIndexNow } from './indexnow';
+import { sendEmail, receiptEmailHtml } from './email';
+import { buildOrderNumber } from './orderNumber';
 import { formatDOP } from '../../shared/fx';
 
 /**
@@ -72,6 +74,30 @@ export async function creditVerifiedBid(opts: {
     url: `/p/${bid.profileId}`,
   });
   await audit(null, 'bid.verified', 'bid', bid.id, { provider: opts.providerLabel, reference: opts.reference });
+
+  const buyer = (
+    await db.select({ email: users.email }).from(users).where(eq(users.id, bid.userId)).limit(1)
+  )[0];
+  if (buyer?.email) {
+    const orderNumber = buildOrderNumber(bid.id, bid.createdAt);
+    const concept = `Puja por visibilidad en el ranking — ${prof?.name ?? 'tu negocio'}`;
+    try {
+      await sendEmail({
+        to: buyer.email,
+        subject: `🧾 Recibo de tu pago — ${orderNumber}`,
+        html: receiptEmailHtml({
+          businessName: prof?.name ?? 'tu negocio',
+          concept,
+          orderNumber,
+          amountDop: finalDop,
+          dateLabel: new Date().toLocaleString('es-DO', { dateStyle: 'long', timeStyle: 'short' }),
+          bidId: bid.id,
+        }),
+      });
+    } catch (e) {
+      console.error('[fulfillBid] correo de recibo falló:', (e as Error).message);
+    }
+  }
 
   return 'verified';
 }
