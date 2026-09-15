@@ -8,6 +8,15 @@ import type { Auth, GoogleAuthProvider } from 'firebase/auth';
  *
  * El SDK de Firebase Auth (~170 KB) se carga con import() dinámico DESPUÉS del
  * primer render: el visitante anónimo y los bots nunca bloquean el LCP con él.
+ *
+ * `authDomain` por defecto = el de Firebase Hosting (`genuine-xray-5dckx.firebaseapp.com`),
+ * distinto del dominio del sitio (`www.top.com.do`). Para que Google muestre "Ir a
+ * top.com.do" y para que `signInWithRedirect` funcione de forma fiable en móvil, hay
+ * que conectar un subdominio propio (p. ej. `auth.top.com.do`) a Firebase Hosting,
+ * verificarlo por DNS, y entonces poner `VITE_FIREBASE_AUTH_DOMAIN=auth.top.com.do`
+ * en Vercel — NO se cambia este valor por defecto hasta que ese dominio esté
+ * verificado (si no, el login se rompe por completo). `useAuth.tsx::loginGoogle`
+ * detecta esa variable para activar el respaldo a redirect automáticamente.
  */
 const FALLBACK = {
   apiKey: 'AIzaSyAkX68nJeE1gIL9wVqzUiXMC53BGU7CDcY',

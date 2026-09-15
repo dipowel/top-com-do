@@ -93,8 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
           return;
         }
-        const { onAuthStateChanged } = await import('firebase/auth');
+        const { onAuthStateChanged, getRedirectResult } = await import('firebase/auth');
         if (cancelled) return;
+        // Recoge la sesión si loginGoogle recurrió a signInWithRedirect (ver abajo).
+        // Sin redirect pendiente, resuelve null sin efecto — inofensivo siempre.
+        getRedirectResult(auth).catch((e) => {
+          console.warn('[auth] getRedirectResult:', (e as Error).message);
+        });
         unsub = onAuthStateChanged(auth, async (u) => {
           setUser(u);
           setLoading(false);
@@ -155,19 +160,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     ready: firebaseReady,
     loginGoogle: async () => {
-      // Popup, no redirect: el authDomain de este proyecto
-      // (genuine-xray-5dckx.firebaseapp.com) es distinto al dominio del sitio
-      // (www.top.com.do). signInWithRedirect necesita un iframe entre-orígenes hacia
-      // authDomain para recuperar la sesión al volver, y navegadores con protección
-      // contra rastreo de terceros (Safari, in-app, Chrome) lo bloquean en silencio —
-      // la sesión nunca se completa. El popup evita ese salto (usa postMessage en
-      // vivo) y es el método que funciona de forma fiable con este authDomain.
-      const [auth, provider, { signInWithPopup }] = await Promise.all([
+      const [auth, provider, authMod] = await Promise.all([
         loadAuth(),
         loadGoogleProvider(),
         import('firebase/auth'),
       ]);
-      await signInWithPopup(auth!, provider);
+      try {
+        // Popup primero: no recarga la página y funciona bien en la mayoría de
+        // navegadores, incluso con el authDomain por defecto de Firebase
+        // (genuine-xray-5dckx.firebaseapp.com — distinto al del sitio).
+        await authMod.signInWithPopup(auth!, provider);
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        const popupBlocked =
+          code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment';
+        // El respaldo a redirect SOLO es fiable con un authDomain propio del mismo
+        // sitio (VITE_FIREBASE_AUTH_DOMAIN puesta tras verificarlo en Firebase
+        // Hosting) — con el authDomain por defecto, signInWithRedirect no completa
+        // la sesión al volver (ver firebase.ts). Sin esa variable, se propaga el
+        // error tal cual: mejor un mensaje claro que un redirect roto.
+        const customAuthDomain = Boolean(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+        if (popupBlocked && customAuthDomain) {
+          await authMod.signInWithRedirect(auth!, provider);
+          return;
+        }
+        throw e;
+      }
     },
     loginEmail: async (email, pass) => {
       const [auth, { signInWithEmailAndPassword }] = await Promise.all([
