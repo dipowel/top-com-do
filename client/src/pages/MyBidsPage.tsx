@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMyBids } from '../hooks/useMyBids';
 import { useAuth } from '../hooks/useAuth';
-import { api } from '../lib/api';
 import Spinner from '../components/common/Spinner';
 import { formatDOP } from '../lib/format';
 
@@ -34,25 +33,11 @@ export default function MyBidsPage() {
   const [params, setParams] = useSearchParams();
   const pago = params.get('pago') ?? '';
   const procesando = pago === 'procesando' || pago === 'ok' || pago === 'verificando';
-  const [checking, setChecking] = useState(false);
-
-  // Pregunta a Dodo por los pagos del usuario y acredita lo que ya esté pagado.
-  async function checkPayments() {
-    setChecking(true);
-    try {
-      await api('/checkout/dodo/status', { auth: true });
-    } catch {
-      /* ignore */
-    } finally {
-      await reload();
-      setChecking(false);
-    }
-  }
-
-  // Tras volver del checkout de Dodo: reconciliar una vez y luego refrescar unos segundos.
+  // Tras volver del checkout de AZUL: el pago ya se confirmó server-side antes
+  // de redirigir aquí; solo hace falta refrescar unos segundos por si el listado
+  // tarda en reflejarlo.
   useEffect(() => {
     if (!procesando) return;
-    void checkPayments();
     let n = 0;
     const id = window.setInterval(() => {
       n += 1;
@@ -128,20 +113,6 @@ export default function MyBidsPage() {
           <Link to={`/recibo/${b.id}`} className="mt-1 inline-block text-[11px] text-gold underline">
             Ver comprobante
           </Link>
-          {b.status === 'pending' && b.method === 'dodo' && (
-            <div className="mt-2 space-y-1.5 rounded-lg bg-white/5 p-2">
-              <p className="text-[11px] text-white/50">
-                Esperando la confirmación del pago.
-              </p>
-              <button
-                onClick={checkPayments}
-                disabled={checking}
-                className="btn-ghost !py-1 text-[11px]"
-              >
-                {checking ? 'Revisando…' : 'Ya pagué — revisar ahora'}
-              </button>
-            </div>
-          )}
         </div>
       ))}
     </div>

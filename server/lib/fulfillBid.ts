@@ -10,9 +10,9 @@ import { buildOrderNumber } from './orderNumber';
 import { formatDOP } from '../../shared/fx';
 
 /**
- * Acredita una puja pagada, sea cual sea la pasarela. Idempotente: si ya está
- * `verified` no vuelve a acreditar. La actualización de la tabla de la pasarela
- * (dodo_payments / azul_payments) la hace el llamador ANTES de invocar esto.
+ * Acredita una puja pagada. Idempotente: si ya está `verified` no vuelve a
+ * acreditar. La actualización de `azul_payments` la hace el llamador ANTES de
+ * invocar esto.
  */
 export async function creditVerifiedBid(opts: {
   bidId: string;

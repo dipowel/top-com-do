@@ -20,6 +20,7 @@ interface Row {
 
 const FILTERS = ['', 'pending', 'verified', 'rejected'];
 const METHOD: Record<string, string> = {
+  azul: 'Tarjeta (AZUL)',
   dodo: 'Tarjeta (AZUL)',
   credit: 'Saldo',
   bank_transfer: 'Transferencia',
@@ -59,23 +60,6 @@ export default function BidsAudit() {
     }
   }
 
-  async function reconcileDodo() {
-    setBusy('reconcile');
-    setMsg(null);
-    try {
-      const r = await api<{ checked: number; fulfilled: string[] }>('/checkout/dodo/reconcile', {
-        method: 'POST',
-        auth: true,
-      });
-      setMsg(`Revisadas ${r.checked} · acreditadas ${r.fulfilled.length}`);
-      load();
-    } catch (e) {
-      setMsg((e as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  }
-
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -90,13 +74,6 @@ export default function BidsAudit() {
             {s || 'Todas'}
           </button>
         ))}
-        <button
-          onClick={reconcileDodo}
-          disabled={busy === 'reconcile'}
-          className="btn-ghost ml-auto !py-1 text-xs"
-        >
-          {busy === 'reconcile' ? 'Reconciliando…' : '🔄 Reconciliar pagos con tarjeta'}
-        </button>
       </div>
 
       {msg && <p className="mb-2 text-xs text-white/60">{msg}</p>}

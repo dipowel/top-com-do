@@ -104,7 +104,9 @@ const statements = [
      WHERE account_type = 'consumer'
      AND EXISTS (SELECT 1 FROM profiles p WHERE p.owner_user_id = u.id)`,
 
-  // --- Dodo Payments (pasarela actual; sustituye a PayPal y transferencia) ---
+  // --- Dodo Payments (discontinuada; AZUL es ahora la única pasarela activa.
+  //     Se deja esta migración tal cual: ya se ejecutó en producción y la tabla
+  //     conserva pujas históricas reales pagadas con Dodo.) ---
   `ALTER TYPE bid_method ADD VALUE IF NOT EXISTS 'dodo'`,
   `CREATE TABLE IF NOT EXISTS dodo_payments (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

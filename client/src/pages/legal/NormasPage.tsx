@@ -30,7 +30,7 @@ export default function NormasPage() {
           competidor lo pasa. <strong>El que no defiende su puesto, baja.</strong>
         </li>
         <li>
-          Una puja se considera verificada cuando su pago se confirma (Dodo Payments) o cuando se
+          Una puja se considera verificada cuando su pago se confirma (AZUL) o cuando se
           paga con saldo de referidos. Los pagos revertidos o con contracargo{' '}
           <strong>anulan la puja</strong> y recalculan el ranking.
         </li>

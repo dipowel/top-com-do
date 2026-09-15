@@ -21,16 +21,13 @@ Opcionales (cada función se auto-desactiva con aviso si falta):
 | Variable | Para |
 |---|---|
 | `FIREBASE_PROJECT_ID` + `VITE_FIREBASE_*` | login (Google/Email). El server valida tokens con solo el projectId; la config web ya viene como fallback en el código. |
-| `DODO_ENV` (`test`/`live`), `DODO_API_KEY`, `DODO_WEBHOOK_SECRET` | pagos con Dodo Payments |
-| `DODO_PRODUCT_ID` | producto base *pay-what-you-want* (en **DOP**, mínimo RD$100). **Déjalo vacío**: el código usa `pdt_0NmWVZ4XoM8UbE03yFiY8` en `live` y `pdt_0NmSUGwTYDHQKdpmPVTI` en `test`. El monto se cobra nativo en pesos (RD$100 → `10000` centavos), sin conversión. |
+| `AZUL_MERCHANT_ID`, `AZUL_AUTH_KEY`, `AZUL_ENV` (`test`/`prod`) | pagos con la Página de Pago de AZUL |
 | `RESEND_API_KEY`, `RESEND_FROM` | correo "Te superaron" del growth loop. Sin la key no se envía correo (la notificación in-app y el botón "Recuperar #1" siguen). Verifica el dominio `top.com.do` en Resend → Domains (pega los SPF/DKIM). `RESEND_FROM` por defecto `Top.com.do <no-reply@top.com.do>`. |
 
-**Webhook (obligatorio para que la puja pase de `pending` a `verified` sola):** en Dodo →
-Settings → Webhooks, registra `https://www.top.com.do/api/webhooks/dodo` (evento
-`payment.succeeded`) y copia el *signing secret* de ESE endpoint en `DODO_WEBHOOK_SECRET` → Redeploy.
-Verifica con `GET /api/webhooks/dodo` (debe responder `{"ok":true}`).
-Si una puja se queda colgada: `/admin` → Pujas → **🔄 Reconciliar pagos Dodo** (consulta a Dodo y
-acredita sin depender del webhook), o **Verificar** manual en la fila.
+**AZUL confirma la puja de forma síncrona**, sin webhook: al volver del Payment Page, el
+servidor verifica el `AuthHash` de la respuesta y marca la puja `verified` antes de redirigir a
+`/recibo/:bidId`. Si una puja se queda colgada, revísala manualmente en `/admin` → Pujas
+(**Verificar** / **Rechazar** en la fila).
 
 > Las `VITE_*` se incrustan al compilar: después de agregarlas hay que **volver a desplegar**.
 

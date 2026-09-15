@@ -24,7 +24,6 @@ import rankings from './routes/rankings';
 import profiles from './routes/profiles';
 import bids from './routes/bids';
 import checkout from './routes/checkout';
-import webhooks from './routes/webhooks';
 import azul from './routes/azul';
 import me from './routes/me';
 import admin from './routes/admin';
@@ -47,8 +46,6 @@ export function createApp() {
     }),
   );
 
-  // Webhooks: ANTES del parser JSON global — necesitan el cuerpo crudo para la firma.
-  app.use('/api/webhooks', webhooks);
   // Retornos de AZUL Payment Page: navegación del cliente (form-urlencoded / querystring), sin auth.
   app.use('/api/pay/azul', azul);
 

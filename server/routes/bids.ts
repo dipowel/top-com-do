@@ -58,7 +58,7 @@ r.get(
 
 /**
  * Puja pagada con **saldo por referidos**. Los pagos con dinero real van por
- * `POST /api/checkout/dodo` (Dodo Payments). Aquí solo `credit`.
+ * `POST /api/checkout/azul` (AZUL). Aquí solo `credit`.
  */
 const schema = z.object({
   profileId: z.string().uuid(),
@@ -80,7 +80,7 @@ r.post(
     const amountDop = Math.round(body.amount * 100) / 100;
     if (amountDop < MIN_BID_DOP) throw new HttpError(400, `El monto mínimo es RD$ ${MIN_BID_DOP}`);
 
-    // Misma regla que Dodo: la oferta debe superar al #1 del ámbito.
+    // Misma regla que AZUL: la oferta debe superar al #1 del ámbito.
     const { minBidDop } = await minNextBidForProfile(body.profileId);
     if (amountDop < minBidDop) {
       throw new HttpError(400, `Tu oferta debe superar al #1. Ofrece al menos RD$ ${minBidDop}.`);

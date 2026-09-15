@@ -3,7 +3,6 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import { ah } from '../lib/asyncHandler';
 import { verifyIdToken, firebaseProjectId } from '../lib/firebaseAuth';
-import { probeProduct, listRecentPayments } from '../lib/dodo';
 import { importEnabled } from '../adapters/registry';
 import { googleIndexingConfigured } from '../lib/googleIndexing';
 
@@ -41,7 +40,6 @@ r.get(
         cronSecretSet: Boolean(process.env.CRON_SECRET?.trim()),
         googleIndexingSet: googleIndexingConfigured(),
       },
-      paymentProvider: (process.env.PAYMENT_PROVIDER || 'azul').toLowerCase(),
       azul: {
         configured: Boolean(process.env.AZUL_MERCHANT_ID?.trim() && process.env.AZUL_AUTH_KEY?.trim()),
         env: process.env.AZUL_ENV || 'test',
@@ -54,20 +52,6 @@ r.get(
           .filter((k) => k.startsWith('AZUL'))
           .sort(),
       },
-      dodoConfigured: Boolean(process.env.DODO_API_KEY && process.env.DODO_WEBHOOK_SECRET),
-      dodoEnv: process.env.DODO_ENV || 'test',
-      dodo: {
-        apiKeySet: Boolean(process.env.DODO_API_KEY?.trim()),
-        webhookSecretSet: Boolean(process.env.DODO_WEBHOOK_SECRET?.trim()),
-        productId: process.env.DODO_PRODUCT_ID || 'pdt_0NmSUGwTYDHQKdpmPVTI (default)',
-        env: process.env.DODO_ENV || 'test',
-        apiKeyHint: mask(process.env.DODO_API_KEY),
-        webhookSecretHint: mask(process.env.DODO_WEBHOOK_SECRET),
-        // revela typos en el NOMBRE de la variable (p. ej. "DODO_APIKEY")
-        envVarsSeen: Object.keys(process.env)
-          .filter((k) => k.startsWith('DODO'))
-          .sort(),
-      },
     };
 
     try {
@@ -75,13 +59,6 @@ r.get(
       out.database = 'ok';
     } catch (e) {
       out.database = `error: ${(e as Error).message}`;
-    }
-
-    // Sonda en vivo del producto de Dodo: /api/health/config?dodoProbe=<CRON_SECRET>
-    const probeKey = typeof req.query.dodoProbe === 'string' ? req.query.dodoProbe : '';
-    if (probeKey && process.env.CRON_SECRET && probeKey === process.env.CRON_SECRET) {
-      out.dodoProbe = await probeProduct();
-      out.dodoRecentPayments = await listRecentPayments(5);
     }
 
     const header = req.headers.authorization || '';

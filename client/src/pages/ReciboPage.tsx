@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useSeo } from '../hooks/useSeo';
@@ -68,7 +68,6 @@ export default function ReciboPage() {
   const [receipt, setReceipt] = useState<Receipt | null>(isSample ? SAMPLE : null);
   const [loading, setLoading] = useState(!isSample);
   const [notFound, setNotFound] = useState(false);
-  const reconciled = useRef(false);
 
   useSeo({
     title: 'Comprobante de pago | Top.com.do',
@@ -94,15 +93,10 @@ export default function ReciboPage() {
     void load();
   }, [isSample, load]);
 
-  // Al volver del checkout: reconciliar una vez y refrescar unos segundos.
+  // Al volver del checkout de AZUL: el pago ya se confirmó server-side antes de
+  // redirigir aquí; solo hace falta refrescar unos segundos por si tarda en reflejarse.
   useEffect(() => {
     if (isSample || !procesando) return;
-    if (!reconciled.current) {
-      reconciled.current = true;
-      api('/checkout/dodo/status', { auth: true })
-        .catch(() => null)
-        .finally(() => void load());
-    }
     let n = 0;
     const id = window.setInterval(() => {
       n += 1;

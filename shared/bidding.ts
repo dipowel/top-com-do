@@ -29,5 +29,5 @@ export function minNextBid(opts: {
   return Math.max(need, MIN_BID_DOP);
 }
 
-/** Convierte un monto en RD$ a la mínima denominación (centavos) que espera Dodo. */
+/** Convierte un monto en RD$ a la mínima denominación (centavos) que espera la pasarela. */
 export const toLowestDenomination = (dop: number): number => Math.round(dop * 100);

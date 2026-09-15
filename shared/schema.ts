@@ -14,8 +14,9 @@ import {
 
 // ---------------- Enums ----------------
 export const userRole = pgEnum('user_role', ['user', 'admin', 'superadmin']);
-// 'dodo' = pago con Dodo Payments (procesador actual). 'bank_transfer'/'paypal' se
-// conservan solo para pujas históricas; ya no se emiten pujas nuevas con esos métodos.
+// 'azul' es la única pasarela de pago activa. 'bank_transfer'/'paypal'/'dodo' se
+// conservan solo por pujas históricas ya pagadas con esos métodos; ya no se emiten
+// pujas nuevas con ellos (Dodo Payments se discontinuó por completo).
 export const bidMethod = pgEnum('bid_method', ['bank_transfer', 'paypal', 'credit', 'dodo', 'azul']);
 export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected']);
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
@@ -169,28 +170,6 @@ export const paymentReceipts = pgTable('payment_receipts', {
   uploadedByUserId: uuid('uploaded_by_user_id').references(() => users.id),
   uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
 });
-
-/** Sesiones de checkout de Dodo Payments (una por intento de pago de una puja). */
-export const dodoPayments = pgTable(
-  'dodo_payments',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    bidId: uuid('bid_id')
-      .notNull()
-      .references(() => bids.id, { onDelete: 'cascade' }),
-    sessionId: text('session_id'),
-    paymentId: text('payment_id'),
-    status: text('status').notNull().default('created'), // created | succeeded | failed
-    amountDop: numeric('amount_dop', { precision: 12, scale: 2 }).notNull().default('0'),
-    raw: jsonb('raw'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => ({
-    byBid: index('dodo_payments_bid_idx').on(t.bidId),
-    byPayment: uniqueIndex('dodo_payments_payment_uniq').on(t.paymentId),
-  }),
-);
 
 /** Intentos de pago con la Página de Pago de AZUL (uno por checkout de una puja). */
 export const azulPayments = pgTable(
@@ -518,7 +497,6 @@ export type BankAccount = typeof bankAccounts.$inferSelect;
 export type Referral = typeof referrals.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
-export type DodoPayment = typeof dodoPayments.$inferSelect;
 export type AzulPayment = typeof azulPayments.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type JobSource = typeof jobSources.$inferSelect;
