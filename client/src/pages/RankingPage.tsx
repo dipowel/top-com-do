@@ -332,7 +332,7 @@ export default function RankingPage() {
               to="/empleos"
               className="shrink-0 text-[11px] font-semibold text-white/50 hover:text-white/80"
             >
-              Ver todos →
+              Ver todos los empleos →
             </Link>
           </div>
           <div className="space-y-2">

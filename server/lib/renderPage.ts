@@ -810,7 +810,7 @@ function buildHtml(seo: SeoData, body: string): string {
   const ld = ldObjs
     .map(
       (o) =>
-        `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`,
+        `<script type="application/ld+json" data-seo="1">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`,
     )
     .join('\n    ');
 

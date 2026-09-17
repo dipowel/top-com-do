@@ -142,15 +142,28 @@ export default function EmpleosPage() {
 
   return (
     <div className="space-y-4">
-      {crumbs.length > 2 && <Breadcrumbs items={crumbs} />}
+      {crumbs.length > 1 && <Breadcrumbs items={crumbs} />}
       <header className="space-y-1">
         <h1 className="text-2xl font-extrabold tracking-tight text-white">💼 {heading}</h1>
         <p className="text-sm text-white/55">
-          Encuentra oportunidades cerca de ti — o{' '}
-          <Link to="/empleos/publicar" className="text-gold underline">
-            publica tu vacante gratis
-          </Link>
-          .
+          {seoCategory || seoProvince ? (
+            <>
+              Encuentra oportunidades cerca de ti — o{' '}
+              <Link to="/empleos/publicar" className="text-gold underline">
+                publica tu vacante gratis
+              </Link>
+              .
+            </>
+          ) : (
+            <>
+              Miles de vacantes y ofertas de empleo en Santo Domingo y toda la República
+              Dominicana — tu bolsa de trabajo online.{' '}
+              <Link to="/empleos/publicar" className="text-gold underline">
+                Publica tu vacante gratis
+              </Link>
+              .
+            </>
+          )}
         </p>
       </header>
 

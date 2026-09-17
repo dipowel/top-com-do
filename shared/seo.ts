@@ -679,9 +679,13 @@ export function empleosSeo(opts: {
           },
         ]
       : [];
+  const description =
+    !cat && !isProv
+      ? 'Bolsa de trabajo en República Dominicana: miles de vacantes y ofertas de empleo en Santo Domingo y toda la RD. Aplica directo y publica tu vacante gratis.'
+      : `Ofertas de trabajo${cat ? ` de ${cat}` : ''} en ${zone}: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.`;
   return {
     title: `${titleCore} · Top.com.do`,
-    description: `Ofertas de trabajo${cat ? ` de ${cat}` : ''} en ${zone}: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.`,
+    description,
     canonical,
     image: OG_IMAGE,
     noindex: opts.indexable === false,

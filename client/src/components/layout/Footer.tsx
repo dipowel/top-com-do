@@ -83,7 +83,7 @@ export default function Footer() {
             </li>
             <li>
               <Link to="/empleos" className="hover:text-gold">
-                Empleos en RD
+                Empleos en República Dominicana
               </Link>
             </li>
             <li>
