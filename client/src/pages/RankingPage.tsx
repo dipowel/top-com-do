@@ -9,6 +9,7 @@ import { useRankings } from '../hooks/useRankings';
 import { useNearbyRankings } from '../hooks/useNearbyRankings';
 import { useShell } from '../hooks/useShell';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
+import { useAuth } from '../hooks/useAuth';
 import { useSeo } from '../hooks/useSeo';
 import { getCurrentPosition, type Coords } from '../lib/geo';
 import { formatDOP } from '../lib/format';
@@ -32,6 +33,8 @@ export default function RankingPage() {
   const { data, loading, error } = useRankings(cat, province);
   const { openBid } = useShell();
   const canBid = useAuctionAccess();
+  const { loading: authLoading } = useAuth();
+  const showRegisterCta = !authLoading && !canBid;
   const [search, setSearch] = useState('');
 
   // Modo "Cerca de mí": estado 100 % de cliente. No toca la URL ni el SEO.
@@ -198,23 +201,50 @@ export default function RankingPage() {
 
       {/* Precio para tomar el puesto #1 */}
       {isHome ? (
-        <div className="glass flex items-center justify-between gap-3 border border-gold/30 p-3.5 shadow-glow">
-          <div className="flex min-w-0 items-center gap-3">
-            <span aria-hidden className="text-2xl">
-              ⚡
-            </span>
-            <div className="min-w-0">
-              <div className="text-[11px] text-white/50">Empieza desde</div>
-              <div className="text-xl font-black leading-tight text-gold">{formatDOP(MIN_BID)}</div>
+        showRegisterCta ? (
+          <div>
+            <div className="glass flex flex-wrap items-center justify-between gap-3 border border-gold/30 p-3.5 shadow-glow">
+              <div className="flex min-w-0 items-center gap-3">
+                <span aria-hidden className="text-2xl">
+                  🏪
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[11px] text-white/50">¿Tienes un negocio?</div>
+                  <div className="text-base font-black leading-tight text-gold">
+                    Regístralo GRATIS y aparece en Top
+                  </div>
+                </div>
+              </div>
+              <Link
+                to="/registrar-negocio"
+                className="btn-gold shrink-0 !px-5 !py-3 text-sm uppercase tracking-wide"
+              >
+                Registra tu negocio gratis <span aria-hidden>→</span>
+              </Link>
             </div>
+            <p className="mt-1.5 text-[11px] text-white/45">
+              Después puedes competir por el #1 desde {formatDOP(MIN_BID)}.
+            </p>
           </div>
-          <button
-            onClick={() => openBid(undefined, cat, province)}
-            className="btn-gold shrink-0 !px-5 !py-3 text-sm uppercase tracking-wide"
-          >
-            Crea tu puja ahora <span aria-hidden>→</span>
-          </button>
-        </div>
+        ) : (
+          <div className="glass flex items-center justify-between gap-3 border border-gold/30 p-3.5 shadow-glow">
+            <div className="flex min-w-0 items-center gap-3">
+              <span aria-hidden className="text-2xl">
+                ⚡
+              </span>
+              <div className="min-w-0">
+                <div className="text-[11px] text-white/50">Empieza desde</div>
+                <div className="text-xl font-black leading-tight text-gold">{formatDOP(MIN_BID)}</div>
+              </div>
+            </div>
+            <button
+              onClick={() => openBid(undefined, cat, province)}
+              className="btn-gold shrink-0 !px-5 !py-3 text-sm uppercase tracking-wide"
+            >
+              Crea tu puja ahora <span aria-hidden>→</span>
+            </button>
+          </div>
+        )
       ) : (
         !loading &&
         !error && (
