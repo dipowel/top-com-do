@@ -111,8 +111,8 @@ function hero(h1Html: string, pText: string, extra = '', crumbsHtml = ''): strin
 
 function homeBody(): string {
   return hero(
-    `El ranking <span style="color:#d4af37">#1</span> de negocios de la República Dominicana`,
-    'Encuentra negocios y empleos gratis. Si tienes un negocio, compite por el #1 desde RD$100 y llévate las llamadas.',
+    esc('Encuentra negocios y empleos en República Dominicana gratis.'),
+    'Si tienes un negocio, compite por el #1 desde RD$100 y llévate las llamadas.',
   );
 }
 

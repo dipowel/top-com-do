@@ -46,13 +46,12 @@ const baseJob: JobSeoInput = {
 };
 
 describe('seo · títulos y descripciones con geografía', () => {
-  it('portada: publicidad + ranking + República Dominicana', () => {
+  it('portada: negocios + empleos + República Dominicana', () => {
     const s = homeSeo();
-    expect(s.title).toMatch(/Publicidad/);
+    expect(s.title).toMatch(/Encuentra negocios y empleos/);
     expect(s.title).toMatch(/República Dominicana/);
-    expect(s.title.toLowerCase()).toContain('publicidad efectiva');
     expect(s.description).toMatch(/WhatsApp/);
-    expect(s.description.toLowerCase()).toContain('directorio de negocios');
+    expect(s.description.toLowerCase()).toContain('ofertas de empleo');
     expect(s.canonical).toBe('https://www.top.com.do/');
     expect(s.jsonLd?.[0]).toMatchObject({ '@type': 'Organization' });
   });

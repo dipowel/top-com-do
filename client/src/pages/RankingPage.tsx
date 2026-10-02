@@ -147,10 +147,10 @@ export default function RankingPage() {
               id="hero-title"
               className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl"
             >
-              El ranking <span className="text-gold">#1</span> de negocios de la República Dominicana
+              Encuentra negocios y empleos en República Dominicana gratis.
             </h1>
             <p className="text-sm leading-relaxed text-white/70">
-              Encuentra negocios y empleos gratis. Si tienes un negocio, compite por el #1 desde
+              Si tienes un negocio, compite por el #1 desde
               <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
             </p>
           </div>

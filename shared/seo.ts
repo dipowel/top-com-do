@@ -146,9 +146,9 @@ export function categoryFaqs(
 
 export function homeSeo(): SeoData {
   return {
-    title: 'Top.com.do — Publicidad efectiva y directorio de negocios en República Dominicana',
+    title: 'Top.com.do — Encuentra negocios y empleos en República Dominicana',
     description:
-      'Publicidad efectiva en República Dominicana: el directorio de negocios donde un solo líder manda por provincia y categoría. Supera a tu competencia con tu puja y recibe llamadas directas a tu WhatsApp. Negocios verificados en las 32 provincias.',
+      'Encuentra ofertas de empleo o posiciona tu negocio en el puesto #1 de tu categoría con llamadas directas a tu WhatsApp. ¡Regístrate gratis hoy en la plataforma líder de RD!',
     canonical: `${SITE_URL}/`,
     image: OG_IMAGE,
     jsonLd: [organizationLd(), websiteLd()],

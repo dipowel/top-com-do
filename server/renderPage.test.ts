@@ -11,7 +11,7 @@ describe('renderPage · metadatos por ruta', () => {
   it('portada', async () => {
     const r = await renderPage('/');
     expect(r.status).toBe(200);
-    expect(r.html).toContain('<title>Top.com.do — Publicidad efectiva y directorio de negocios en República Dominicana</title>');
+    expect(r.html).toContain('<title>Top.com.do — Encuentra negocios y empleos en República Dominicana</title>');
     expect(r.html).toContain('<link rel="canonical" href="https://www.top.com.do/" />');
     expect(r.html).not.toContain('noindex');
   });
