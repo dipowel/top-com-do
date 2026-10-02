@@ -18,10 +18,10 @@ export default function TopBar() {
         <Link to="/" className="flex shrink-0 items-center" aria-label="Top.com.do — Inicio">
           {logoOk ? (
             <img
-              src="/logo.png"
+              src="/logo-header.png"
               alt="Top.com.do"
-              width={48}
-              height={48}
+              width={560}
+              height={127}
               className="h-7 w-auto sm:h-8"
               onError={() => setLogoOk(false)}
             />
