@@ -450,7 +450,7 @@ export function organizationLd(): Record<string, unknown> {
     alternateName: 'Top RD',
     slogan: 'Publicidad efectiva y directorio de negocios en la República Dominicana',
     url: `${SITE_URL}/`,
-    logo: { '@type': 'ImageObject', url: LOGO_URL, width: 560, height: 127 },
+    logo: { '@type': 'ImageObject', url: LOGO_URL, width: 512, height: 512 },
     image: OG_IMAGE,
     description:
       'Directorio de autoridad y subastas de visibilidad de la República Dominicana.',
@@ -478,7 +478,7 @@ export function websiteLd(): Record<string, unknown> {
     publisher: {
       '@type': 'Organization',
       name: 'Top.com.do',
-      logo: { '@type': 'ImageObject', url: LOGO_URL, width: 560, height: 127 },
+      logo: { '@type': 'ImageObject', url: LOGO_URL, width: 512, height: 512 },
     },
     potentialAction: {
       '@type': 'SearchAction',

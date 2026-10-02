@@ -151,7 +151,7 @@ export default function ReciboPage() {
 
       <article className="glass space-y-4 p-5">
         <header className="flex items-center justify-between border-b border-white/10 pb-3">
-          <img src="/logo.png" alt={COMPANY.brand} width={120} height={27} className="h-6 w-auto" />
+          <img src="/logo.png" alt={COMPANY.brand} width={48} height={48} className="h-6 w-auto" />
           <div className="text-right text-[11px] text-white/45">
             Comprobante de pago
             <div className="font-mono text-xs text-white/70">{receipt.orderNumber}</div>

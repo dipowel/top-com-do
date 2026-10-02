@@ -20,8 +20,8 @@ export default function TopBar() {
             <img
               src="/logo.png"
               alt="Top.com.do"
-              width={560}
-              height={127}
+              width={48}
+              height={48}
               className="h-7 w-auto sm:h-8"
               onError={() => setLogoOk(false)}
             />
