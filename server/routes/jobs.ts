@@ -2,12 +2,13 @@ import { Router } from 'express';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
-import { jobs as J, profiles, jobReports } from '../../shared/schema';
+import { jobs as J, profiles, jobReports, jobLeads } from '../../shared/schema';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
 import { pingIndexNow } from '../lib/indexnow';
+import { clientIpHash } from '../lib/ip';
 import { queueJobIndexing } from '../lib/googleIndexing';
 import { contentHash } from '../../shared/job-normalize';
 import { PROVINCE_SLUGS } from '../../shared/provinces';
@@ -346,6 +347,46 @@ r.get(
     const data = await getCompanyJobsBySlug(req.params.slug);
     if (!data) throw new HttpError(404, 'Empresa sin vacantes activas');
     res.json(data);
+  }),
+);
+
+/**
+ * Captura pública de correo (modal "No te pierdas los nuevos empleos" al aplicar sin sesión).
+ * Sin auth a propósito. `jobCategory`/`jobProvince` son una foto real de la vacante al momento
+ * de capturar, para poder avisar de ofertas similares aunque la vacante original desaparezca.
+ */
+r.post(
+  '/leads',
+  ah(async (req, res) => {
+    const body = z
+      .object({ email: z.string().email(), jobId: z.string().uuid().optional() })
+      .parse(req.body);
+    const ipHash = clientIpHash(req);
+    const [recent] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(jobLeads)
+      .where(and(eq(jobLeads.ipHash, ipHash), gte(jobLeads.createdAt, sql`now() - interval '1 hour'`)));
+    if ((recent?.n ?? 0) >= 10) throw new HttpError(429, 'Demasiados intentos. Intenta más tarde.');
+
+    let jobCategory: string | null = null;
+    let jobProvince: string | null = null;
+    if (body.jobId) {
+      const [job] = await db
+        .select({ category: J.category, province: J.province })
+        .from(J)
+        .where(eq(J.id, body.jobId))
+        .limit(1);
+      jobCategory = job?.category ?? null;
+      jobProvince = job?.province ?? null;
+    }
+    await db.insert(jobLeads).values({
+      email: body.email,
+      jobId: body.jobId ?? null,
+      jobCategory,
+      jobProvince,
+      ipHash,
+    });
+    res.status(201).json({ ok: true });
   }),
 );
 

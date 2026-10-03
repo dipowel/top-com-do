@@ -150,6 +150,20 @@ const statements = [
   `UPDATE profiles SET category_id = (SELECT id FROM categories WHERE slug = 'inmobiliaria')
    WHERE subcategory IN ('Inmobiliarias y Alquileres', 'Hoteles, Villas y Cabañas')
      AND category_id = (SELECT id FROM categories WHERE slug = 'servicios')`,
+
+  // --- Captura de leads (correo) en el modal "No te pierdas los nuevos empleos" ---
+  `CREATE TABLE IF NOT EXISTS job_leads (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     email text NOT NULL,
+     job_id uuid REFERENCES jobs(id) ON DELETE SET NULL,
+     job_category text,
+     job_province text,
+     source text NOT NULL DEFAULT 'job_apply_modal',
+     ip_hash text,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS job_leads_email_idx ON job_leads (email)`,
+  `CREATE INDEX IF NOT EXISTS job_leads_ip_idx ON job_leads (ip_hash, created_at)`,
 ];
 
 for (const sql of statements) {

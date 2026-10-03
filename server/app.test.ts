@@ -127,6 +127,16 @@ describe('API base', () => {
     expect(res.status).toBe(401);
   });
 
+  it('POST /api/jobs/leads sin correo válido → 400', async () => {
+    const res = await request(app).post('/api/jobs/leads').send({ email: 'no-es-un-correo' });
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /api/jobs/leads con correo válido → [201, 500] (sin token: es público)', async () => {
+    const res = await request(app).post('/api/jobs/leads').send({ email: 'leads-test@example.com' });
+    expect([201, 500]).toContain(res.status);
+  });
+
   it('GET /api/admin/jobs sin token → 401', async () => {
     const res = await request(app).get('/api/admin/jobs');
     expect(res.status).toBe(401);

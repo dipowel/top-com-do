@@ -489,6 +489,30 @@ export const jobReports = pgTable('job_reports', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Correos capturados en el modal "No te pierdas los nuevos empleos" (visitante anónimo que
+ * va a aplicar a una vacante). `jobId` usa SET NULL para conservar el contacto aunque la
+ * vacante original se borre; `jobCategory`/`jobProvince` son una foto real de esos datos al
+ * momento de capturar, para poder mandar "ofertas similares" aunque la vacante ya no exista.
+ */
+export const jobLeads = pgTable(
+  'job_leads',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: text('email').notNull(),
+    jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'set null' }),
+    jobCategory: text('job_category'),
+    jobProvince: text('job_province'),
+    source: text('source').notNull().default('job_apply_modal'),
+    ipHash: text('ip_hash'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byEmail: index('job_leads_email_idx').on(t.email),
+    byIp: index('job_leads_ip_idx').on(t.ipHash, t.createdAt),
+  }),
+);
+
 export type User = typeof users.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Bid = typeof bids.$inferSelect;
@@ -502,3 +526,4 @@ export type Job = typeof jobs.$inferSelect;
 export type JobSource = typeof jobSources.$inferSelect;
 export type JobReport = typeof jobReports.$inferSelect;
 export type JobImportRun = typeof jobImportRuns.$inferSelect;
+export type JobLead = typeof jobLeads.$inferSelect;

@@ -8,6 +8,7 @@ import Spinner from '../../components/common/Spinner';
 import Breadcrumbs, { type Crumb } from '../../components/common/Breadcrumbs';
 import RelatedJobs from '../../components/jobs/RelatedJobs';
 import RichText from '../../components/jobs/RichText';
+import JobLeadModal from '../../components/jobs/JobLeadModal';
 import { whatsappLink, avatarFallback } from '../../lib/share';
 import { jobPostingSeo, jobGoneSeo } from '@shared/seo';
 import { jobCategoryLabel } from '@shared/job-categories';
@@ -19,11 +20,30 @@ type LoadState =
   | { kind: 'gone'; job: JobGone }
   | { kind: 'notfound' };
 
+const LEAD_PROMPT_SEEN_KEY = 'jobLeadPromptSeen';
+
+function hasSeenLeadPrompt(): boolean {
+  try {
+    return localStorage.getItem(LEAD_PROMPT_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markLeadPromptSeen() {
+  try {
+    localStorage.setItem(LEAD_PROMPT_SEEN_KEY, '1');
+  } catch {
+    /* navegador puede bloquear localStorage: no es crítico, solo se verá el modal otra vez */
+  }
+}
+
 export default function EmpleoDetailPage() {
   const { slug = '' } = useParams();
   const { user } = useAuth();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [reported, setReported] = useState(false);
+  const [pendingHref, setPendingHref] = useState<{ href: string; external: boolean } | null>(null);
 
   useEffect(() => {
     setState({ kind: 'loading' });
@@ -192,7 +212,13 @@ export default function EmpleoDetailPage() {
           <a
             href={applyHref}
             {...(job.applicationUrl ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})}
-            onClick={() => track('job_apply_click', { slug: job.slug })}
+            onClick={(e) => {
+              track('job_apply_click', { slug: job.slug });
+              if (!user && !hasSeenLeadPrompt()) {
+                e.preventDefault();
+                setPendingHref({ href: applyHref, external: Boolean(job.applicationUrl) });
+              }
+            }}
             className="btn-gold flex-1 whitespace-nowrap text-center text-sm"
           >
             Aplicar a esta vacante
@@ -288,6 +314,19 @@ export default function EmpleoDetailPage() {
       {reported && <p className="text-[11px] text-white/40">Gracias, revisaremos el reporte.</p>}
 
       <RelatedJobs jobs={job.related} />
+
+      {pendingHref && (
+        <JobLeadModal
+          jobId={job.id}
+          onContinue={() => {
+            markLeadPromptSeen();
+            const { href, external } = pendingHref;
+            setPendingHref(null);
+            if (external) window.open(href, '_blank', 'noopener,noreferrer');
+            else window.location.href = href;
+          }}
+        />
+      )}
     </div>
   );
 }
