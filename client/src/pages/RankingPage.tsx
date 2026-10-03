@@ -202,7 +202,7 @@ export default function RankingPage() {
       {/* Precio para tomar el puesto #1 */}
       {isHome ? (
         showRegisterCta ? (
-          <div className="glass flex flex-wrap items-center justify-between gap-3 border border-gold/30 p-3.5 shadow-glow">
+          <div className="glass flex flex-wrap items-center justify-between gap-4 border border-gold/30 p-4 shadow-glow">
             <div className="flex min-w-0 items-center gap-3">
               <span aria-hidden className="text-2xl">
                 🏪
@@ -214,18 +214,12 @@ export default function RankingPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <Link
-                to="/registrar-negocio"
-                className="btn-gold shrink-0 !px-5 !py-3 text-sm uppercase tracking-wide"
-              >
-                Registra tu negocio gratis <span aria-hidden>→</span>
-              </Link>
-              <p className="text-[11px] text-white/45">
-                Luego puedes competir por el #1 desde{' '}
-                <span className="text-gold">{formatDOP(MIN_BID)}</span>.
-              </p>
-            </div>
+            <Link
+              to="/registrar-negocio"
+              className="btn-gold shrink-0 !px-6 !py-3.5 text-base uppercase tracking-wide"
+            >
+              Registra tu negocio gratis <span aria-hidden>→</span>
+            </Link>
           </div>
         ) : (
           <div className="glass flex items-center justify-between gap-3 border border-gold/30 p-3.5 shadow-glow">
