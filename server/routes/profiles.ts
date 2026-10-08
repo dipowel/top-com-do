@@ -1,20 +1,21 @@
 import { createHash } from 'node:crypto';
 import { Router } from 'express';
-import { and, desc, eq, gte } from 'drizzle-orm';
+import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
 import { profileAvatarUrl } from '../../shared/site';
 import { canonicalCityName } from '../../shared/cities';
-import { profiles, categories, bids, users, reviews } from '../../shared/schema';
-import { rankingWindowStart } from '../../shared/bidding';
+import { profiles, categories, bids, users, reviews, businessEvents, rankLeaderHistory } from '../../shared/schema';
+import { rankingWindowStart, minNextBid } from '../../shared/bidding';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth, loadUser } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
 import { pingIndexNow } from '../lib/indexnow';
-import { PROVINCE_SLUGS, provinceName } from '../../shared/provinces';
+import { PROVINCE_SLUGS, provinceName, NATIONAL_SLUG } from '../../shared/provinces';
 import { assertCanReview, detectBombing, reviewSummary } from '../lib/reviews';
 import { clientIpHash } from '../lib/ip';
+import { getRankings } from '../lib/rankings';
 import { REVIEW_COMMENT_MAX, isValidRating } from '../../shared/reviews';
 import type { ReviewDTO } from '../../shared/types';
 
@@ -440,6 +441,212 @@ r.post(
     });
 
     res.status(201).json({ ok: true, summary: await reviewSummary(req.params.id) });
+  }),
+);
+
+// ---------------- Dashboard de métricas del negocio ----------------
+
+const BUSINESS_EVENT_TYPES = [
+  'business_view',
+  'whatsapp_click',
+  'location_click',
+  'instagram_click',
+  'website_click',
+] as const;
+const eventTypeSchema = z.enum(BUSINESS_EVENT_TYPES);
+
+function deviceTypeFromUA(ua: string | undefined): string {
+  const s = (ua || '').toLowerCase();
+  if (/ipad|tablet/.test(s)) return 'tablet';
+  if (/mobile|iphone|android/.test(s)) return 'mobile';
+  return 'desktop';
+}
+
+/** Público a propósito: la mayoría de visitantes no tiene sesión. Nunca bloquea al visitante. */
+r.post(
+  '/:id/events',
+  ah(async (req, res) => {
+    const body = z
+      .object({ eventType: eventTypeSchema, sessionId: z.string().max(80).optional() })
+      .parse(req.body);
+
+    const ipHash = clientIpHash(req);
+    const [recent] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(businessEvents)
+      .where(and(eq(businessEvents.ipHash, ipHash), gte(businessEvents.createdAt, sql`now() - interval '1 hour'`)));
+    if ((recent?.n ?? 0) >= 60) throw new HttpError(429, 'Demasiados eventos. Intenta más tarde.');
+
+    const prof = (
+      await db
+        .select({ province: profiles.province, categorySlug: categories.slug })
+        .from(profiles)
+        .innerJoin(categories, eq(categories.id, profiles.categoryId))
+        .where(eq(profiles.id, req.params.id))
+        .limit(1)
+    )[0];
+    if (!prof) throw new HttpError(404, 'Perfil no encontrado');
+
+    const me = await loadUser(req).catch(() => null);
+
+    await db.insert(businessEvents).values({
+      profileId: req.params.id,
+      eventType: body.eventType,
+      userId: me?.id ?? null,
+      sessionId: body.sessionId ?? null,
+      province: prof.province,
+      category: prof.categorySlug,
+      deviceType: deviceTypeFromUA(req.headers['user-agent']),
+      ipHash,
+    });
+    res.status(201).json({ ok: true });
+  }),
+);
+
+const RANGE_DAYS: Record<string, number | null> = { '7d': 7, '30d': 30, '90d': 90, all: null };
+
+/** Solo el dueño del negocio (o un admin) puede ver sus estadísticas — mismo criterio que /me/rank. */
+r.get(
+  '/:id/stats',
+  requireAuth,
+  ah(async (req, res) => {
+    const prof = (
+      await db
+        .select({
+          id: profiles.id,
+          ownerUserId: profiles.ownerUserId,
+          province: profiles.province,
+          categoryId: profiles.categoryId,
+          categorySlug: categories.slug,
+          categoryName: categories.name,
+        })
+        .from(profiles)
+        .innerJoin(categories, eq(categories.id, profiles.categoryId))
+        .where(eq(profiles.id, req.params.id))
+        .limit(1)
+    )[0];
+    if (!prof) throw new HttpError(404, 'Perfil no encontrado');
+
+    const isAdmin = req.user!.role === 'admin' || req.user!.role === 'superadmin';
+    if (prof.ownerUserId !== req.user!.id && !isAdmin) {
+      throw new HttpError(403, 'Solo el dueño del negocio puede ver estas estadísticas.');
+    }
+
+    const rangeParam = typeof req.query.range === 'string' ? req.query.range : '7d';
+    const range = rangeParam in RANGE_DAYS ? rangeParam : '7d';
+    const days = RANGE_DAYS[range];
+    const since = days != null ? new Date(Date.now() - days * 86_400_000) : new Date(0);
+
+    const counts = await db
+      .select({ eventType: businessEvents.eventType, n: sql<number>`count(*)::int` })
+      .from(businessEvents)
+      .where(and(eq(businessEvents.profileId, prof.id), gte(businessEvents.createdAt, since)))
+      .groupBy(businessEvents.eventType);
+    const byType: Record<string, number> = Object.fromEntries(BUSINESS_EVENT_TYPES.map((t) => [t, 0]));
+    for (const c of counts) if (c.eventType in byType) byType[c.eventType] = c.n;
+
+    // Serie diaria (hasta 90 días) para el gráfico de actividad.
+    const dailyResult = await db.execute(sql`
+      SELECT to_char(created_at AT TIME ZONE 'America/Santo_Domingo', 'YYYY-MM-DD') AS day,
+             event_type, count(*)::int AS n
+      FROM business_events
+      WHERE profile_id = ${prof.id} AND created_at >= ${since}
+      GROUP BY 1, 2
+      ORDER BY 1
+    `);
+    const dailyMap = new Map<string, Record<string, number>>();
+    for (const row of (dailyResult.rows ?? []) as Array<{ day: string; event_type: string; n: number }>) {
+      const bucket = dailyMap.get(row.day) ?? {};
+      bucket[row.event_type] = row.n;
+      dailyMap.set(row.day, bucket);
+    }
+    const daily = [...dailyMap.entries()].map(([date, v]) => ({
+      date,
+      businessView: v.business_view ?? 0,
+      whatsappClick: v.whatsapp_click ?? 0,
+      locationClick: v.location_click ?? 0,
+      instagramClick: v.instagram_click ?? 0,
+      websiteClick: v.website_click ?? 0,
+    }));
+
+    // Ranking actual — mismo cálculo que /me/rank, misma función getRankings sin tocar.
+    const prov = prof.province && prof.province !== NATIONAL_SLUG ? prof.province : undefined;
+    const ranking = await getRankings(prof.categorySlug, prov, 500);
+    const idx = ranking.findIndex((e) => e.profile.id === prof.id);
+    const position = idx >= 0 ? idx + 1 : null;
+    const isLeader = position === 1;
+    const leader = ranking[0];
+    const leaderTotalDop = leader?.totalDop ?? 0;
+    const myTotalDop = idx >= 0 ? ranking[idx]!.totalDop : 0;
+    const minBidDop = minNextBid({ leaderTotalDop, myTotalDop, iAmLeader: isLeader });
+
+    // "Días en #1" dentro del rango, a partir del historial real de líder del ámbito.
+    const scopeKey = `${prof.categorySlug}:${prov ?? 'national'}`;
+    const history = await db
+      .select({ startedAt: rankLeaderHistory.startedAt, endedAt: rankLeaderHistory.endedAt })
+      .from(rankLeaderHistory)
+      .where(and(eq(rankLeaderHistory.scopeKey, scopeKey), eq(rankLeaderHistory.profileId, prof.id)));
+    const nowMs = Date.now();
+    const sinceMs = since.getTime();
+    let leaderMs = 0;
+    for (const h of history) {
+      const start = Math.max(h.startedAt.getTime(), sinceMs);
+      const end = Math.min((h.endedAt ?? new Date(nowMs)).getTime(), nowMs);
+      if (end > start) leaderMs += end - start;
+    }
+    const daysAsLeader = Math.round((leaderMs / 86_400_000) * 10) / 10;
+
+    // Inversión real (pujas verificadas en el rango) y costo por interacción — solo si hay
+    // datos suficientes de ambos lados; nunca se muestra RD$0.00 ni se divide entre cero.
+    const [investedRow] = await db
+      .select({ total: sql<string>`coalesce(sum(${bids.amountDop}), 0)` })
+      .from(bids)
+      .where(and(eq(bids.profileId, prof.id), eq(bids.status, 'verified'), gte(bids.verifiedAt, since)));
+    const invested = Number(investedRow?.total ?? 0);
+    const interactions = byType.whatsapp_click! + byType.location_click! + byType.instagram_click! + byType.website_click!;
+    const costPerInteraction = invested > 0 && interactions > 0 ? invested / interactions : null;
+
+    // Comparación cualitativa: promedio de vistas de otros negocios de la misma categoría en
+    // el rango — nunca se expone el número exacto de un competidor puntual.
+    const avgResult = await db.execute(sql`
+      SELECT coalesce(avg(v.views), 0)::float8 AS avg_views
+      FROM (
+        SELECT be.profile_id, count(*) AS views
+        FROM business_events be
+        JOIN profiles p ON p.id = be.profile_id
+        WHERE be.event_type = 'business_view'
+          AND p.category_id = ${prof.categoryId}
+          AND be.created_at >= ${since}
+        GROUP BY be.profile_id
+      ) v
+    `);
+    const avgViews = Number((avgResult.rows?.[0] as { avg_views?: number } | undefined)?.avg_views ?? 0);
+    const comparison =
+      byType.business_view! > 0 && byType.business_view! >= avgViews
+        ? 'Tu negocio está entre los más vistos de esta categoría.'
+        : 'Sigue construyendo tu visibilidad — cada semana cuenta.';
+
+    res.json({
+      range,
+      counts: byType,
+      daily,
+      ranking: {
+        position,
+        isLeader,
+        leaderName: leader && !isLeader ? leader.profile.name : null,
+        leaderTotalDop,
+        myTotalDop,
+        minBidDop,
+        categoryName: prof.categoryName,
+        provinceName: prov ? provinceName(prov) : 'Todo RD',
+        daysAsLeader,
+      },
+      investment:
+        invested > 0 && costPerInteraction != null
+          ? { investedDop: invested, interactions, costPerInteractionDop: costPerInteraction }
+          : null,
+      comparison,
+    });
   }),
 );
 

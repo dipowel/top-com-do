@@ -5,6 +5,7 @@ import Spinner from '../components/common/Spinner';
 import { formatDOP } from '../lib/format';
 import { whatsappLink, avatarFallback } from '../lib/share';
 import { googleDirectionsUrl, wazeUrl } from '../lib/geo';
+import { trackBusinessEvent } from '../lib/businessTrack';
 import { useShell } from '../hooks/useShell';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
@@ -67,6 +68,13 @@ export default function ProfileDetailPage() {
       .then((r) => setJobs(r.items))
       .catch(() => setJobs([]));
   }, [id]);
+
+  // Vista real del negocio — no cuenta cuando el propio dueño revisa su ficha.
+  useEffect(() => {
+    if (!profile) return;
+    if (me && profile.ownerUserId === me.id) return;
+    trackBusinessEvent(profile.id, 'business_view');
+  }, [profile, me]);
 
   // Enlace del correo "Recuperar #1" / de las notificaciones → abre el checkout.
   useEffect(() => {
@@ -160,6 +168,7 @@ export default function ProfileDetailPage() {
                 href={whatsappLink(profile.whatsapp, `Hola ${profile.name}, te vi en https://www.top.com.do`)}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => trackBusinessEvent(profile.id, 'whatsapp_click')}
                 className="btn-emerald min-w-[88px] flex-1 !py-2 text-xs"
               >
                 WhatsApp
@@ -170,6 +179,7 @@ export default function ProfileDetailPage() {
                 href={profile.instagramUrl}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => trackBusinessEvent(profile.id, 'instagram_click')}
                 className="btn-ghost min-w-[88px] flex-1 !py-2 text-xs"
               >
                 Instagram
@@ -180,6 +190,7 @@ export default function ProfileDetailPage() {
                 href={profile.websiteUrl}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => trackBusinessEvent(profile.id, 'website_click')}
                 className="btn-ghost min-w-[64px] flex-1 !py-2 text-xs"
               >
                 Web
@@ -200,6 +211,7 @@ export default function ProfileDetailPage() {
                 href={googleDirectionsUrl(profile.latitude, profile.longitude)}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => trackBusinessEvent(profile.id, 'location_click')}
                 className="btn-ghost flex-1 !py-2 text-xs"
               >
                 📍 Google Maps
@@ -208,6 +220,7 @@ export default function ProfileDetailPage() {
                 href={wazeUrl(profile.latitude, profile.longitude)}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => trackBusinessEvent(profile.id, 'location_click')}
                 className="btn-ghost flex-1 !py-2 text-xs"
               >
                 Waze

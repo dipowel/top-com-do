@@ -303,6 +303,9 @@ export default function ProfilePage() {
                       {r ? ` · ${r.provinceName}` : ''}
                     </div>
                   </div>
+                  <Link to={`/perfil/negocio/${p.id}`} className="btn-ghost !py-1.5 text-xs">
+                    📊 Estadísticas
+                  </Link>
                   <button onClick={() => setEditing(p)} className="btn-ghost !py-1.5 text-xs">
                     Editar
                   </button>

@@ -513,6 +513,55 @@ export const jobLeads = pgTable(
   }),
 );
 
+/**
+ * Eventos del dashboard de métricas del negocio (vistas de ficha, clics de contacto). Solo lo
+ * imprescindible para producir estadísticas — nada de contenido de conversaciones ni
+ * coordenadas de quien interactúa. `province`/`category` son una foto real del perfil al
+ * momento del evento (igual que `job_leads`), para poder agregar aunque cambien después.
+ */
+export const businessEvents = pgTable(
+  'business_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    eventType: text('event_type').notNull(), // business_view | whatsapp_click | location_click | instagram_click | website_click
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    sessionId: text('session_id'),
+    province: text('province'),
+    category: text('category'),
+    deviceType: text('device_type'), // mobile | tablet | desktop
+    ipHash: text('ip_hash'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byProfile: index('business_events_profile_idx').on(t.profileId, t.eventType, t.createdAt),
+    byIp: index('business_events_ip_idx').on(t.ipHash, t.createdAt),
+  }),
+);
+
+/**
+ * Historial de quién fue #1 y desde/hasta cuándo, por ámbito (categoría×provincia o
+ * categoría×nacional) — alimenta "días en #1" del dashboard. Se escribe desde
+ * `checkDethronements()`, que ya detecta cada cambio de líder; esta tabla NO cambia ninguna
+ * regla de ranking, solo registra la historia de lo que ese cálculo ya decide.
+ */
+export const rankLeaderHistory = pgTable(
+  'rank_leader_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    scopeKey: text('scope_key').notNull(),
+    profileId: uuid('profile_id').references(() => profiles.id, { onDelete: 'set null' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+  },
+  (t) => ({
+    byScope: index('rank_leader_history_scope_idx').on(t.scopeKey, t.endedAt),
+    byProfile: index('rank_leader_history_profile_idx').on(t.profileId),
+  }),
+);
+
 export type User = typeof users.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Bid = typeof bids.$inferSelect;
@@ -527,3 +576,5 @@ export type JobSource = typeof jobSources.$inferSelect;
 export type JobReport = typeof jobReports.$inferSelect;
 export type JobImportRun = typeof jobImportRuns.$inferSelect;
 export type JobLead = typeof jobLeads.$inferSelect;
+export type BusinessEvent = typeof businessEvents.$inferSelect;
+export type RankLeaderHistoryRow = typeof rankLeaderHistory.$inferSelect;

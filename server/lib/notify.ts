@@ -1,6 +1,6 @@
-import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { notifications, users, profiles, categories, rankLeaders } from '../../shared/schema';
+import { notifications, users, profiles, categories, rankLeaders, rankLeaderHistory } from '../../shared/schema';
 import { getRankings } from './rankings';
 import { minNextBidForProfile } from './auction';
 import { sendEmail, dethroneEmailHtml } from './email';
@@ -93,6 +93,24 @@ export async function checkDethronements(bidProfileId: string): Promise<void> {
     const prev = (
       await db.select().from(rankLeaders).where(eq(rankLeaders.scopeKey, scopeKey)).limit(1)
     )[0];
+
+    // Historial de líder (para "días en #1" del dashboard) — se cierra la fila abierta del
+    // líder anterior y se abre una nueva para el actual, cada vez que cambia.
+    if (!prev?.leaderProfileId || prev.leaderProfileId !== newLeader.profile.id) {
+      if (prev?.leaderProfileId) {
+        await db
+          .update(rankLeaderHistory)
+          .set({ endedAt: new Date() })
+          .where(
+            and(
+              eq(rankLeaderHistory.scopeKey, scopeKey),
+              eq(rankLeaderHistory.profileId, prev.leaderProfileId),
+              isNull(rankLeaderHistory.endedAt),
+            ),
+          );
+      }
+      await db.insert(rankLeaderHistory).values({ scopeKey, profileId: newLeader.profile.id });
+    }
 
     // ¿Cambió el líder? El anterior queda en #2 → notificarlo (in-app + correo).
     if (prev?.leaderProfileId && prev.leaderProfileId !== newLeader.profile.id) {

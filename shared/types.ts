@@ -152,6 +152,45 @@ export interface MyRankEntry {
   minBidDop: number;
 }
 
+// ---------------- Dashboard de métricas del negocio ----------------
+
+export type BusinessEventType =
+  | 'business_view'
+  | 'whatsapp_click'
+  | 'location_click'
+  | 'instagram_click'
+  | 'website_click';
+
+export type BusinessStatsRange = '7d' | '30d' | '90d' | 'all';
+
+export interface BusinessStatsDay {
+  date: string;
+  businessView: number;
+  whatsappClick: number;
+  locationClick: number;
+  instagramClick: number;
+  websiteClick: number;
+}
+
+export interface BusinessStatsResponse {
+  range: BusinessStatsRange;
+  counts: Record<BusinessEventType, number>;
+  daily: BusinessStatsDay[];
+  ranking: {
+    position: number | null;
+    isLeader: boolean;
+    leaderName: string | null;
+    leaderTotalDop: number;
+    myTotalDop: number;
+    minBidDop: number;
+    categoryName: string;
+    provinceName: string;
+    daysAsLeader: number;
+  };
+  investment: { investedDop: number; interactions: number; costPerInteractionDop: number } | null;
+  comparison: string;
+}
+
 // ---------------- Empleos ----------------
 
 export interface JobCard {

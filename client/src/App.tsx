@@ -11,6 +11,7 @@ const MyBidsPage = lazy(() => import('./pages/MyBidsPage'));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ProfileDetailPage = lazy(() => import('./pages/ProfileDetailPage'));
+const BusinessDashboardPage = lazy(() => import('./pages/BusinessDashboardPage'));
 const PublicarPage = lazy(() => import('./pages/PublicarPage'));
 const RegisterBusinessPage = lazy(() => import('./pages/RegisterBusinessPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/mis-pujas" element={<MyBidsPage />} />
           <Route path="/favoritos" element={<FavoritesPage />} />
           <Route path="/perfil" element={<ProfilePage />} />
+          <Route path="/perfil/negocio/:id" element={<BusinessDashboardPage />} />
           <Route path="/notificaciones" element={<NotificationsPage />} />
           <Route path="/p/:id" element={<ProfileDetailPage />} />
           <Route path="/login" element={<LoginPage />} />

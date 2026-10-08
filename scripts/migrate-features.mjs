@@ -164,6 +164,31 @@ const statements = [
    )`,
   `CREATE INDEX IF NOT EXISTS job_leads_email_idx ON job_leads (email)`,
   `CREATE INDEX IF NOT EXISTS job_leads_ip_idx ON job_leads (ip_hash, created_at)`,
+
+  // --- Dashboard de métricas del negocio ---
+  `CREATE TABLE IF NOT EXISTS business_events (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+     event_type text NOT NULL,
+     user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+     session_id text,
+     province text,
+     category text,
+     device_type text,
+     ip_hash text,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS business_events_profile_idx ON business_events (profile_id, event_type, created_at)`,
+  `CREATE INDEX IF NOT EXISTS business_events_ip_idx ON business_events (ip_hash, created_at)`,
+  `CREATE TABLE IF NOT EXISTS rank_leader_history (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     scope_key text NOT NULL,
+     profile_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+     started_at timestamptz NOT NULL DEFAULT now(),
+     ended_at timestamptz
+   )`,
+  `CREATE INDEX IF NOT EXISTS rank_leader_history_scope_idx ON rank_leader_history (scope_key, ended_at)`,
+  `CREATE INDEX IF NOT EXISTS rank_leader_history_profile_idx ON rank_leader_history (profile_id)`,
 ];
 
 for (const sql of statements) {

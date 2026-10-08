@@ -89,6 +89,25 @@ describe('API base', () => {
     expect([404, 500]).toContain(res.status);
   });
 
+  it('POST /api/profiles/:id/events con eventType inválido → 400', async () => {
+    const res = await request(app)
+      .post('/api/profiles/00000000-0000-0000-0000-000000000000/events')
+      .send({ eventType: 'algo_inventado', sessionId: 'x' });
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /api/profiles/:id/events público (sin token) con evento válido → [201, 404, 429, 500]', async () => {
+    const res = await request(app)
+      .post('/api/profiles/00000000-0000-0000-0000-000000000000/events')
+      .send({ eventType: 'business_view', sessionId: 'test-session' });
+    expect([201, 404, 429, 500]).toContain(res.status);
+  });
+
+  it('GET /api/profiles/:id/stats sin token → 401', async () => {
+    const res = await request(app).get('/api/profiles/00000000-0000-0000-0000-000000000000/stats');
+    expect(res.status).toBe(401);
+  });
+
   it('ruta desconocida bajo /api → 404 JSON', async () => {
     const res = await request(app).get('/api/no-existe');
     expect(res.status).toBe(404);
