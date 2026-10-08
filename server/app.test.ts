@@ -84,6 +84,13 @@ describe('API base', () => {
     expect(res.status).toBe(401);
   });
 
+  it('POST /api/profiles sin token → 401', async () => {
+    const res = await request(app)
+      .post('/api/profiles')
+      .send({ name: 'x', categorySlug: 'servicios', latitude: 18.48, longitude: -69.9 });
+    expect(res.status).toBe(401);
+  });
+
   it('GET /api/profiles/:id/avatar responde (404 sin logo / 500 sin DB), nunca cuelga', async () => {
     const res = await request(app).get('/api/profiles/00000000-0000-0000-0000-000000000000/avatar');
     expect([404, 500]).toContain(res.status);

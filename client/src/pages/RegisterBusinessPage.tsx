@@ -80,6 +80,7 @@ export default function RegisterBusinessPage() {
           submitLabel="Publicar mi negocio gratis"
           busy={busy}
           error={error}
+          requireLocation
         />
       </div>
 

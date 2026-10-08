@@ -153,8 +153,10 @@ const createSchema = z.object({
   province: z.enum(PROVINCE_SLUGS as [string, ...string[]]).optional(),
   city: z.string().max(60).optional(),
   address: z.string().max(200).optional(),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
+  // Obligatoria solo al CREAR un negocio (ver updateSchema = createSchema.partial() más abajo,
+  // que la vuelve opcional para editar uno que ya existe y podría no tenerla aún).
+  latitude: z.number({ required_error: 'Debes capturar la ubicación de tu negocio.' }).min(-90).max(90),
+  longitude: z.number({ required_error: 'Debes capturar la ubicación de tu negocio.' }).min(-180).max(180),
   avatarUrl: imageValue.optional(),
 });
 

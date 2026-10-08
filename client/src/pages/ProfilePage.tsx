@@ -354,6 +354,7 @@ export default function ProfilePage() {
               onSubmit={createProfile}
               submitLabel="Registrar negocio"
               busy={busy}
+              requireLocation
             />
             {msg && <p className="text-xs text-white/60">{msg}</p>}
           </>

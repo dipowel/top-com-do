@@ -52,6 +52,7 @@ export default function ProfileForm({
   submitLabel,
   busy,
   error,
+  requireLocation,
 }: {
   value: ProfileFormValue;
   onChange: (v: ProfileFormValue) => void;
@@ -59,12 +60,17 @@ export default function ProfileForm({
   submitLabel: string;
   busy?: boolean;
   error?: string | null;
+  /** Obliga a capturar la ubicación (GPS o mapa) antes de poder enviar — solo al registrar un
+   *  negocio nuevo; no se usa al editar uno que ya existe (para no bloquear a quien aún no la
+   *  tenía). */
+  requireLocation?: boolean;
 }) {
   const cats = useCategories();
   const fileRef = useRef<HTMLInputElement>(null);
   const [imgBusy, setImgBusy] = useState(false);
   const [gpsBusy, setGpsBusy] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const set = (patch: Partial<ProfileFormValue>) => onChange({ ...value, ...patch });
 
   const subs = subcategoriesFor(value.categorySlug);
@@ -95,6 +101,13 @@ export default function ProfileForm({
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (requireLocation && value.latitude == null) {
+      setLocationError(
+        '📍 Debes capturar la ubicación de tu negocio antes de guardar — toca "Capturar mi ubicación GPS" (o marca el punto en el mapa) si no estás en el local.',
+      );
+      return;
+    }
+    setLocationError(null);
     onSubmit();
   }
 
@@ -228,8 +241,11 @@ export default function ProfileForm({
       </div>
 
       {/* Ubicación */}
-      <div className="glass p-3">
-        <label className="text-xs text-white/50">Ubicación del local (para “Cómo llegar”)</label>
+      <div className={`glass p-3 ${locationError && value.latitude == null ? 'border border-red-400/50' : ''}`}>
+        <label className="text-xs text-white/50">
+          Ubicación del local (para “Cómo llegar”)
+          {requireLocation && <span className="text-red-400"> *obligatorio</span>}
+        </label>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -259,6 +275,11 @@ export default function ProfileForm({
           )}
         </div>
         {gpsError && <p className="mt-1 text-[11px] text-red-400">{gpsError}</p>}
+        {locationError && value.latitude == null && (
+          <p className="mt-1.5 rounded-lg bg-red-400/10 px-2.5 py-1.5 text-[11px] text-red-300">
+            {locationError}
+          </p>
+        )}
         <Suspense
           fallback={
             <div className="mt-2 flex h-56 items-center justify-center rounded-xl border border-white/10 text-xs text-white/40">
