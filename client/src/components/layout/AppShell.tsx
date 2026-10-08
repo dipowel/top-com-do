@@ -3,10 +3,8 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
 import Footer from './Footer';
-import PujarAhoraButton from './PujarAhoraButton';
 import BidWizard from '../bid/BidWizard';
 import { useAuth } from '../../hooks/useAuth';
-import { useAuctionAccess } from '../../hooks/useAuctionAccess';
 import type { ShellContext } from '../../hooks/useShell';
 
 function RefBanner() {
@@ -35,7 +33,6 @@ function RefBanner() {
 }
 
 export default function AppShell() {
-  const canBid = useAuctionAccess();
   const [bidOpen, setBidOpen] = useState(false);
   const [presetProfileId, setPresetProfileId] = useState<string | undefined>(undefined);
   const [presetCategory, setPresetCategory] = useState<string | undefined>(undefined);
@@ -54,17 +51,10 @@ export default function AppShell() {
     <div className="min-h-full">
       <TopBar />
       <RefBanner />
-      <main
-        className={`mx-auto w-full max-w-3xl px-4 pt-5 ${
-          canBid
-            ? 'pb-[calc(8.5rem+env(safe-area-inset-bottom))]'
-            : 'pb-[calc(6rem+env(safe-area-inset-bottom))]'
-        }`}
-      >
+      <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5">
         <Outlet context={ctx} />
         <Footer />
       </main>
-      {canBid && <PujarAhoraButton onClick={() => openBid(undefined)} />}
       <BottomNav />
       {bidOpen && (
         <BidWizard
