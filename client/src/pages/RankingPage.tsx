@@ -44,14 +44,14 @@ export default function RankingPage() {
   const [geoFailed, setGeoFailed] = useState(false);
   const nearby = useNearbyRankings(mode === 'nearby' ? coords : null, cat, province);
 
-  // Solo en la portada nacional: vitrina secundaria de las últimas vacantes (no compite con
-  // el ranking de negocios, que sigue siendo la propuesta principal de la página).
-  const isHomeRoute = cat === 'todo-rd' && province === 'todo-rd';
+  // Vitrina secundaria de las últimas vacantes (no compite con el ranking de negocios, que
+  // sigue siendo la propuesta principal de la página) — sigue la provincia elegida. Nunca se
+  // filtra por categoría de NEGOCIO (`cat`): la categoría de empleo es otra taxonomía distinta.
   const [homeJobs, setHomeJobs] = useState<Job[]>([]);
   useEffect(() => {
-    if (!isHomeRoute) return;
     let alive = true;
-    api<JobsListResponse>('/jobs?limit=3')
+    const qs = province !== 'todo-rd' ? `&province=${province}` : '';
+    api<JobsListResponse>(`/jobs?limit=3${qs}`)
       .then((res) => {
         if (alive) setHomeJobs(res.items);
       })
@@ -59,7 +59,7 @@ export default function RankingPage() {
     return () => {
       alive = false;
     };
-  }, [isHomeRoute]);
+  }, [province]);
 
   // Cualquier cambio de ruta (provincia, categoría, botón atrás) sale del modo cercano.
   useEffect(() => {
@@ -342,19 +342,19 @@ export default function RankingPage() {
       </div>
 
       {/* Sección secundaria y discreta: no compite visualmente con el ranking de negocios. */}
-      {isHome && homeJobs.length > 0 && (
+      {homeJobs.length > 0 && (
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-[11px] font-bold uppercase tracking-wide text-white/45">
-                💼 Empleos en RD
+                💼 Empleos en {isNational ? 'RD' : zona}
               </h2>
               <p className="truncate text-[11px] text-white/35">
                 Las mejores oportunidades laborales, en un solo lugar.
               </p>
             </div>
             <Link
-              to="/empleos"
+              to={isNational ? '/empleos' : `/empleos/${province}`}
               className="shrink-0 text-[11px] font-semibold text-white/50 hover:text-white/80"
             >
               Ver todos los empleos →
