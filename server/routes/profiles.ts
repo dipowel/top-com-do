@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Router } from 'express';
-import { and, desc, eq, gte, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
 import { profileAvatarUrl } from '../../shared/site';
@@ -16,7 +16,7 @@ import { PROVINCE_SLUGS, provinceName, NATIONAL_SLUG } from '../../shared/provin
 import { assertCanReview, detectBombing, reviewSummary } from '../lib/reviews';
 import { clientIpHash } from '../lib/ip';
 import { getRankings } from '../lib/rankings';
-import { isBetaOpen, grantFounderBid, FOUNDER_REFERENCE } from '../lib/founders';
+import { isBetaOpen, currentFounderCount, grantFounderBid, FOUNDER_REFERENCE } from '../lib/founders';
 import { REVIEW_COMMENT_MAX, isValidRating } from '../../shared/reviews';
 import type { ReviewDTO } from '../../shared/types';
 
@@ -224,10 +224,7 @@ r.post(
     // Programa Fundadores: si la Beta sigue abierta, asigna el siguiente número y regala la
     // puja (gratis, sin tarjeta). Nunca debe poder tumbar el registro del negocio si falla.
     try {
-      const [{ n }] = await db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(profiles)
-        .where(isNotNull(profiles.founderNumber));
+      const n = await currentFounderCount();
       if (isBetaOpen(n)) {
         const founderNumber = n + 1;
         await db.update(profiles).set({ founderNumber }).where(eq(profiles.id, inserted[0]!.id));

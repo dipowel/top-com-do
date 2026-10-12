@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Modal from '../common/Modal';
 import SecurityBadges from '../common/SecurityBadges';
 import { api } from '../../lib/api';
@@ -45,6 +45,21 @@ export default function BiddingCheckoutModal({
   const [loading, setLoading] = useState<null | 'card' | 'credit'>(null);
   const [error, setError] = useState<string | null>(null);
   const [okCredit, setOkCredit] = useState(false);
+  // Durante la Beta de Fundadores se oculta el pago con tarjeta (nunca bloquea por un fallo de
+  // red: si esta consulta falla, se asume abierto y el servidor sigue siendo quien de verdad
+  // decide — ver `POST /checkout/azul`).
+  const [betaOpen, setBetaOpen] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    api<{ open: boolean }>('/checkout/beta-status')
+      .then((r) => {
+        if (alive) setBetaOpen(r.open);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const belowMin = amount < min;
   const canUseCredit = credit >= amount && !belowMin;
@@ -198,13 +213,20 @@ export default function BiddingCheckoutModal({
 
         {error && <p className="text-xs text-red-400">{error}</p>}
 
-        <button
-          onClick={payWithCard}
-          disabled={!accepted || belowMin || loading !== null}
-          className="btn-gold w-full"
-        >
-          {loading === 'card' ? 'Redirigiendo a AZUL…' : '💳 Pagar con tarjeta'}
-        </button>
+        {betaOpen ? (
+          <p className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-center text-xs text-gold">
+            🎉 Estamos en lanzamiento Beta — los primeros 250 negocios entran gratis como
+            Fundadores. El pago con tarjeta se reactivará cuando cerremos la Beta.
+          </p>
+        ) : (
+          <button
+            onClick={payWithCard}
+            disabled={!accepted || belowMin || loading !== null}
+            className="btn-gold w-full"
+          >
+            {loading === 'card' ? 'Redirigiendo a AZUL…' : '💳 Pagar con tarjeta'}
+          </button>
+        )}
 
         {credit > 0 && (
           <button
@@ -223,8 +245,9 @@ export default function BiddingCheckoutModal({
         <div className="flex flex-col items-center gap-1.5 pt-1">
           <SecurityBadges variant="compact" />
           <p className="text-center text-[10px] text-white/30">
-            El pago se procesa de forma segura por AZUL bajo 3D Secure y PCI-DSS. Las pujas por el #1
-            son definitivas y no reembolsables una vez procesadas (ver{' '}
+            {betaOpen
+              ? 'Las pujas por el #1 son definitivas y no reembolsables una vez procesadas (ver '
+              : 'El pago se procesa de forma segura por AZUL bajo 3D Secure y PCI-DSS. Las pujas por el #1 son definitivas y no reembolsables una vez procesadas (ver '}
             <a href="/devoluciones" target="_blank" rel="noopener noreferrer" className="underline">
               Devoluciones
             </a>

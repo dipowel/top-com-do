@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt } from 'drizzle-orm';
+import { and, eq, isNotNull, lt, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { bids, profiles, categories } from '../../shared/schema';
 import { getActiveRound } from './rounds';
@@ -22,6 +22,20 @@ export function isBetaOpen(currentFounderCount: number): boolean {
   if ((process.env.BETA_CLOSED || '').trim().toLowerCase() === 'true') return false;
   const max = Number(process.env.MAX_BETA_BUSINESSES) || 250;
   return currentFounderCount < max;
+}
+
+/** Cuántos negocios ya son Fundadores ahora mismo — única fuente, para no repetir la query. */
+export async function currentFounderCount(): Promise<number> {
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(profiles)
+    .where(isNotNull(profiles.founderNumber));
+  return n;
+}
+
+/** Conveniencia: `isBetaOpen()` ya resuelto contra el conteo actual de la base de datos. */
+export async function isBetaOpenNow(): Promise<boolean> {
+  return isBetaOpen(await currentFounderCount());
 }
 
 /** Monto (RD$) de la puja que se regala — en 4 bloques redondos de RD$100 según orden de

@@ -11,8 +11,12 @@ import { audit } from '../lib/audit';
 import { minNextBidForProfile } from '../lib/auction';
 import { formatDOP } from '../../shared/fx';
 import { azulConfigured, buildAzulSaleForm, newAzulOrderNumber } from '../lib/azul';
+import { isBetaOpenNow } from '../lib/founders';
 
 const r = Router();
+
+const BETA_PAYMENT_MESSAGE =
+  'Estamos en el lanzamiento Beta: los primeros 250 negocios entran gratis como Fundadores. El pago con tarjeta se reactiva en cuanto cerremos la Beta.';
 
 const schema = z.object({
   profileId: z.string().uuid(),
@@ -54,6 +58,14 @@ async function openBidForCheckout(
   return { bidId: bid!.id, amountDop, profileName: profile.name, roundId: round.id };
 }
 
+/** Público, sin auth: para que el cliente oculte el botón de tarjeta sin tener que presionarlo. */
+r.get(
+  '/beta-status',
+  ah(async (_req, res) => {
+    res.json({ open: await isBetaOpenNow() });
+  }),
+);
+
 /** Inicia el pago de una puja: el navegador hace el POST al Payment Page de AZUL. */
 r.post(
   '/azul',
@@ -61,6 +73,9 @@ r.post(
   ah(async (req, res) => {
     const body = schema.parse(req.body);
 
+    if (await isBetaOpenNow()) {
+      throw new HttpError(503, BETA_PAYMENT_MESSAGE);
+    }
     if (!azulConfigured()) {
       throw new HttpError(
         503,
