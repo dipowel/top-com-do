@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuctionAccess } from '../../hooks/useAuctionAccess';
+import { useAuth } from '../../hooks/useAuth';
 
 /** Envoltura común de los íconos de línea (grid 24, trazo redondeado). */
 function I({ children, ...p }: SVGProps<SVGSVGElement>) {
@@ -48,18 +48,28 @@ const UserIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M5 20c1-3.5 4-5.5 7-5.5s6 2 7 5.5" />
   </I>
 );
+const PlusIcon = (p: SVGProps<SVGSVGElement>) => (
+  <I {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </I>
+);
 
 const items = [
-  { to: '/', label: 'Ranking', end: true, Icon: TrophyIcon },
-  { to: '/explorar', label: 'Explorar', Icon: CompassIcon },
-  { to: '/mis-pujas', label: 'Mis Pujas', auction: true, Icon: TrendingIcon },
-  { to: '/favoritos', label: 'Favoritos', Icon: StarIcon },
-  { to: '/perfil', label: 'Perfil', Icon: UserIcon },
+  { to: '/', label: 'Ranking', end: true, Icon: TrophyIcon, cta: false },
+  { to: '/explorar', label: 'Explorar', end: false, Icon: CompassIcon, cta: false },
+  { to: '/favoritos', label: 'Favoritos', end: false, Icon: StarIcon, cta: false },
+  { to: '/perfil', label: 'Perfil', end: false, Icon: UserIcon, cta: false },
 ];
 
 export default function BottomNav() {
-  const canBid = useAuctionAccess();
-  const visible = items.filter((it) => !it.auction || canBid);
+  const { accountType, isAdmin } = useAuth();
+  const hasBusiness = accountType === 'merchant' || isAdmin;
+  // Espacio central: CTA para registrar negocio si aún no tiene uno, o acceso directo a sus
+  // pujas si ya es dueño — siempre visible, nunca se oculta.
+  const center = hasBusiness
+    ? { to: '/mis-pujas', label: 'Mis Pujas', end: false, Icon: TrendingIcon, cta: true }
+    : { to: '/registrar-negocio', label: 'Registrar', end: false, Icon: PlusIcon, cta: true };
+  const visible = [items[0], items[1], center, items[2], items[3]];
 
   return (
     <nav
@@ -67,7 +77,7 @@ export default function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/80 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
     >
       <div className="mx-auto flex max-w-3xl items-stretch justify-around px-1">
-        {visible.map(({ to, label, end, Icon }) => (
+        {visible.map(({ to, label, end, Icon, cta }) => (
           <NavLink
             key={to}
             to={to}
@@ -79,14 +89,14 @@ export default function BottomNav() {
               <>
                 <span
                   className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${
-                    isActive ? 'bg-gold/15 text-gold' : 'text-white/55'
+                    isActive || cta ? 'bg-gold/15 text-gold' : 'text-white/55'
                   }`}
                 >
                   <Icon className="h-[22px] w-[22px]" />
                 </span>
                 <span
                   className={`w-full truncate text-center text-[10px] leading-none transition-colors ${
-                    isActive ? 'font-semibold text-gold' : 'font-medium text-white/55'
+                    isActive || cta ? 'font-semibold text-gold' : 'font-medium text-white/55'
                   }`}
                 >
                   {label}

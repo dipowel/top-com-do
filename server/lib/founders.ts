@@ -24,11 +24,15 @@ export function isBetaOpen(currentFounderCount: number): boolean {
   return currentFounderCount < max;
 }
 
-/** Monto (RD$) de la puja que se regala — decreciente por orden de llegada, para que el
- *  Fundador #1 siempre quede por encima del #2, el #2 del #3, etc. Rango ~RD$101–RD$350:
- *  números reales y modestos, no cifras infladas que se vean falsas en ningún reporte. */
+/** Monto (RD$) de la puja que se regala — en 4 bloques redondos de RD$100 según orden de
+ *  llegada (400 → 300 → 200 → 100), nunca cifras sueltas como 349/348/347 que se vean
+ *  descontroladas en la interfaz. Varios Fundadores de un mismo bloque pueden compartir monto:
+ *  no afecta su posición real porque el ranking separa por categoría/provincia. */
 export function founderGrantAmount(founderNumber: number): number {
-  return 100 + Math.max(1, 251 - founderNumber);
+  const max = Number(process.env.MAX_BETA_BUSINESSES) || 250;
+  const tierSize = Math.ceil(max / 4);
+  const tier = Math.min(4, Math.ceil(founderNumber / tierSize));
+  return (5 - tier) * 100;
 }
 
 /**
@@ -115,7 +119,7 @@ export async function grantFounderBid(
 export async function refreshFounderBids(): Promise<{ checked: number; refreshed: number }> {
   const cutoff = new Date(Date.now() - REFRESH_AFTER_DAYS * 86_400_000);
   const rows = await db
-    .select({ id: bids.id })
+    .select({ id: bids.id, founderNumber: profiles.founderNumber })
     .from(bids)
     .innerJoin(profiles, eq(profiles.id, bids.profileId))
     .where(
@@ -127,7 +131,12 @@ export async function refreshFounderBids(): Promise<{ checked: number; refreshed
       ),
     );
   for (const row of rows) {
-    await db.update(bids).set({ verifiedAt: new Date() }).where(eq(bids.id, row.id));
+    // Recalcula el monto con la fórmula vigente — se autocorrige solo si alguna vez cambia.
+    const amountDop = founderGrantAmount(row.founderNumber!);
+    await db
+      .update(bids)
+      .set({ verifiedAt: new Date(), amountDop: amountDop.toFixed(2), amountOriginal: amountDop.toFixed(2) })
+      .where(eq(bids.id, row.id));
   }
   return { checked: rows.length, refreshed: rows.length };
 }
