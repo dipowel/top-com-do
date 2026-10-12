@@ -110,10 +110,14 @@ export const profiles = pgTable(
     longitude: numeric('longitude', { precision: 10, scale: 7 }),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // Programa Fundadores (Beta): orden de llegada entre los primeros 250 negocios. `null` =
+    // no es Fundador. Nunca se reasigna ni se recalcula — una vez asignado, es permanente.
+    founderNumber: integer('founder_number'),
   },
   (t) => ({
     byCategory: index('profiles_category_idx').on(t.categoryId),
     byProvince: index('profiles_province_idx').on(t.province),
+    founderNumberUniq: uniqueIndex('profiles_founder_number_uniq').on(t.founderNumber),
   }),
 );
 

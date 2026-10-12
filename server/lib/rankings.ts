@@ -50,6 +50,7 @@ export async function getRankings(
       longitude: profiles.longitude,
       categorySlug: categories.slug,
       categoryName: categories.name,
+      founderNumber: profiles.founderNumber,
       totalDop: total,
       bidsCount: count,
     })
@@ -93,6 +94,7 @@ export async function getRankings(
       longitude: r.longitude != null ? Number(r.longitude) : null,
       categorySlug: r.categorySlug,
       categoryName: r.categoryName,
+      founderNumber: r.founderNumber,
     },
   }));
 }
@@ -132,7 +134,7 @@ export async function getNearbyRankings(
         p.id, p.name, p.handle, p.avatar_url, p.bio, p.tagline, p.subcategory,
         p.whatsapp, p.instagram_url, p.website_url, p.province, p.city, p.address,
         p.latitude::float8 AS latitude, p.longitude::float8 AS longitude,
-        c.slug AS category_slug, c.name AS category_name,
+        c.slug AS category_slug, c.name AS category_name, p.founder_number,
         sum(b.amount_dop)::float8 AS total_dop,
         count(b.id)::int AS bids_count,
         ${distKm} AS dist_km
@@ -196,6 +198,7 @@ export async function getNearbyRankings(
         longitude: r.longitude != null ? Number(r.longitude) : null,
         categorySlug: String(r.category_slug),
         categoryName: String(r.category_name),
+        founderNumber: r.founder_number != null ? Number(r.founder_number) : null,
       },
     };
   });

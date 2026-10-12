@@ -17,6 +17,8 @@ export interface RankingProfile {
   longitude: number | null;
   categorySlug: string;
   categoryName: string;
+  /** Número de Fundador (Programa Beta) — `null` si no es Fundador. */
+  founderNumber: number | null;
 }
 
 export interface RankingEntry {

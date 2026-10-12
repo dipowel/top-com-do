@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Router } from 'express';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
 import { profileAvatarUrl } from '../../shared/site';
@@ -16,6 +16,7 @@ import { PROVINCE_SLUGS, provinceName, NATIONAL_SLUG } from '../../shared/provin
 import { assertCanReview, detectBombing, reviewSummary } from '../lib/reviews';
 import { clientIpHash } from '../lib/ip';
 import { getRankings } from '../lib/rankings';
+import { isBetaOpen, grantFounderBid, FOUNDER_REFERENCE } from '../lib/founders';
 import { REVIEW_COMMENT_MAX, isValidRating } from '../../shared/reviews';
 import type { ReviewDTO } from '../../shared/types';
 
@@ -40,6 +41,7 @@ const profileColumns = {
   longitude: profiles.longitude,
   categorySlug: categories.slug,
   categoryName: categories.name,
+  founderNumber: profiles.founderNumber,
 };
 
 function numOrNull(v: unknown): number | null {
@@ -218,6 +220,22 @@ r.post(
       .where(and(eq(users.id, req.user!.id), eq(users.accountType, 'consumer')));
 
     await audit(req.user!.id, 'profile.create', 'profile', inserted[0]!.id, { handle, name: body.name });
+
+    // Programa Fundadores: si la Beta sigue abierta, asigna el siguiente número y regala la
+    // puja (gratis, sin tarjeta). Nunca debe poder tumbar el registro del negocio si falla.
+    try {
+      const [{ n }] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(profiles)
+        .where(isNotNull(profiles.founderNumber));
+      if (isBetaOpen(n)) {
+        const founderNumber = n + 1;
+        await db.update(profiles).set({ founderNumber }).where(eq(profiles.id, inserted[0]!.id));
+        await grantFounderBid(inserted[0]!.id, founderNumber);
+      }
+    } catch (e) {
+      console.error('[profiles] grant de Fundador falló:', (e as Error).message);
+    }
 
     // IndexNow: la nueva ficha y sus landings de categoría/provincia.
     const prov = body.province && body.province !== 'todo-rd' ? body.province : null;
@@ -600,10 +618,19 @@ r.get(
 
     // Inversión real (pujas verificadas en el rango) y costo por interacción — solo si hay
     // datos suficientes de ambos lados; nunca se muestra RD$0.00 ni se divide entre cero.
+    // Se excluye la puja gratis del Programa Fundadores: nunca se pagó, así que no cuenta como
+    // "inversión" — mostrarla sería inventar un número.
     const [investedRow] = await db
       .select({ total: sql<string>`coalesce(sum(${bids.amountDop}), 0)` })
       .from(bids)
-      .where(and(eq(bids.profileId, prof.id), eq(bids.status, 'verified'), gte(bids.verifiedAt, since)));
+      .where(
+        and(
+          eq(bids.profileId, prof.id),
+          eq(bids.status, 'verified'),
+          gte(bids.verifiedAt, since),
+          or(ne(bids.reference, FOUNDER_REFERENCE), isNull(bids.reference)),
+        ),
+      );
     const invested = Number(investedRow?.total ?? 0);
     const interactions = byType.whatsapp_click! + byType.location_click! + byType.instagram_click! + byType.website_click!;
     const costPerInteraction = invested > 0 && interactions > 0 ? invested / interactions : null;

@@ -36,6 +36,7 @@ interface Detail {
   longitude: number | null;
   categorySlug: string;
   categoryName: string;
+  founderNumber: number | null;
   reviewSummary: ReviewSummary | null;
 }
 
@@ -139,7 +140,17 @@ export default function ProfileDetailPage() {
             alt={profile.name}
           />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-extrabold">{profile.name}</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="truncate text-lg font-extrabold">{profile.name}</h1>
+              {profile.founderNumber != null && (
+                <span
+                  title={`Fundador #${profile.founderNumber} — se unió en el lanzamiento Beta`}
+                  className="shrink-0 rounded-full border border-gold/40 bg-gold/10 px-1.5 py-0.5 text-[9px] font-bold text-gold"
+                >
+                  🏅 Fundador
+                </span>
+              )}
+            </div>
             {profile.tagline && <p className="text-sm text-white/70">{profile.tagline}</p>}
             <p className="truncate text-xs text-white/40">
               {profile.subcategory ? `${profile.subcategory} · ` : ''}

@@ -189,6 +189,23 @@ const statements = [
    )`,
   `CREATE INDEX IF NOT EXISTS rank_leader_history_scope_idx ON rank_leader_history (scope_key, ended_at)`,
   `CREATE INDEX IF NOT EXISTS rank_leader_history_profile_idx ON rank_leader_history (profile_id)`,
+
+  // --- Programa Fundadores (Beta): primeros 250 negocios, por orden de llegada ---
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS founder_number integer`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS profiles_founder_number_uniq ON profiles (founder_number)`,
+  // Backfill idempotente: asigna número de Fundador a los negocios activos YA registrados que
+  // todavía no tengan uno, por fecha de creación, continuando después del máximo ya asignado
+  // (nunca pisa un número existente, sin importar cuándo se corra este script) y sin pasar de
+  // 250 en total.
+  `WITH ranked AS (
+     SELECT id, row_number() OVER (ORDER BY created_at ASC) AS rn
+     FROM profiles
+     WHERE is_active = true AND founder_number IS NULL
+   )
+   UPDATE profiles SET founder_number = ranked.rn + (SELECT coalesce(max(founder_number), 0) FROM profiles)
+   FROM ranked
+   WHERE profiles.id = ranked.id
+     AND ranked.rn + (SELECT coalesce(max(founder_number), 0) FROM profiles) <= 250`,
 ];
 
 for (const sql of statements) {

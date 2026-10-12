@@ -9,6 +9,8 @@ interface Overview {
   verifiedTotal: number;
   eligibleReferrals: number;
   flaggedReviews: number;
+  founderCount: number;
+  maxBetaBusinesses: number;
 }
 
 export default function AdminOverview() {
@@ -47,6 +49,12 @@ export default function AdminOverview() {
       <div className="glass p-4">
         <div className="text-xs text-white/40">Ventana de ranking</div>
         <div className="text-sm font-bold">Móvil · últimos {d.windowDays ?? 7} días</div>
+      </div>
+      <div className="glass p-4">
+        <div className="text-xs text-white/40">🏅 Fundadores (Programa Beta)</div>
+        <div className="text-2xl font-black text-gold">
+          {d.founderCount}/{d.maxBetaBusinesses}
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { rankingWindowStart, RANKING_WINDOW_DAYS } from '../../shared/bidding';
 import { z } from 'zod';
 import { db } from '../db';
@@ -18,6 +18,7 @@ import {
 } from '../../shared/schema';
 import { toJobCard, toJobDetail, expireStaleJobs } from '../lib/jobs';
 import { pingIndexNow } from '../lib/indexnow';
+import { FOUNDER_REFERENCE } from '../lib/founders';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
@@ -42,10 +43,22 @@ r.get(
       .select({ n: sql<string>`count(*)` })
       .from(bids)
       .where(eq(bids.status, 'pending'));
+    // Excluye las pujas gratis del Programa Fundadores: nunca se pagaron, no cuentan como
+    // dinero "recaudado" — mostrarlas aquí sería inventar un número.
     const verified = await db
       .select({ s: sql<string>`coalesce(sum(${bids.amountDop}),0)` })
       .from(bids)
-      .where(and(eq(bids.status, 'verified'), gte(bids.verifiedAt, rankingWindowStart())));
+      .where(
+        and(
+          eq(bids.status, 'verified'),
+          gte(bids.verifiedAt, rankingWindowStart()),
+          or(ne(bids.reference, FOUNDER_REFERENCE), isNull(bids.reference)),
+        ),
+      );
+    const founders = await db
+      .select({ n: sql<string>`count(*)` })
+      .from(profiles)
+      .where(isNotNull(profiles.founderNumber));
     const refs = await db
       .select({ n: sql<string>`count(*)` })
       .from(referrals)
@@ -61,6 +74,8 @@ r.get(
       verifiedTotal: Number(verified[0]?.s ?? 0),
       eligibleReferrals: Number(refs[0]?.n ?? 0),
       flaggedReviews: Number(flaggedReviews[0]?.n ?? 0),
+      founderCount: Number(founders[0]?.n ?? 0),
+      maxBetaBusinesses: Number(process.env.MAX_BETA_BUSINESSES) || 250,
     });
   }),
 );

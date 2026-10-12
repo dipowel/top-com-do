@@ -61,6 +61,14 @@ export default function LeaderCard({
             <Link to={`/p/${p.id}`} className="truncate text-[15px] font-bold">
               {p.name}
             </Link>
+            {p.founderNumber != null && (
+              <span
+                title={`Fundador #${p.founderNumber} — se unió en el lanzamiento Beta`}
+                className="shrink-0 rounded-full border border-gold/40 bg-gold/10 px-1.5 py-0.5 text-[9px] font-bold text-gold"
+              >
+                🏅 Fundador
+              </span>
+            )}
           </div>
           {p.tagline ? (
             <div className="truncate text-xs text-white/60">{p.tagline}</div>
