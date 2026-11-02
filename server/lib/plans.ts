@@ -4,6 +4,7 @@ import { profiles, planPayments, featuredSlots } from '../../shared/schema';
 import { getPlanPrices } from './settings';
 import { notifyUser, notifyAdmins } from './notify';
 import { audit } from './audit';
+import { onPlanPaymentApproved } from './rewards';
 
 const MAX_FEATURED_PER_SCOPE = 3;
 const PLAN_DURATION_DAYS = 30;
@@ -68,7 +69,7 @@ export async function approvePlanPayment(
   paymentId: string,
   adminUserId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [payment] = await tx.select().from(planPayments).where(eq(planPayments.id, paymentId)).limit(1);
     if (!payment) return { ok: false, reason: 'Pago no encontrado' };
     if (payment.status !== 'pending') return { ok: false, reason: 'Este pago ya fue resuelto' };
@@ -124,8 +125,18 @@ export async function approvePlanPayment(
       });
     }
     await audit(adminUserId, 'plan_payment.approve', 'plan_payment', paymentId, { plan: payment.plan });
-    return { ok: true };
+    return { ok: true as const };
   });
+
+  if (result.ok) {
+    const [approved] = await db
+      .select({ requestedByUserId: planPayments.requestedByUserId })
+      .from(planPayments)
+      .where(eq(planPayments.id, paymentId))
+      .limit(1);
+    if (approved) await onPlanPaymentApproved(approved.requestedByUserId).catch(() => {});
+  }
+  return result;
 }
 
 export async function rejectPlanPayment(paymentId: string, adminUserId: string, reason: string): Promise<void> {
