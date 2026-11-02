@@ -4,7 +4,7 @@ import { profiles, reviews, businessEvents } from '../../shared/schema';
 import { computeRankScore } from '../../shared/rankScore';
 import { computeProfileCompleteness } from '../../shared/profileCompleteness';
 import { getRankings, getNearbyRankings } from './rankings';
-import { getOrganicRankings } from './rankingsOrganic';
+import { getOrganicRankings, getOrganicNearbyRankings } from './rankingsOrganic';
 import type { RankingEntry, NearbyRankingEntry } from '../../shared/types';
 
 /** Flag de servidor: ¿está activo el ranking v2 (orgánico, por reseñas)? Mientras sea `false`
@@ -25,8 +25,7 @@ export async function getActiveRankings(
     : getRankings(categorySlug, provinceSlug, limit);
 }
 
-/** Mismo criterio para "Cerca de mí" — el modelo orgánico todavía no tiene una versión propia
- *  de este modo (queda para una fase posterior), así que sigue usando el de pujas por ahora. */
+/** Mismo punto único de decisión para "Cerca de mí". */
 export async function getActiveNearbyRankings(
   lat: number,
   lon: number,
@@ -34,7 +33,9 @@ export async function getActiveNearbyRankings(
   provinceSlug?: string,
   limit = 100,
 ): Promise<NearbyRankingEntry[]> {
-  return getNearbyRankings(lat, lon, categorySlug, provinceSlug, limit);
+  return isNewModelEnabled()
+    ? getOrganicNearbyRankings(lat, lon, categorySlug, provinceSlug, limit)
+    : getNearbyRankings(lat, lon, categorySlug, provinceSlug, limit);
 }
 
 /** Recalcula y guarda rating_avg/reviews_count/fast_response_rate/profile_completeness/

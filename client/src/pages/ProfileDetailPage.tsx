@@ -9,6 +9,7 @@ import { trackBusinessEvent } from '../lib/businessTrack';
 import { useShell } from '../hooks/useShell';
 import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../hooks/useAuth';
+import { useNewModel } from '../hooks/useNewModel';
 import { useSeo } from '../hooks/useSeo';
 import ProfileReviews from '../components/reviews/ProfileReviews';
 import JobCard from '../components/jobs/JobCard';
@@ -55,6 +56,7 @@ export default function ProfileDetailPage() {
   const { openBid } = useShell();
   const { ids, toggle } = useFavorites();
   const { user, me } = useAuth();
+  const newModel = useNewModel();
   const [params, setParams] = useSearchParams();
   const autoOpened = useRef(false);
 
@@ -241,44 +243,48 @@ export default function ProfileDetailPage() {
         </div>
       </div>
 
-      {/* Apoyo comunitario — visible para todos; BidWizard pide login/registro si hace falta */}
-      <section className="glass space-y-2 border border-gold/30 p-4 shadow-glow">
-        <p className="text-sm font-bold text-gold">⚡ ¿Te encantó este lugar? Ayúdalos a liderar</p>
-        <p className="text-xs text-white/60">
-          No dejes que bajen del trono. Puja con un pequeño aporte para llevarlos o mantenerlos en el{' '}
-          <span className="font-semibold text-gold">#1</span> indiscutible de la provincia.
-        </p>
-        <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
-          ⚡ Pujar y Apoyar este Negocio
-        </button>
-      </section>
+      {!newModel && (
+        <>
+          {/* Apoyo comunitario — visible para todos; BidWizard pide login/registro si hace falta */}
+          <section className="glass space-y-2 border border-gold/30 p-4 shadow-glow">
+            <p className="text-sm font-bold text-gold">⚡ ¿Te encantó este lugar? Ayúdalos a liderar</p>
+            <p className="text-xs text-white/60">
+              No dejes que bajen del trono. Puja con un pequeño aporte para llevarlos o mantenerlos en el{' '}
+              <span className="font-semibold text-gold">#1</span> indiscutible de la provincia.
+            </p>
+            <button onClick={() => openBid(profile.id)} className="btn-gold w-full">
+              ⚡ Pujar y Apoyar este Negocio
+            </button>
+          </section>
 
-      <div className="glass space-y-1.5 p-4 text-sm">
-        <div className="flex justify-between">
-          <span className="text-white/50">Visibilidad acumulada (últimos 7 días)</span>
-          <b className="text-gold">{formatDOP(total)}</b>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-white/50">❤️ Apoyo de la comunidad</span>
-          <b className="text-white/80">
-            {bids.length} respaldo{bids.length === 1 ? '' : 's'} activo
-            {bids.length === 1 ? '' : 's'}
-          </b>
-        </div>
-      </div>
-
-      <div>
-        <h2 className="mb-2 text-sm font-bold text-white/70">Pujas verificadas</h2>
-        <div className="space-y-2">
-          {bids.map((b) => (
-            <div key={b.id} className="glass flex justify-between p-3 text-sm">
-              <span>{b.bidderName || 'Anónimo'}</span>
-              <span className="font-bold text-gold">{formatDOP(Number(b.amountDop))}</span>
+          <div className="glass space-y-1.5 p-4 text-sm">
+            <div className="flex justify-between">
+              <span className="text-white/50">Visibilidad acumulada (últimos 7 días)</span>
+              <b className="text-gold">{formatDOP(total)}</b>
             </div>
-          ))}
-          {!bids.length && <p className="text-xs text-white/40">Sin pujas verificadas todavía.</p>}
-        </div>
-      </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-white/50">❤️ Apoyo de la comunidad</span>
+              <b className="text-white/80">
+                {bids.length} respaldo{bids.length === 1 ? '' : 's'} activo
+                {bids.length === 1 ? '' : 's'}
+              </b>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="mb-2 text-sm font-bold text-white/70">Pujas verificadas</h2>
+            <div className="space-y-2">
+              {bids.map((b) => (
+                <div key={b.id} className="glass flex justify-between p-3 text-sm">
+                  <span>{b.bidderName || 'Anónimo'}</span>
+                  <span className="font-bold text-gold">{formatDOP(Number(b.amountDop))}</span>
+                </div>
+              ))}
+              {!bids.length && <p className="text-xs text-white/40">Sin pujas verificadas todavía.</p>}
+            </div>
+          </div>
+        </>
+      )}
 
       {jobs.length > 0 && (
         <section className="space-y-2">

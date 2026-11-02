@@ -9,6 +9,7 @@ import { useRankings } from '../hooks/useRankings';
 import { useNearbyRankings } from '../hooks/useNearbyRankings';
 import { useShell } from '../hooks/useShell';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
+import { useNewModel } from '../hooks/useNewModel';
 import { useAuth } from '../hooks/useAuth';
 import { useSeo } from '../hooks/useSeo';
 import { getCurrentPosition, type Coords } from '../lib/geo';
@@ -33,6 +34,7 @@ export default function RankingPage() {
   const { data, loading, error } = useRankings(cat, province);
   const { openBid } = useShell();
   const canBid = useAuctionAccess();
+  const newModel = useNewModel();
   const { loading: authLoading } = useAuth();
   const showRegisterCta = !authLoading && !canBid;
   const [search, setSearch] = useState('');
@@ -150,8 +152,14 @@ export default function RankingPage() {
               Encuentra negocios y empleos en República Dominicana gratis.
             </h1>
             <p className="text-sm leading-relaxed text-white/70">
-              Si tienes un negocio, compite por el #1 desde
-              <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
+              {newModel ? (
+                <>Negocios verificados por reseñas reales — escríbeles directo por WhatsApp.</>
+              ) : (
+                <>
+                  Si tienes un negocio, compite por el #1 desde
+                  <span className="font-semibold text-gold"> RD$100</span> y llévate las llamadas.
+                </>
+              )}
             </p>
           </div>
         </header>
@@ -199,8 +207,31 @@ export default function RankingPage() {
         <CategoryTabs value={cat} hrefFor={(slug) => rankingHref(slug, province)} />
       </nav>
 
-      {/* Precio para tomar el puesto #1 */}
-      {isHome ? (
+      {/* Precio para tomar el puesto #1 (ranking v2: siempre el llamado a registrarse gratis) */}
+      {newModel ? (
+        !loading &&
+        !error && (
+          <div className="glass flex flex-wrap items-center justify-between gap-4 border border-gold/30 p-4 shadow-glow">
+            <div className="flex min-w-0 items-center gap-3">
+              <span aria-hidden className="text-2xl">
+                🏪
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-extrabold text-white">¿Tienes un negocio?</div>
+                <div className="text-[13px] text-white/60">
+                  Regístralo <span className="font-bold text-gold">GRATIS</span> y aparece en Top.
+                </div>
+              </div>
+            </div>
+            <Link
+              to="/registrar-negocio"
+              className="btn-gold shrink-0 !px-6 !py-3.5 text-base uppercase tracking-wide"
+            >
+              Registra tu negocio gratis <span aria-hidden>→</span>
+            </Link>
+          </div>
+        )
+      ) : isHome ? (
         showRegisterCta ? (
           <div className="glass flex flex-wrap items-center justify-between gap-4 border border-gold/30 p-4 shadow-glow">
             <div className="flex min-w-0 items-center gap-3">
@@ -295,7 +326,9 @@ export default function RankingPage() {
       )}
       {!loading && !data.length && !error && (
         <div className="glass p-6 text-center text-sm text-white/50">
-          Aún no hay pujas activas en {zona}. ¡La posición #1 está libre!
+          {newModel
+            ? `Aún no hay negocios con reseñas en ${zona}. ¡Sé el primero en aparecer aquí!`
+            : `Aún no hay pujas activas en ${zona}. ¡La posición #1 está libre!`}
         </div>
       )}
       {nearbyActive && !nearby.loading && !isNearbyList && !!data.length && (
@@ -314,7 +347,7 @@ export default function RankingPage() {
           </h2>
           {isNearbyList ? (
             <span className="text-[11px] font-semibold text-[#f7b924]">
-              ordenado por puja y cercanía
+              {newModel ? 'ordenado por cercanía' : 'ordenado por puja y cercanía'}
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-soft">

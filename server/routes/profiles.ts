@@ -43,6 +43,8 @@ const profileColumns = {
   categorySlug: categories.slug,
   categoryName: categories.name,
   founderNumber: profiles.founderNumber,
+  ratingAvg: profiles.ratingAvg,
+  reviewsCount: profiles.reviewsCount,
 };
 
 function numOrNull(v: unknown): number | null {
@@ -84,6 +86,7 @@ r.get(
         provinceName: x.province ? provinceName(x.province) : null,
         latitude: numOrNull(x.latitude),
         longitude: numOrNull(x.longitude),
+        ratingAvg: Number(x.ratingAvg),
       })),
     );
   }),
@@ -354,6 +357,7 @@ function toReviewDTO(row: {
   createdAt: Date;
   authorName: string | null;
   userId: string;
+  fastResponse: boolean | null;
 }, meId?: string): ReviewDTO {
   return {
     id: row.id,
@@ -365,6 +369,7 @@ function toReviewDTO(row: {
     createdAt: row.createdAt.toISOString(),
     authorName: row.authorName || 'Usuario',
     isMine: !!meId && row.userId === meId,
+    fastResponse: row.fastResponse,
   };
 }
 
@@ -390,6 +395,7 @@ r.get(
         createdAt: reviews.createdAt,
         userId: reviews.userId,
         authorName: users.displayName,
+        fastResponse: reviews.fastResponse,
       })
       .from(reviews)
       .leftJoin(users, eq(users.id, reviews.userId))

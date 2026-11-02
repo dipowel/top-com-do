@@ -26,6 +26,9 @@ export interface RankingEntry {
   isChampion: boolean;
   totalDop: number;
   bidsCount: number;
+  /** Ranking v2 (orgánico): promedio real de estrellas (1-5). `undefined` bajo el modelo de
+   *  pujas — solo lo rellena `getOrganicRankings()`. */
+  ratingAvg?: number;
   profile: RankingProfile;
 }
 
@@ -116,6 +119,8 @@ export interface ReviewDTO {
   createdAt: string;
   authorName: string;
   isMine: boolean;
+  /** "¿Te respondieron rápido?" — null si no contestó la pregunta. */
+  fastResponse: boolean | null;
 }
 
 export interface ReviewSummary {
