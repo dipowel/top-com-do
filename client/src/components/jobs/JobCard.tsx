@@ -18,7 +18,7 @@ export default function JobCard({ job }: { job: Job }) {
     <Link
       to={`/empleo/${job.slug}`}
       className={`glass flex gap-3 p-3.5 transition hover:border-gold/40 ${
-        job.isFeatured ? 'border border-gold/40' : ''
+        job.isUrgent ? 'border border-red-400/50' : job.isFeatured ? 'border border-gold/40' : ''
       }`}
     >
       {/* Logo real del negocio cuando existe; si no, ficha de iniciales — nunca una foto inventada. */}
@@ -37,10 +37,16 @@ export default function JobCard({ job }: { job: Job }) {
             <div className="truncate text-sm font-extrabold text-white">{job.title}</div>
             <div className="truncate text-xs text-white/55">{job.companyName}</div>
           </div>
-          {job.isFeatured && (
-            <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">
-              ⭐ Destacado
+          {job.isUrgent ? (
+            <span className="shrink-0 rounded-full bg-red-400/15 px-2 py-0.5 text-[10px] font-bold text-red-300">
+              🔥 Urgente
             </span>
+          ) : (
+            job.isFeatured && (
+              <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">
+                ⭐ Destacado
+              </span>
+            )
           )}
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/50">

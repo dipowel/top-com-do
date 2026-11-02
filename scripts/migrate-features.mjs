@@ -279,6 +279,35 @@ const statements = [
      plan_payment_id uuid REFERENCES plan_payments(id) ON DELETE SET NULL
    )`,
   `CREATE INDEX IF NOT EXISTS featured_slots_scope_idx ON featured_slots (category_id, province, ends_at)`,
+
+  // --- Fase 4: panel del negocio + empleos urgentes/alertas por WhatsApp ---
+  `ALTER TABLE jobs ADD COLUMN IF NOT EXISTS urgent_until timestamptz`,
+
+  `CREATE TABLE IF NOT EXISTS whatsapp_alerts (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     phone text NOT NULL,
+     keywords text,
+     zone text,
+     active boolean NOT NULL DEFAULT true,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+
+  `CREATE TABLE IF NOT EXISTS job_urgent_payments (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     job_id uuid NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+     requested_by_user_id uuid NOT NULL REFERENCES users(id),
+     amount_dop numeric(12,2) NOT NULL,
+     bank_account_id uuid REFERENCES bank_accounts(id) ON DELETE SET NULL,
+     reference text,
+     proof_data_url text,
+     status plan_payment_status NOT NULL DEFAULT 'pending',
+     approved_by_user_id uuid REFERENCES users(id),
+     approved_at timestamptz,
+     rejection_reason text,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS job_urgent_payments_job_idx ON job_urgent_payments (job_id)`,
+  `CREATE INDEX IF NOT EXISTS job_urgent_payments_status_idx ON job_urgent_payments (status)`,
 ];
 
 for (const sql of statements) {

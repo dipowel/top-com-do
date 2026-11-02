@@ -5,6 +5,7 @@ import { settings } from '../../shared/schema';
 const DEFAULTS: Record<string, string> = {
   plan_verificado_price_dop: '500',
   plan_destacado_price_dop: '1500',
+  job_urgent_price_dop: '500',
 };
 
 export async function getSetting(key: string): Promise<string> {

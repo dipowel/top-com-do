@@ -59,6 +59,7 @@ export default function ProfileDetailPage() {
   const newModel = useNewModel();
   const [params, setParams] = useSearchParams();
   const autoOpened = useRef(false);
+  const reviewsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api<Detail>(`/profiles/${id}`)
@@ -89,6 +90,16 @@ export default function ProfileDetailPage() {
       setParams(next, { replace: true });
     }
   }, [params, id, openBid, setParams]);
+
+  // Enlace corto "Pedir reseñas por WhatsApp" (/r/:handle) → baja directo a dejar la reseña.
+  useEffect(() => {
+    if (params.get('pedir_resena') === '1' && profile) {
+      reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const next = new URLSearchParams(params);
+      next.delete('pedir_resena');
+      setParams(next, { replace: true });
+    }
+  }, [params, profile, setParams]);
 
   // Vuelta desde AZUL con pago declinado / cancelado.
   const pago = params.get('pago') ?? '';
@@ -298,7 +309,9 @@ export default function ProfileDetailPage() {
       )}
 
       {/* Reseñas — debajo de las pujas, sin tocar la sección de competencia de arriba */}
-      <ProfileReviews profileId={profile.id} isOwner={isOwner} />
+      <div ref={reviewsRef}>
+        <ProfileReviews profileId={profile.id} isOwner={isOwner} />
+      </div>
     </div>
   );
 }

@@ -365,7 +365,7 @@ async function resolve(pathname: string): Promise<Resolved> {
 
   if (
     head &&
-    ['login', 'perfil', 'registrar-negocio', 'mis-pujas', 'favoritos', 'notificaciones', 'admin', 'recibo'].includes(
+    ['login', 'perfil', 'registrar-negocio', 'mis-pujas', 'favoritos', 'notificaciones', 'admin', 'recibo', 'r'].includes(
       head,
     )
   ) {

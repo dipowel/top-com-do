@@ -13,6 +13,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ProfileDetailPage = lazy(() => import('./pages/ProfileDetailPage'));
 const BusinessDashboardPage = lazy(() => import('./pages/BusinessDashboardPage'));
 const PlanesPage = lazy(() => import('./pages/PlanesPage'));
+const ReviewLinkPage = lazy(() => import('./pages/ReviewLinkPage'));
 const PublicarPage = lazy(() => import('./pages/PublicarPage'));
 const RegisterBusinessPage = lazy(() => import('./pages/RegisterBusinessPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/perfil/negocio/:id/planes" element={<PlanesPage />} />
           <Route path="/notificaciones" element={<NotificationsPage />} />
           <Route path="/p/:id" element={<ProfileDetailPage />} />
+          <Route path="/r/:handle" element={<ReviewLinkPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/terminos" element={<TerminosPage />} />
           <Route path="/privacidad" element={<PrivacidadPage />} />

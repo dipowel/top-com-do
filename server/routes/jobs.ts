@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
-import { jobs as J, profiles, jobReports, jobLeads } from '../../shared/schema';
+import { jobs as J, profiles, jobReports, jobLeads, whatsappAlerts } from '../../shared/schema';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
@@ -36,6 +36,7 @@ import {
   getCompanyJobsBySlug,
 } from '../lib/jobs';
 import { ensureDirectSource } from '../lib/jobSources';
+import { createJobUrgentRequest } from '../lib/jobUrgent';
 
 const r = Router();
 
@@ -387,6 +388,55 @@ r.post(
       ipHash,
     });
     res.status(201).json({ ok: true });
+  }),
+);
+
+/** Suscripción pública "avísame por WhatsApp" — Fase 1: solo guarda la solicitud. */
+r.post(
+  '/alerts',
+  ah(async (req, res) => {
+    const body = z
+      .object({
+        phone: z.string().min(8).max(20),
+        keywords: z.string().max(120).optional(),
+        zone: z.string().max(40).optional(),
+      })
+      .parse(req.body);
+    const zone = body.zone && PROVINCE_SLUGS.includes(body.zone) && body.zone !== 'todo-rd' ? body.zone : null;
+    await db.insert(whatsappAlerts).values({
+      phone: normalizePhone(body.phone),
+      keywords: body.keywords?.trim() || null,
+      zone,
+    });
+    res.status(201).json({ ok: true });
+  }),
+);
+
+/** El dueño de la vacante pide que se destaque como URGENTE por 7 días — pago por transferencia. */
+r.post(
+  '/:id/urgent-request',
+  requireAuth,
+  ah(async (req, res) => {
+    const body = z
+      .object({
+        bankAccountId: z.string().uuid().optional(),
+        reference: z.string().max(80).optional(),
+        proofDataUrl: z.string().max(2_800_000).optional(),
+      })
+      .parse(req.body);
+    const [job] = await db.select({ id: J.id, postedByUserId: J.postedByUserId }).from(J).where(eq(J.id, req.params.id)).limit(1);
+    if (!job) throw new HttpError(404, 'Vacante no encontrada');
+    const isAdmin = req.user!.role !== 'user';
+    if (job.postedByUserId !== req.user!.id && !isAdmin) throw new HttpError(403, 'No autorizado');
+
+    const id = await createJobUrgentRequest({
+      jobId: job.id,
+      requestedByUserId: req.user!.id,
+      bankAccountId: body.bankAccountId,
+      reference: body.reference,
+      proofDataUrl: body.proofDataUrl,
+    });
+    res.status(201).json({ ok: true, id });
   }),
 );
 

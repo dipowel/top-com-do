@@ -6,6 +6,7 @@ import { api } from '../../lib/api';
 import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal';
 import JobForm, { emptyJobForm, jobFormToPayload, type JobFormValue } from '../../components/jobs/JobForm';
+import UrgentJobModal from '../../components/jobs/UrgentJobModal';
 import { SITE_URL } from '@shared/site';
 import type { JobDetail } from '@shared/types';
 
@@ -48,6 +49,7 @@ export default function MisVacantesPage() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<JobDetail[] | null>(null);
   const [editing, setEditing] = useState<JobDetail | null>(null);
+  const [urgentJob, setUrgentJob] = useState<JobDetail | null>(null);
   const [form, setForm] = useState<JobFormValue>(emptyJobForm);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +153,16 @@ export default function MisVacantesPage() {
                 <button onClick={() => openEdit(j)} className="btn-ghost !py-1 text-xs">
                   Editar
                 </button>
+                {j.status === 'published' && !j.isUrgent && (
+                  <button onClick={() => setUrgentJob(j)} className="btn-ghost !py-1 text-xs text-red-300">
+                    🔥 Hacer urgente
+                  </button>
+                )}
+                {j.isUrgent && (
+                  <span className="rounded-full bg-red-400/15 px-2 py-1 text-[10px] font-bold text-red-300">
+                    🔥 Ya es urgente
+                  </span>
+                )}
                 {j.status !== 'closed' && (
                   <button
                     onClick={() => closeJob(j.id)}
@@ -176,6 +188,10 @@ export default function MisVacantesPage() {
             error={error}
           />
         </Modal>
+      )}
+
+      {urgentJob && (
+        <UrgentJobModal job={urgentJob} onClose={() => setUrgentJob(null)} onSent={load} />
       )}
     </div>
   );

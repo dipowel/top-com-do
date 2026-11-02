@@ -95,9 +95,11 @@ export async function recomputeProfileRankFields(profileId: string): Promise<voi
 }
 
 /** Verifica una reseña si el autor tiene un contacto real (WhatsApp/ubicación/Instagram/web, NO
- *  solo una vista) con este negocio de al menos 1 hora de antigüedad — reutiliza `businessEvents`
- *  tal cual, sin tabla paralela de "visitas". No entra en `rank_score` todavía (ver comentario
- *  en el esquema): es informativa, para un sello "Reseña verificada" en una fase posterior. */
+ *  solo una vista) con este negocio de al menos 1 hora de antigüedad, O entró por el enlace
+ *  corto "Pedir reseñas por WhatsApp" (`review_link`, válido al instante — el negocio ya lo
+ *  invitó directo, no hace falta esperar) — reutiliza `businessEvents` tal cual, sin tabla
+ *  paralela de "visitas". No entra en `rank_score` todavía (ver comentario en el esquema): es
+ *  informativa, para un sello "Reseña verificada" en una fase posterior. */
 export async function markReviewVerifiedIfEligible(reviewId: string, profileId: string, userId: string): Promise<void> {
   const [contact] = await db
     .select({ id: businessEvents.id })
@@ -107,12 +109,17 @@ export async function markReviewVerifiedIfEligible(reviewId: string, profileId: 
         eq(businessEvents.profileId, profileId),
         eq(businessEvents.userId, userId),
         or(
-          eq(businessEvents.eventType, 'whatsapp_click'),
-          eq(businessEvents.eventType, 'location_click'),
-          eq(businessEvents.eventType, 'instagram_click'),
-          eq(businessEvents.eventType, 'website_click'),
+          eq(businessEvents.eventType, 'review_link'),
+          and(
+            or(
+              eq(businessEvents.eventType, 'whatsapp_click'),
+              eq(businessEvents.eventType, 'location_click'),
+              eq(businessEvents.eventType, 'instagram_click'),
+              eq(businessEvents.eventType, 'website_click'),
+            ),
+            lt(businessEvents.createdAt, sql`now() - interval '1 hour'`),
+          ),
         ),
-        lt(businessEvents.createdAt, sql`now() - interval '1 hour'`),
       ),
     )
     .limit(1);

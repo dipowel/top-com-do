@@ -217,6 +217,7 @@ export interface JobCard {
   workModeLabel: string;
   salaryLabel: string;
   isFeatured: boolean;
+  isUrgent: boolean;
   publishedAt: string | null;
   /** Logo real del negocio vinculado (solo si tiene avatar propio) — `null` = usar iniciales en UI. */
   companyLogoUrl: string | null;

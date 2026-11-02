@@ -18,12 +18,15 @@ import {
   planPayments,
   featuredSlots,
   bankAccounts,
+  jobUrgentPayments,
+  whatsappAlerts,
 } from '../../shared/schema';
 import { toJobCard, toJobDetail, expireStaleJobs } from '../lib/jobs';
 import { pingIndexNow } from '../lib/indexnow';
 import { FOUNDER_REFERENCE } from '../lib/founders';
 import { recomputeProfileRankFields } from '../lib/rankingModel';
 import { approvePlanPayment, rejectPlanPayment } from '../lib/plans';
+import { approveJobUrgentPayment, rejectJobUrgentPayment } from '../lib/jobUrgent';
 import { getSetting, setSetting } from '../lib/settings';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
@@ -774,6 +777,62 @@ r.post(
   }),
 );
 
+// ---------------- Vacantes urgentes + alertas por WhatsApp (Fase 4) ----------------
+
+r.get(
+  '/job-urgent-payments',
+  ah(async (req, res) => {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const rows = await db
+      .select({
+        id: jobUrgentPayments.id,
+        amountDop: jobUrgentPayments.amountDop,
+        status: jobUrgentPayments.status,
+        reference: jobUrgentPayments.reference,
+        proofDataUrl: jobUrgentPayments.proofDataUrl,
+        rejectionReason: jobUrgentPayments.rejectionReason,
+        createdAt: jobUrgentPayments.createdAt,
+        jobId: jobUrgentPayments.jobId,
+        jobTitle: J.title,
+        requesterEmail: users.email,
+      })
+      .from(jobUrgentPayments)
+      .innerJoin(J, eq(J.id, jobUrgentPayments.jobId))
+      .leftJoin(users, eq(users.id, jobUrgentPayments.requestedByUserId))
+      .where(status ? eq(jobUrgentPayments.status, status as 'pending' | 'approved' | 'rejected') : undefined)
+      .orderBy(desc(jobUrgentPayments.createdAt))
+      .limit(200);
+    res.json(rows.map((r) => ({ ...r, amountDop: Number(r.amountDop) })));
+  }),
+);
+
+r.post(
+  '/job-urgent-payments/:id/approve',
+  ah(async (req, res) => {
+    const result = await approveJobUrgentPayment(req.params.id, req.user!.id);
+    if (!result.ok) throw new HttpError(409, result.reason);
+    res.json({ ok: true });
+  }),
+);
+
+r.post(
+  '/job-urgent-payments/:id/reject',
+  ah(async (req, res) => {
+    const { reason } = z.object({ reason: z.string().max(300).optional() }).parse(req.body);
+    await rejectJobUrgentPayment(req.params.id, req.user!.id, reason ?? '');
+    res.json({ ok: true });
+  }),
+);
+
+/** Suscriptores de alertas de empleo — exportable a CSV desde el cliente. */
+r.get(
+  '/whatsapp-alerts',
+  ah(async (_req, res) => {
+    const rows = await db.select().from(whatsappAlerts).orderBy(desc(whatsappAlerts.createdAt)).limit(500);
+    res.json(rows);
+  }),
+);
+
 // ---------------- Referidos ----------------
 r.get(
   '/referrals',
@@ -978,6 +1037,7 @@ r.get(
     res.json({
       planVerificadoPriceDop: Number(await getSetting('plan_verificado_price_dop')),
       planDestacadoPriceDop: Number(await getSetting('plan_destacado_price_dop')),
+      jobUrgentPriceDop: Number(await getSetting('job_urgent_price_dop')),
     });
   }),
 );
@@ -986,10 +1046,15 @@ r.patch(
   '/settings',
   ah(async (req, res) => {
     const body = z
-      .object({ planVerificadoPriceDop: z.number().positive().optional(), planDestacadoPriceDop: z.number().positive().optional() })
+      .object({
+        planVerificadoPriceDop: z.number().positive().optional(),
+        planDestacadoPriceDop: z.number().positive().optional(),
+        jobUrgentPriceDop: z.number().positive().optional(),
+      })
       .parse(req.body);
     if (body.planVerificadoPriceDop != null) await setSetting('plan_verificado_price_dop', String(body.planVerificadoPriceDop));
     if (body.planDestacadoPriceDop != null) await setSetting('plan_destacado_price_dop', String(body.planDestacadoPriceDop));
+    if (body.jobUrgentPriceDop != null) await setSetting('job_urgent_price_dop', String(body.jobUrgentPriceDop));
     await audit(req.user!.id, 'settings.update', 'settings', null, body);
     res.json({ ok: true });
   }),

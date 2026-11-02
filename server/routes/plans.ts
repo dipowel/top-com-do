@@ -6,22 +6,24 @@ import { profiles, bankAccounts, planPayments } from '../../shared/schema';
 import { ah } from '../lib/asyncHandler';
 import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
-import { getPlanPrices } from '../lib/settings';
+import { getPlanPrices, getSetting } from '../lib/settings';
 import { featuredSlotsRemaining, createPlanPaymentRequest } from '../lib/plans';
 
 const r = Router();
 
-/** Público: precios vigentes + cuentas bancarias activas — para la pantalla de planes. */
+/** Público: precios vigentes + cuentas bancarias activas — para la pantalla de planes
+ *  y el modal de "vacante urgente" (reutiliza las mismas cuentas de transferencia). */
 r.get(
   '/prices',
   ah(async (_req, res) => {
     const prices = await getPlanPrices();
+    const jobUrgentPriceDop = Number(await getSetting('job_urgent_price_dop')) || 500;
     const accounts = await db
       .select()
       .from(bankAccounts)
       .where(eq(bankAccounts.isActive, true))
       .orderBy(bankAccounts.sortOrder);
-    res.json({ prices, bankAccounts: accounts });
+    res.json({ prices: { ...prices, jobUrgente: jobUrgentPriceDop }, bankAccounts: accounts });
   }),
 );
 

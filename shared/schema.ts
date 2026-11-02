@@ -453,6 +453,9 @@ export const jobs = pgTable(
     directApply: boolean('direct_apply').notNull().default(false),
     status: jobStatus('status').notNull().default('published'),
     isFeatured: boolean('is_featured').notNull().default(false),
+    // Vacante urgente (pagada, autoservicio) — "urgente" = urgent_until > ahora. Sin columna de
+    // estado aparte que mantener sincronizada, mismo patrón que `featured_slots.ends_at`.
+    urgentUntil: timestamp('urgent_until', { withTimezone: true }),
     sourceId: uuid('source_id').references(() => jobSources.id, { onDelete: 'set null' }),
     sourcePlatform: text('source_platform').default('direct'),
     sourceName: text('source_name'),
@@ -549,6 +552,17 @@ export const jobLeads = pgTable(
     byIp: index('job_leads_ip_idx').on(t.ipHash, t.createdAt),
   }),
 );
+
+/** Suscripción a "avísame por WhatsApp cuando salga una vacante así" — Fase 1 del pedido
+ *  original: solo guarda la solicitud, el envío lo hace un admin a mano por ahora. */
+export const whatsappAlerts = pgTable('whatsapp_alerts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  phone: text('phone').notNull(),
+  keywords: text('keywords'),
+  zone: text('zone'), // slug de shared/provinces.ts, o null = toda RD
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 /**
  * Eventos del dashboard de métricas del negocio (vistas de ficha, clics de contacto). Solo lo
@@ -664,6 +678,34 @@ export const featuredSlots = pgTable(
   },
   (t) => ({
     byScope: index('featured_slots_scope_idx').on(t.categoryId, t.province, t.endsAt),
+  }),
+);
+
+/** Pago de "vacante urgente" (autoservicio, por transferencia) — mismo patrón que
+ *  `plan_payments`, pero ligado a UNA vacante en vez de a un negocio completo. */
+export const jobUrgentPayments = pgTable(
+  'job_urgent_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    jobId: uuid('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    requestedByUserId: uuid('requested_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    amountDop: numeric('amount_dop', { precision: 12, scale: 2 }).notNull(),
+    bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id, { onDelete: 'set null' }),
+    reference: text('reference'),
+    proofDataUrl: text('proof_data_url'),
+    status: planPaymentStatus('status').notNull().default('pending'),
+    approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byJob: index('job_urgent_payments_job_idx').on(t.jobId),
+    byStatus: index('job_urgent_payments_status_idx').on(t.status),
   }),
 );
 

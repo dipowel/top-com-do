@@ -84,6 +84,7 @@ export function toJobCard(r: RowWithLogo): JobCard {
       period: r.salaryPeriod as SalaryPeriod | null,
     }),
     isFeatured: r.isFeatured,
+    isUrgent: r.urgentUntil != null && new Date(r.urgentUntil) > new Date(),
     publishedAt: iso(r.publishedAt),
     companyLogoUrl: resolveCompanyLogo(r.companyId, r.companyAvatarUrl),
   };

@@ -20,16 +20,28 @@ export interface ProfileCompletenessInput {
 
 const hasText = (v: string | null | undefined): boolean => Boolean(v && v.trim().length > 0);
 
-export function computeProfileCompleteness(p: ProfileCompletenessInput): number {
-  const checks = [
-    hasText(p.avatarUrl),
-    hasText(p.bio),
-    hasText(p.tagline),
-    hasText(p.whatsapp),
-    hasText(p.instagramUrl) || hasText(p.websiteUrl),
-    hasText(p.address) && p.latitude != null && p.longitude != null,
-    hasText(p.subcategory),
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  done: boolean;
+}
+
+/** Mismos 7 puntos que alimentan `computeProfileCompleteness` — para el checklist visual
+ *  "cómo subir en el ranking" (Fase 4), con el nombre de cada punto en lenguaje llano. */
+export function profileCompletenessChecklist(p: ProfileCompletenessInput): ChecklistItem[] {
+  return [
+    { key: 'logo', label: 'Sube el logo de tu negocio', done: hasText(p.avatarUrl) },
+    { key: 'bio', label: 'Agrega una descripción', done: hasText(p.bio) },
+    { key: 'tagline', label: 'Agrega una frase corta (tagline)', done: hasText(p.tagline) },
+    { key: 'whatsapp', label: 'Agrega tu número de WhatsApp', done: hasText(p.whatsapp) },
+    { key: 'social', label: 'Agrega Instagram o tu sitio web', done: hasText(p.instagramUrl) || hasText(p.websiteUrl) },
+    { key: 'location', label: 'Marca tu ubicación en el mapa', done: hasText(p.address) && p.latitude != null && p.longitude != null },
+    { key: 'subcategory', label: 'Elige una subcategoría', done: hasText(p.subcategory) },
   ];
-  const score = (checks.filter(Boolean).length / checks.length) * 100;
+}
+
+export function computeProfileCompleteness(p: ProfileCompletenessInput): number {
+  const checks = profileCompletenessChecklist(p);
+  const score = (checks.filter((c) => c.done).length / checks.length) * 100;
   return Math.round(score);
 }
