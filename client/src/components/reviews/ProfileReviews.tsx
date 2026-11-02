@@ -18,6 +18,7 @@ export default function ProfileReviews({
   const [data, setData] = useState<ProfileReviewsResponse | null>(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [fastResponse, setFastResponse] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -31,6 +32,7 @@ export default function ProfileReviews({
       if (d.mine) {
         setRating(d.mine.rating);
         setComment(d.mine.comment ?? '');
+        setFastResponse(d.mine.fastResponse);
       }
     } catch {
       /* ignore */
@@ -52,7 +54,11 @@ export default function ProfileReviews({
     try {
       await api(`/profiles/${profileId}/reviews`, {
         method: 'POST',
-        body: JSON.stringify({ rating, comment: comment.trim() || undefined }),
+        body: JSON.stringify({
+          rating,
+          comment: comment.trim() || undefined,
+          fastResponse: fastResponse ?? undefined,
+        }),
         auth: true,
       });
       setOk(true);
@@ -126,6 +132,27 @@ export default function ProfileReviews({
             {data?.mine ? 'Tu reseña' : 'Deja tu reseña'}
           </div>
           <StarInput value={rating} onChange={setRating} />
+          <div className="flex items-center gap-2 text-xs text-white/60">
+            <span>¿Te respondieron rápido?</span>
+            <button
+              type="button"
+              onClick={() => setFastResponse(fastResponse === true ? null : true)}
+              className={`rounded-lg border px-2 py-1 ${
+                fastResponse === true ? 'border-gold/60 bg-gold/10 text-gold' : 'border-white/15 text-white/50'
+              }`}
+            >
+              Sí
+            </button>
+            <button
+              type="button"
+              onClick={() => setFastResponse(fastResponse === false ? null : false)}
+              className={`rounded-lg border px-2 py-1 ${
+                fastResponse === false ? 'border-gold/60 bg-gold/10 text-gold' : 'border-white/15 text-white/50'
+              }`}
+            >
+              No
+            </button>
+          </div>
           <textarea
             className="input"
             rows={3}

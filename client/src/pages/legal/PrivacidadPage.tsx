@@ -34,6 +34,21 @@ export default function PrivacidadPage() {
           el fraude y el "review bombing".
         </li>
         <li>
+          <strong>Planes de negocio:</strong> si pagas un plan (Verificado/Destacado) por
+          transferencia, guardamos el número de referencia y el comprobante (foto o PDF) que subes,
+          para que un administrador confirme el pago.
+        </li>
+        <li>
+          <strong>Interacciones con negocios:</strong> cuando visitas una ficha o haces clic en
+          WhatsApp, ubicación o redes, registramos ese evento (asociado a tu cuenta si tienes
+          sesión iniciada) para mostrarle al dueño del negocio estadísticas agregadas de su propia
+          ficha — nunca contenido de tus conversaciones.
+        </li>
+        <li>
+          <strong>Alertas de empleo:</strong> tu número de teléfono, si te suscribes a "avísame por
+          WhatsApp" en la sección de Empleos.
+        </li>
+        <li>
           <strong>Uso técnico:</strong> almacenamiento local mínimo en el navegador para recordar
           preferencias e invitaciones de referido.
         </li>

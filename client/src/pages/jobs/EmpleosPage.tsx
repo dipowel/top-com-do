@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AlertSignupForm from '../../components/jobs/AlertSignupForm';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { track } from '../../lib/analytics';
@@ -134,6 +135,9 @@ export default function EmpleosPage() {
     return c;
   }, [seoCategory, seoProvince]);
 
+  const urgentJobs = useMemo(() => items.filter((j) => j.isUrgent), [items]);
+  const regularJobs = useMemo(() => items.filter((j) => !j.isUrgent), [items]);
+
   const heading = seoCategory
     ? `Empleos de ${jobCategoryLabel(seoCategory)}${seoProvince ? ` en ${provinceName(seoProvince)}` : ''}`
     : seoProvince
@@ -214,11 +218,25 @@ export default function EmpleosPage() {
           .
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          {items.map((j) => (
-            <JobCard key={j.id} job={j} />
-          ))}
-        </div>
+        <>
+          {urgentJobs.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-sm font-bold text-white/85">🔥 Vacantes urgentes</h2>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {urgentJobs.map((j) => (
+                  <JobCard key={j.id} job={j} />
+                ))}
+              </div>
+            </section>
+          )}
+          {regularJobs.length > 0 && (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {regularJobs.map((j) => (
+                <JobCard key={j.id} job={j} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {cursor && (
@@ -226,6 +244,8 @@ export default function EmpleosPage() {
           {loadingMore ? 'Cargando…' : 'Ver más empleos'}
         </button>
       )}
+
+      <AlertSignupForm defaultZone={seoProvince} />
 
       <section className="glass flex flex-col gap-2 border border-gold/25 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

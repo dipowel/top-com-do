@@ -206,6 +206,108 @@ const statements = [
    FROM ranked
    WHERE profiles.id = ranked.id
      AND ranked.rn + (SELECT coalesce(max(founder_number), 0) FROM profiles) <= 250`,
+
+  // --- Ranking v2 (orgánico, basado en reseñas) — Fase 1 de la migración fuera de pujas ---
+  `DO $$ BEGIN
+     CREATE TYPE profile_plan AS ENUM ('free','verificado','destacado');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan profile_plan NOT NULL DEFAULT 'free'`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan_expires_at timestamptz`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_completeness integer NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rank_score numeric(6,2) NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rank_position integer`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rank_score_computed_at timestamptz`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rating_avg numeric(3,2) NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS reviews_count integer NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS fast_response_rate numeric(5,2) NOT NULL DEFAULT 0`,
+  `CREATE INDEX IF NOT EXISTS profiles_rank_score_idx ON profiles (category_id, province, rank_score)`,
+
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified_at timestamptz`,
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL`,
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS fast_response boolean`,
+  `CREATE INDEX IF NOT EXISTS reviews_verified_idx ON reviews (profile_id, verified)`,
+
+  // Backfill idempotente de rating_avg/reviews_count a partir de las reseñas ya publicadas
+  // (profile_completeness y rank_score de los perfiles ya existentes se calculan aparte con
+  // `npx tsx scripts/recompute-rank-v2.ts`, que reutiliza la MISMA fórmula de TypeScript en vez
+  // de duplicarla en SQL).
+  `UPDATE profiles p SET
+     rating_avg = coalesce((SELECT round(avg(rating)::numeric, 2) FROM reviews WHERE profile_id = p.id AND status = 'published'), 0),
+     reviews_count = coalesce((SELECT count(*) FROM reviews WHERE profile_id = p.id AND status = 'published'), 0)`,
+
+  // --- Fase 3: planes de pago (Verificado/Destacado) — transferencia local, AZUL en pausa ---
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan_expiry_warned_at timestamptz`,
+
+  `DO $$ BEGIN
+     CREATE TYPE plan_payment_status AS ENUM ('pending','approved','rejected');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+
+  `CREATE TABLE IF NOT EXISTS settings (
+     key text PRIMARY KEY,
+     value text NOT NULL,
+     updated_at timestamptz NOT NULL DEFAULT now()
+   )`,
+
+  `CREATE TABLE IF NOT EXISTS plan_payments (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+     requested_by_user_id uuid NOT NULL REFERENCES users(id),
+     plan profile_plan NOT NULL,
+     amount_dop numeric(12,2) NOT NULL,
+     bank_account_id uuid REFERENCES bank_accounts(id) ON DELETE SET NULL,
+     reference text,
+     proof_data_url text,
+     status plan_payment_status NOT NULL DEFAULT 'pending',
+     approved_by_user_id uuid REFERENCES users(id),
+     approved_at timestamptz,
+     rejection_reason text,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS plan_payments_profile_idx ON plan_payments (profile_id)`,
+  `CREATE INDEX IF NOT EXISTS plan_payments_status_idx ON plan_payments (status)`,
+
+  `CREATE TABLE IF NOT EXISTS featured_slots (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+     category_id uuid NOT NULL REFERENCES categories(id),
+     province text NOT NULL,
+     starts_at timestamptz NOT NULL DEFAULT now(),
+     ends_at timestamptz NOT NULL,
+     plan_payment_id uuid REFERENCES plan_payments(id) ON DELETE SET NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS featured_slots_scope_idx ON featured_slots (category_id, province, ends_at)`,
+
+  // --- Fase 4: panel del negocio + empleos urgentes/alertas por WhatsApp ---
+  `ALTER TABLE jobs ADD COLUMN IF NOT EXISTS urgent_until timestamptz`,
+
+  `CREATE TABLE IF NOT EXISTS whatsapp_alerts (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     phone text NOT NULL,
+     keywords text,
+     zone text,
+     active boolean NOT NULL DEFAULT true,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+
+  `CREATE TABLE IF NOT EXISTS job_urgent_payments (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     job_id uuid NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+     requested_by_user_id uuid NOT NULL REFERENCES users(id),
+     amount_dop numeric(12,2) NOT NULL,
+     bank_account_id uuid REFERENCES bank_accounts(id) ON DELETE SET NULL,
+     reference text,
+     proof_data_url text,
+     status plan_payment_status NOT NULL DEFAULT 'pending',
+     approved_by_user_id uuid REFERENCES users(id),
+     approved_at timestamptz,
+     rejection_reason text,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS job_urgent_payments_job_idx ON job_urgent_payments (job_id)`,
+  `CREATE INDEX IF NOT EXISTS job_urgent_payments_status_idx ON job_urgent_payments (status)`,
 ];
 
 for (const sql of statements) {

@@ -22,6 +22,10 @@ export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected'
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
 export const referralStatus = pgEnum('referral_status', ['pending', 'eligible', 'approved', 'rejected']);
 export const reviewStatus = pgEnum('review_status', ['published', 'flagged', 'hidden']);
+// Ranking v2 (orgánico): plan de suscripción del negocio. NUNCA entra en `rank_score`
+// (ver shared/rankScore.ts) — es monetización, no una señal de calidad.
+export const profilePlan = pgEnum('profile_plan', ['free', 'verificado', 'destacado']);
+export const planPaymentStatus = pgEnum('plan_payment_status', ['pending', 'approved', 'rejected']);
 // Tipo de cuenta: consumidor (usuario de a pie) vs comerciante (dueño de negocio) vs admin.
 // Ortogonal a `role` (que gobierna los permisos): distingue el flujo/UI del usuario.
 export const accountType = pgEnum('account_type', ['consumer', 'merchant', 'admin']);
@@ -113,11 +117,30 @@ export const profiles = pgTable(
     // Programa Fundadores (Beta): orden de llegada entre los primeros 250 negocios. `null` =
     // no es Fundador. Nunca se reasigna ni se recalcula — una vez asignado, es permanente.
     founderNumber: integer('founder_number'),
+
+    // ---- Ranking v2 (orgánico, basado en reseñas) — Fase 1 de la migración ----
+    // Todas aditivas, conviven con las pujas detrás de NEW_MODEL_ENABLED (server/lib/rankingModel.ts).
+    plan: profilePlan('plan').notNull().default('free'),
+    planExpiresAt: timestamp('plan_expires_at', { withTimezone: true }),
+    // Evita mandar el aviso de "tu plan vence en 3 días" todos los días durante esos 3 días —
+    // se limpia cada vez que se aprueba un pago nuevo (ver server/lib/plans.ts).
+    planExpiryWarnedAt: timestamp('plan_expiry_warned_at', { withTimezone: true }),
+    // Insignia de identidad verificada por un admin — señal DISTINTA del plan "Verificado"
+    // (uno es pago, el otro es confianza). Ninguna de las dos entra en rank_score.
+    isVerified: boolean('is_verified').notNull().default(false),
+    profileCompleteness: integer('profile_completeness').notNull().default(0), // 0..100
+    rankScore: numeric('rank_score', { precision: 6, scale: 2 }).notNull().default('0'), // 0.00..100.00
+    rankPosition: integer('rank_position'), // caché aproximada para el dashboard, no la fuente de verdad pública
+    rankScoreComputedAt: timestamp('rank_score_computed_at', { withTimezone: true }), // cursor del barrido por lotes del cron
+    ratingAvg: numeric('rating_avg', { precision: 3, scale: 2 }).notNull().default('0'), // promedio crudo (no bayesiano) de reseñas publicadas
+    reviewsCount: integer('reviews_count').notNull().default(0),
+    fastResponseRate: numeric('fast_response_rate', { precision: 5, scale: 2 }).notNull().default('0'), // 0.00..100.00 (%)
   },
   (t) => ({
     byCategory: index('profiles_category_idx').on(t.categoryId),
     byProvince: index('profiles_province_idx').on(t.province),
     founderNumberUniq: uniqueIndex('profiles_founder_number_uniq').on(t.founderNumber),
+    byRankScore: index('profiles_rank_score_idx').on(t.categoryId, t.province, t.rankScore),
   }),
 );
 
@@ -306,11 +329,21 @@ export const reviews = pgTable(
     ipHash: text('ip_hash'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    // Ranking v2: ¿se puede ligar esta reseña a un contacto real (businessEvents) del mismo
+    // usuario con el negocio, de al menos 1 hora de antigüedad? O un admin la marcó a mano.
+    // NO entra en rank_score todavía — es gameable (ver server/lib/rankingModel.ts), solo
+    // informativo hasta que haya volumen para auditar abuso.
+    verified: boolean('verified').notNull().default(false),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    verifiedByUserId: uuid('verified_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    // "¿Te respondieron rápido?" — null = no contestó la pregunta (distinto de "no").
+    fastResponse: boolean('fast_response'),
   },
   (t) => ({
     uniqPerUser: uniqueIndex('reviews_profile_user_uniq').on(t.profileId, t.userId),
     byProfile: index('reviews_profile_idx').on(t.profileId, t.status),
     byIp: index('reviews_ip_idx').on(t.ipHash, t.createdAt),
+    byVerified: index('reviews_verified_idx').on(t.profileId, t.verified),
   }),
 );
 
@@ -420,6 +453,9 @@ export const jobs = pgTable(
     directApply: boolean('direct_apply').notNull().default(false),
     status: jobStatus('status').notNull().default('published'),
     isFeatured: boolean('is_featured').notNull().default(false),
+    // Vacante urgente (pagada, autoservicio) — "urgente" = urgent_until > ahora. Sin columna de
+    // estado aparte que mantener sincronizada, mismo patrón que `featured_slots.ends_at`.
+    urgentUntil: timestamp('urgent_until', { withTimezone: true }),
     sourceId: uuid('source_id').references(() => jobSources.id, { onDelete: 'set null' }),
     sourcePlatform: text('source_platform').default('direct'),
     sourceName: text('source_name'),
@@ -517,6 +553,17 @@ export const jobLeads = pgTable(
   }),
 );
 
+/** Suscripción a "avísame por WhatsApp cuando salga una vacante así" — Fase 1 del pedido
+ *  original: solo guarda la solicitud, el envío lo hace un admin a mano por ahora. */
+export const whatsappAlerts = pgTable('whatsapp_alerts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  phone: text('phone').notNull(),
+  keywords: text('keywords'),
+  zone: text('zone'), // slug de shared/provinces.ts, o null = toda RD
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /**
  * Eventos del dashboard de métricas del negocio (vistas de ficha, clics de contacto). Solo lo
  * imprescindible para producir estadísticas — nada de contenido de conversaciones ni
@@ -563,6 +610,102 @@ export const rankLeaderHistory = pgTable(
   (t) => ({
     byScope: index('rank_leader_history_scope_idx').on(t.scopeKey, t.endedAt),
     byProfile: index('rank_leader_history_profile_idx').on(t.profileId),
+  }),
+);
+
+// ---------------- Planes de pago (Fase 3 del ranking v2) ----------------
+
+/** Config editable desde el admin (precios, etc.) — nunca fijo en el código. */
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Cola de pagos de planes (Verificado/Destacado) por transferencia local — mismo patrón que
+ * los pagos manuales de siempre: el negocio sube el comprobante (data URI, igual que
+ * `profiles.avatar_url`) y un admin aprueba o rechaza a mano. AZUL/PayPal quedan fuera de esta
+ * fase (ver decisión con el dueño: sin RNC no se puede activar AZUL todavía).
+ */
+export const planPayments = pgTable(
+  'plan_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    requestedByUserId: uuid('requested_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    plan: profilePlan('plan').notNull(), // 'verificado' | 'destacado' — nunca 'free'
+    amountDop: numeric('amount_dop', { precision: 12, scale: 2 }).notNull(),
+    bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id, { onDelete: 'set null' }),
+    reference: text('reference'), // número de transferencia que escribió el negocio
+    proofDataUrl: text('proof_data_url'), // foto/PDF del comprobante
+    status: planPaymentStatus('status').notNull().default('pending'),
+    approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byProfile: index('plan_payments_profile_idx').on(t.profileId),
+    byStatus: index('plan_payments_status_idx').on(t.status),
+  }),
+);
+
+/**
+ * Espacio "Destacado" activo: máximo 3 por (categoría, provincia|'todo-rd'), aplicado con una
+ * transacción al aprobar el pago (`server/lib/plans.ts`). "Activo" = `endsAt > now()`, sin
+ * columna de estado que mantener sincronizada — igual que ya se evitó un estado redundante en
+ * el Programa Fundadores.
+ */
+export const featuredSlots = pgTable(
+  'featured_slots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id),
+    province: text('province').notNull(), // slug real, o 'todo-rd' para el ámbito nacional
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    planPaymentId: uuid('plan_payment_id').references(() => planPayments.id, { onDelete: 'set null' }),
+  },
+  (t) => ({
+    byScope: index('featured_slots_scope_idx').on(t.categoryId, t.province, t.endsAt),
+  }),
+);
+
+/** Pago de "vacante urgente" (autoservicio, por transferencia) — mismo patrón que
+ *  `plan_payments`, pero ligado a UNA vacante en vez de a un negocio completo. */
+export const jobUrgentPayments = pgTable(
+  'job_urgent_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    jobId: uuid('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    requestedByUserId: uuid('requested_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    amountDop: numeric('amount_dop', { precision: 12, scale: 2 }).notNull(),
+    bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id, { onDelete: 'set null' }),
+    reference: text('reference'),
+    proofDataUrl: text('proof_data_url'),
+    status: planPaymentStatus('status').notNull().default('pending'),
+    approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byJob: index('job_urgent_payments_job_idx').on(t.jobId),
+    byStatus: index('job_urgent_payments_status_idx').on(t.status),
   }),
 );
 

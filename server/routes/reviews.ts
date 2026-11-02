@@ -8,6 +8,7 @@ import { requireAuth } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { audit } from '../lib/audit';
 import { notifyUser } from '../lib/notify';
+import { recomputeProfileRankFields } from '../lib/rankingModel';
 import { REVIEW_COMMENT_MAX } from '../../shared/reviews';
 
 const r = Router();
@@ -21,6 +22,7 @@ r.delete(
     const isAdmin = req.user!.role !== 'user';
     if (row[0].userId !== req.user!.id && !isAdmin) throw new HttpError(403, 'No autorizado');
     await db.delete(reviews).where(eq(reviews.id, req.params.id));
+    await recomputeProfileRankFields(row[0].profileId);
     await audit(req.user!.id, 'review.delete', 'review', req.params.id, { by: isAdmin ? 'admin' : 'author' });
     res.json({ ok: true });
   }),

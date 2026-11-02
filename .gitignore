@@ -13,5 +13,8 @@ api/_server.mjs.map
 .DS_Store
 coverage
 
+# Respaldos de scripts/db-backup.mjs — datos reales de producción, nunca van a git.
+backups/
+
 # Generado por scripts/gen-shell.mjs (prepare + build)
 server/generated/pageShell.ts

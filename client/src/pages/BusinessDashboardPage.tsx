@@ -3,11 +3,29 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { useShell } from '../hooks/useShell';
+import { useNewModel } from '../hooks/useNewModel';
 import { useSeo } from '../hooks/useSeo';
 import { formatDOP } from '../lib/format';
+import { whatsappLink } from '../lib/share';
 import Spinner from '../components/common/Spinner';
 import ActivityChart from '../components/business/ActivityChart';
+import { StarRating } from '../components/reviews/StarRating';
 import type { BusinessStatsResponse, BusinessStatsRange } from '@shared/types';
+
+interface ChecklistItem {
+  key: string;
+  label: string;
+  done: boolean;
+}
+interface RankChecklistResponse {
+  rankScore: number;
+  profileCompleteness: number;
+  reviewsCount: number;
+  ratingAvg: number;
+  fastResponseRate: number;
+  checklist: ChecklistItem[];
+  reviewLinkPath: string;
+}
 
 const RANGE_LABEL: Record<BusinessStatsRange, string> = {
   '7d': 'Últimos 7 días',
@@ -27,11 +45,13 @@ export default function BusinessDashboardPage() {
   const { id = '' } = useParams();
   const { user, loading: authLoading } = useAuth();
   const { openBid } = useShell();
+  const newModel = useNewModel();
   const [range, setRange] = useState<BusinessStatsRange>('7d');
   const [metric, setMetric] = useState<ChartMetric>('businessView');
   const [stats, setStats] = useState<BusinessStatsResponse | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [rankChecklist, setRankChecklist] = useState<RankChecklistResponse | null>(null);
 
   useSeo({
     title: 'Rendimiento de tu negocio | Top.com.do',
@@ -61,6 +81,13 @@ export default function BusinessDashboardPage() {
     };
   }, [id, range, user]);
 
+  useEffect(() => {
+    if (!user || !newModel) return;
+    api<RankChecklistResponse>(`/profiles/${id}/rank-checklist`, { auth: true })
+      .then(setRankChecklist)
+      .catch(() => {});
+  }, [id, user, newModel]);
+
   if (!authLoading && !user) {
     return <Navigate to={`/login?next=${encodeURIComponent(`/perfil/negocio/${id}`)}`} replace />;
   }
@@ -83,9 +110,14 @@ export default function BusinessDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold text-white">El rendimiento de tu negocio en Top</h1>
-        <p className="text-sm text-white/55">Descubre cuántas personas están viendo e interactuando con tu negocio.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-extrabold text-white">El rendimiento de tu negocio en Top</h1>
+          <p className="text-sm text-white/55">Descubre cuántas personas están viendo e interactuando con tu negocio.</p>
+        </div>
+        <Link to={`/perfil/negocio/${id}/planes`} className="btn-gold shrink-0 !px-3 !py-2 text-xs">
+          Planes
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -171,10 +203,53 @@ export default function BusinessDashboardPage() {
               </p>
             )}
             <p className="text-xs text-white/50">{stats.comparison}</p>
-            <button onClick={() => openBid(id)} className="btn-gold w-full !py-3 text-sm">
-              Mejorar mi posición
-            </button>
+            {!newModel && (
+              <button onClick={() => openBid(id)} className="btn-gold w-full !py-3 text-sm">
+                Mejorar mi posición
+              </button>
+            )}
           </section>
+
+          {newModel && rankChecklist && (
+            <section className="glass space-y-2.5 p-4">
+              <h2 className="text-sm font-bold text-white">Cómo subir en el ranking</h2>
+              <div className="flex items-center gap-3">
+                <StarRating value={rankChecklist.ratingAvg} />
+                <span className="text-xs text-white/50">
+                  {rankChecklist.reviewsCount} reseña{rankChecklist.reviewsCount === 1 ? '' : 's'} ·{' '}
+                  {rankChecklist.profileCompleteness}% de perfil completo
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {rankChecklist.checklist
+                  .filter((c) => !c.done)
+                  .map((c) => (
+                    <div key={c.key} className="flex items-center gap-2 text-xs text-white/60">
+                      <span className="text-amber-300">○</span> {c.label}
+                    </div>
+                  ))}
+                {rankChecklist.checklist.every((c) => c.done) && (
+                  <p className="text-xs text-emerald-soft">✓ Tu perfil está 100% completo.</p>
+                )}
+              </div>
+              {rankChecklist.checklist.some((c) => !c.done) && (
+                <Link to="/perfil" className="btn-ghost block w-full text-center text-xs">
+                  Completar mi perfil
+                </Link>
+              )}
+              <a
+                href={whatsappLink(
+                  undefined,
+                  `¡Gracias por preferirnos! ¿Nos ayudas con una reseña en Top? Te toma 30 segundos: https://www.top.com.do${rankChecklist.reviewLinkPath}`,
+                )}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-gold block w-full !py-2.5 text-center text-xs"
+              >
+                💬 Pedir reseñas a mis clientes por WhatsApp
+              </a>
+            </section>
+          )}
 
           <section className="glass space-y-2 p-4">
             <div className="flex items-center justify-between">

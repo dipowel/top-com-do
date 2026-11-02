@@ -5,6 +5,8 @@ import CategoryTabs from '../components/ranking/CategoryTabs';
 import { useShell } from '../hooks/useShell';
 import { useAuth } from '../hooks/useAuth';
 import { useAuctionAccess } from '../hooks/useAuctionAccess';
+import { useNewModel } from '../hooks/useNewModel';
+import { StarRating } from '../components/reviews/StarRating';
 import { useSeo } from '../hooks/useSeo';
 import { avatarFallback } from '../lib/share';
 import {
@@ -28,6 +30,8 @@ interface P {
   categorySlug: string;
   province: string | null;
   city: string | null;
+  ratingAvg: number;
+  reviewsCount: number;
 }
 
 export default function ExplorePage() {
@@ -49,6 +53,7 @@ export default function ExplorePage() {
   const { openBid } = useShell();
   const { user } = useAuth();
   const canBid = useAuctionAccess();
+  const newModel = useNewModel();
 
   useEffect(() => {
     const qs = new URLSearchParams();
@@ -221,8 +226,14 @@ export default function ExplorePage() {
               />
               <div className="truncate text-[13px] font-bold">{p.name}</div>
               <div className="truncate text-[11px] text-white/40">{p.categoryName}</div>
+              {newModel && p.reviewsCount > 0 && (
+                <div className="mt-0.5 flex items-center gap-1">
+                  <StarRating value={p.ratingAvg} size="text-[11px]" />
+                  <span className="text-[10px] text-white/40">({p.reviewsCount})</span>
+                </div>
+              )}
             </Link>
-            {canBid && (
+            {!newModel && canBid && (
               <button onClick={() => openBid(p.id)} className="btn-gold mt-2 w-full !py-1.5 text-xs">
                 Pujar
               </button>

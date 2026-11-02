@@ -9,6 +9,7 @@ import ReferralsQueue from './ReferralsQueue';
 import ReviewsQueue from './ReviewsQueue';
 import NegociosAdmin from './NegociosAdmin';
 import EmpleosAdmin from './EmpleosAdmin';
+import PlansQueue from './PlansQueue';
 import NotificationBell from '../components/layout/NotificationBell';
 
 const tabs = [
@@ -16,6 +17,7 @@ const tabs = [
   { to: 'referidos', label: 'Referidos' },
   { to: 'resenas', label: 'Reseñas' },
   { to: 'negocios', label: 'Negocios' },
+  { to: 'planes', label: 'Planes' },
   { to: 'empleos', label: 'Empleos' },
   { to: 'pujas', label: 'Pujas' },
   { to: 'rondas', label: 'Rondas' },
@@ -89,6 +91,7 @@ export default function AdminLayout() {
         <Route path="referidos" element={<ReferralsQueue />} />
         <Route path="resenas" element={<ReviewsQueue />} />
         <Route path="negocios" element={<NegociosAdmin />} />
+        <Route path="planes" element={<PlansQueue />} />
         <Route path="empleos" element={<EmpleosAdmin />} />
         <Route path="pujas" element={<BidsAudit />} />
         <Route path="rondas" element={<RoundsControl />} />

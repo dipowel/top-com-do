@@ -313,6 +313,18 @@ export default function EmpleoDetailPage() {
       )}
       {reported && <p className="text-[11px] text-white/40">Gracias, revisaremos el reporte.</p>}
 
+      {!job.companyId && (
+        <section className="glass flex flex-wrap items-center justify-between gap-2 border border-gold/25 p-3.5">
+          <div>
+            <p className="text-xs font-bold text-gold">¿Tienes un negocio?</p>
+            <p className="text-[11px] text-white/55">Aparece también en el ranking de tu zona, gratis.</p>
+          </div>
+          <Link to="/registrar-negocio" className="btn-ghost shrink-0 !py-1.5 text-xs">
+            Registrarlo gratis
+          </Link>
+        </section>
+      )}
+
       <RelatedJobs jobs={job.related} />
 
       {pendingHref && (

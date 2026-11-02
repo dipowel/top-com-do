@@ -9,6 +9,8 @@ import { PositionBadge, CrownBadge } from './PositionBadge';
 import ChampionMedal from './ChampionMedal';
 import { useFavorites } from '../../hooks/useFavorites';
 import { useAuth } from '../../hooks/useAuth';
+import { useNewModel } from '../../hooks/useNewModel';
+import { StarRating } from '../reviews/StarRating';
 
 // html-to-image (~pesado) solo se carga al abrir la tarjeta para compartir.
 const ViralCard = lazy(() => import('../share/ViralCard'));
@@ -32,6 +34,7 @@ export default function LeaderCard({
   const { user } = useAuth();
   const { ids, toggle } = useFavorites();
   const [share, setShare] = useState(false);
+  const newModel = useNewModel();
   const p = entry.profile;
   const fav = ids.has(p.id);
 
@@ -87,15 +90,26 @@ export default function LeaderCard({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-extrabold text-gold">{formatDOP(entry.totalDop)}</div>
-          <div className="text-[10px] text-white/40">
-            {entry.bidsCount} puja{entry.bidsCount === 1 ? '' : 's'}
-          </div>
+          {newModel ? (
+            <>
+              <StarRating value={entry.ratingAvg ?? 0} size="text-sm" />
+              <div className="text-[10px] text-white/40">
+                {entry.bidsCount} reseña{entry.bidsCount === 1 ? '' : 's'}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-extrabold text-gold">{formatDOP(entry.totalDop)}</div>
+              <div className="text-[10px] text-white/40">
+                {entry.bidsCount} puja{entry.bidsCount === 1 ? '' : 's'}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       <div className="mt-3 space-y-2">
-        {canBid && (
+        {!newModel && canBid && (
           <button onClick={() => onBid(p.id)} className="btn-gold w-full !py-2.5 text-xs">
             {entry.position === 2
               ? `🔥 Recuperar el #1${recoverAmount ? ` · ${formatDOP(recoverAmount)}` : ''}`

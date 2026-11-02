@@ -85,7 +85,7 @@ export default function ReferralsQueue() {
                 onClick={() => decide(r.id, 'approve')}
                 className="btn-emerald flex-1 !py-2 text-xs"
               >
-                Liberar bono {formatDOP(r.bonusDop)}
+                Liberar bono (1 mes Verificado, o {formatDOP(r.bonusDop)} si aún no tiene negocio)
               </button>
               <button
                 disabled={busy === r.id}

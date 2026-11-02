@@ -86,6 +86,15 @@ export default function PublicarEmpleoPage() {
             Gestionar mis vacantes
           </Link>
         </div>
+        {!myProfiles.length && (
+          <div className="glass space-y-1.5 border border-gold/25 p-3 text-left">
+            <p className="text-xs font-bold text-gold">¿Tienes un negocio?</p>
+            <p className="text-[11px] text-white/55">Aparece también en el ranking de tu zona, gratis.</p>
+            <Link to="/registrar-negocio" className="btn-ghost block !py-1.5 text-center text-xs">
+              Registrar mi negocio gratis
+            </Link>
+          </div>
+        )}
       </div>
     );
   }
@@ -98,6 +107,17 @@ export default function PublicarEmpleoPage() {
           Gratis. Llega a candidatos en toda la RD. Cuéntanos del puesto y cómo aplicar.
         </p>
       </header>
+      {!myProfiles.length && (
+        <div className="glass flex flex-wrap items-center justify-between gap-2 border border-gold/25 p-3.5">
+          <div>
+            <p className="text-xs font-bold text-gold">¿Tienes un negocio?</p>
+            <p className="text-[11px] text-white/55">Aparece también en el ranking de tu zona, gratis.</p>
+          </div>
+          <Link to="/registrar-negocio" className="btn-ghost shrink-0 !py-1.5 text-xs">
+            Registrarlo gratis
+          </Link>
+        </div>
+      )}
       <JobForm
         value={form}
         onChange={setForm}

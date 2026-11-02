@@ -7,7 +7,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { profiles as P, categories as C } from '../../shared/schema';
-import { getRankings } from './rankings';
+import { getActiveRankings, isNewModelEnabled } from './rankingModel';
 import { reviewSummary } from './reviews';
 import {
   CATEGORY_SLUGS,
@@ -27,6 +27,7 @@ import {
 } from './jobs';
 import { editorialIntro, JOB_TYPE_LABELS, WORK_MODE_LABELS, formatSalary } from '../../shared/jobs';
 import { sanitizePlainText } from '../../shared/sanitize';
+import { GUIAS, getGuia } from '../../shared/guias';
 import {
   homeSeo,
   categorySeo,
@@ -35,6 +36,10 @@ import {
   exploreSeo,
   profileSeo,
   publicarSeo,
+  publicarSeoOrganic,
+  publicarComboSeo,
+  guiasIndexSeo,
+  guiaSeo,
   legalSeo,
   directorioSeo,
   empleosSeo,
@@ -172,7 +177,7 @@ const ITEM_COLUMNS = {
 
 async function catItems(cat: string, prov: string | null): Promise<SsrItem[]> {
   try {
-    const r = await getRankings(cat, prov ?? undefined, 24);
+    const r = await getActiveRankings(cat, prov ?? undefined, 24);
     if (r.length)
       return r.map((e) => ({
         id: e.profile.id,
@@ -350,22 +355,66 @@ async function resolve(pathname: string): Promise<Resolved> {
   }
 
   if (segs.length === 1 && head === 'publicar') {
-    const seo = publicarSeo();
+    const newModel = isNewModelEnabled();
+    const seo = newModel ? publicarSeoOrganic() : publicarSeo();
     return {
       seo,
       status: 200,
       cache: 3600,
       body: hero(
-        'Anuncia tu negocio en República Dominicana',
+        newModel ? 'Publica tu negocio gratis en República Dominicana' : 'Anuncia tu negocio en República Dominicana',
         seo.description,
-        '<p style="font-size:.85rem;color:#9aa4b2"><a href="/login?registro=1" style="color:#e8c874">Registra tu negocio gratis</a> · <a href="/normas" style="color:#e8c874">Cómo funciona</a></p>',
+        '<p style="font-size:.85rem;color:#9aa4b2"><a href="/registrar-negocio" style="color:#e8c874">Registra tu negocio gratis</a> · <a href="/normas" style="color:#e8c874">Cómo funciona</a></p>',
       ),
     };
   }
 
+  // /publicar/:categoria(/:provincia) — landing para dueños de negocio, igual en ambos modelos
+  // (su copy nunca menciona pujas ni reseñas, solo "ya hay N negocios, regístrate gratis").
+  if ((segs.length === 2 || segs.length === 3) && head === 'publicar') {
+    const catSlug = segs[1]!;
+    if (!CATEGORY_SLUGS.includes(catSlug) || catSlug === 'todo-rd') return notFound(pathname);
+    const provSlug = segs[2];
+    if (provSlug && !isRealProvince(provSlug)) return notFound(pathname);
+
+    const businesses = await getActiveRankings(catSlug, provSlug, 20);
+    const seo = publicarComboSeo({ categorySlug: catSlug, provinceSlug: provSlug ?? null, businessCount: businesses.length });
+    const place = provSlug ? provinceName(provSlug) : RD;
+    const cat = categoryLabel(catSlug) || catSlug;
+    const list = businesses.length
+      ? `<ul>${businesses.slice(0, 10).map((e) => `<li>${cleanName(e.profile.name)}</li>`).join('')}</ul>`
+      : '';
+    return {
+      seo: { ...seo, noindex: businesses.length === 0 },
+      status: 200,
+      cache: 3600,
+      body: hero(
+        `Publica tu negocio de ${cat} gratis en ${place}`,
+        seo.description,
+        `${list}<p style="font-size:.85rem;color:#9aa4b2"><a href="/registrar-negocio" style="color:#e8c874">Registrar mi negocio gratis</a></p>`,
+      ),
+    };
+  }
+
+  if (segs.length === 1 && head === 'guias') {
+    const seo = guiasIndexSeo();
+    const list = `<ul>${GUIAS.map((g) => `<li><a href="/guias/${g.slug}" style="color:#e8c874">${g.title}</a></li>`).join('')}</ul>`;
+    return { seo, status: 200, cache: 3600, body: hero('Guías para tu negocio', seo.description, list) };
+  }
+
+  if (segs.length === 2 && head === 'guias') {
+    const guia = getGuia(segs[1]!);
+    if (!guia) return notFound(pathname);
+    const seo = guiaSeo(guia.slug)!;
+    const body = guia.blocks
+      .map((b) => (b.type === 'h2' ? `<h2 style="color:#e8c874">${esc(b.text)}</h2>` : `<p>${esc(b.text)}</p>`))
+      .join('');
+    return { seo, status: 200, cache: 3600, body: hero(guia.title, seo.description, body) };
+  }
+
   if (
     head &&
-    ['login', 'perfil', 'registrar-negocio', 'mis-pujas', 'favoritos', 'notificaciones', 'admin', 'recibo'].includes(
+    ['login', 'perfil', 'registrar-negocio', 'mis-pujas', 'favoritos', 'notificaciones', 'admin', 'recibo', 'r'].includes(
       head,
     )
   ) {

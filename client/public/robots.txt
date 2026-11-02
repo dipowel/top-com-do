@@ -8,6 +8,7 @@ Disallow: /mis-pujas
 Disallow: /favoritos
 Disallow: /notificaciones
 Disallow: /recibo
+Disallow: /r/
 Disallow: /empleos/publicar
 Disallow: /empleos/mis-vacantes
 Disallow: /*?ref=

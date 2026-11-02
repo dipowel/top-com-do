@@ -5,12 +5,16 @@ import { getActiveRound } from './rounds';
 import { checkDethronements, notifyUser } from './notify';
 import { audit } from './audit';
 import { pingIndexNow } from './indexnow';
+import { isNewModelEnabled } from './rankingModel';
 
 /** Marca cualquier puja del Programa Fundadores — nunca se crea por otra vía. */
 export const FOUNDER_REFERENCE = 'FUNDADOR_BETA';
 
 /** Refresca la puja de Fundador si tiene más de esto — siempre dentro de la ventana de 7 días. */
 const REFRESH_AFTER_DAYS = 5;
+
+/** Regalo de bienvenida del ranking v2: 3 meses del plan Verificado, nadie pagó nada por él. */
+const FOUNDER_PLAN_DAYS = 90;
 
 /**
  * ¿Sigue abierto el Programa Fundadores para NUEVOS negocios? `BETA_CLOSED=true` lo cierra a
@@ -102,6 +106,14 @@ export async function grantFounderBid(
     .returning();
   const bid = inserted[0]!;
 
+  // Ranking v2: además de la puja gratis (modelo viejo), cada Fundador recibe 3 meses del plan
+  // Verificado — nadie pagó nada por él, por eso no pasa por `plan_payments`/el flujo de
+  // transferencia; es un regalo directo, igual de honesto que la puja de arriba.
+  await db
+    .update(profiles)
+    .set({ plan: 'verificado', planExpiresAt: new Date(Date.now() + FOUNDER_PLAN_DAYS * 86_400_000) })
+    .where(eq(profiles.id, profileId));
+
   await checkDethronements(profileId);
 
   const prov = prof.province && prof.province !== 'todo-rd' ? prof.province : null;
@@ -115,10 +127,10 @@ export async function grantFounderBid(
   await notifyUser(prof.ownerUserId, {
     type: 'founder.granted',
     title: '🎉 ¡Bienvenido al Programa Fundadores!',
-    body: `Eres el Fundador #${founderNumber} — tu negocio ya aparece en el ranking, gratis y sin tarjeta.`,
+    body: `Eres el Fundador #${founderNumber} — tu negocio ya aparece en el ranking, gratis y sin tarjeta. De regalo, 3 meses del plan Verificado.`,
     url: `/p/${profileId}`,
   });
-  await audit(null, 'founder.granted', 'bid', bid.id, { profileId, founderNumber, amountDop });
+  await audit(null, 'founder.granted', 'bid', bid.id, { profileId, founderNumber, amountDop, planDays: FOUNDER_PLAN_DAYS });
 
   return 'granted';
 }
@@ -131,6 +143,11 @@ export async function grantFounderBid(
  * vida, sin importar si el Programa ya cerró para negocios nuevos.
  */
 export async function refreshFounderBids(): Promise<{ checked: number; refreshed: number }> {
+  // Ranking v2 (orgánico): con el modelo nuevo activo, la posición ya no depende de pujas
+  // vigentes dentro de la ventana de 7 días — no tiene sentido seguir refrescando esta puja.
+  // No se borra la función (rollback instantáneo si se apaga el flag).
+  if (isNewModelEnabled()) return { checked: 0, refreshed: 0 };
+
   const cutoff = new Date(Date.now() - REFRESH_AFTER_DAYS * 86_400_000);
   const rows = await db
     .select({ id: bids.id, founderNumber: profiles.founderNumber })

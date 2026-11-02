@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMyReviews } from '../hooks/useMyReviews';
 import { useShell } from '../hooks/useShell';
+import { useNewModel } from '../hooks/useNewModel';
 import { api } from '../lib/api';
 import { avatarFallback, whatsappLink } from '../lib/share';
 import { formatDOP } from '../lib/format';
@@ -57,6 +58,7 @@ export default function ProfilePage() {
   const { list: favorites, toggle: toggleFav } = useFavorites();
   const { data: myReviews, reload: reloadReviews } = useMyReviews();
   const { openBid } = useShell();
+  const newModel = useNewModel();
 
   const [form, setForm] = useState<ProfileFormValue>(emptyProfileForm);
   const [msg, setMsg] = useState<string | null>(null);
@@ -234,12 +236,19 @@ export default function ProfilePage() {
   const referralBlock = (
     <div className="glass space-y-3 p-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-bold">Saldo por referidos</h2>
-        <span className="text-lg font-black text-gold">{formatDOP(credit)}</span>
+        <h2 className="font-bold">{newModel ? 'Invita a otro negocio' : 'Saldo por referidos'}</h2>
+        {!newModel && <span className="text-lg font-black text-gold">{formatDOP(credit)}</span>}
       </div>
       <p className="text-[11px] text-white/45">
-        Gana RD$ 100 cuando un invitado hace su primera puja válida y el admin la aprueba.
+        {newModel
+          ? 'Gana 1 mes del plan Verificado gratis cuando un negocio que invitaste activa cualquier plan pagado.'
+          : 'Gana RD$ 100 cuando un invitado hace su primera puja válida y el admin la aprueba.'}
       </p>
+      {newModel && credit > 0 && (
+        <p className="text-[11px] text-white/40">
+          Saldo acumulado de referidos anteriores: <b className="text-gold">{formatDOP(credit)}</b>.
+        </p>
+      )}
       {refLink && (
         <div className="rounded-xl bg-white/5 p-2.5">
           <div className="text-[11px] text-white/40">Tu enlace de invitación</div>
