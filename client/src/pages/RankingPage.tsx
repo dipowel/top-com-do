@@ -18,7 +18,8 @@ import { api } from '../lib/api';
 import { PROVINCE_SLUGS, provinceName } from '@shared/provinces';
 import { CATEGORY_SLUGS } from '@shared/categories';
 import { categoryLabel, categoryNoun, categoryFaqs, categorySeo, homeSeo } from '@shared/seo';
-import type { JobCard as Job, JobsListResponse, NearbyRankingEntry } from '@shared/types';
+import type { JobCard as Job, JobsListResponse, NearbyRankingEntry, RankingProfile } from '@shared/types';
+import { avatarFallback } from '../lib/share';
 import Breadcrumbs, { type Crumb } from '../components/common/Breadcrumbs';
 
 const MIN_BID = 100;
@@ -62,6 +63,28 @@ export default function RankingPage() {
       alive = false;
     };
   }, [province]);
+
+  // Destacados (ranking v2): negocios con espacio pagado y etiquetado PATROCINADO, SIEMPRE
+  // separados de la numeración del ranking real (Ley 358-05).
+  const [featured, setFeatured] = useState<RankingProfile[]>([]);
+  useEffect(() => {
+    if (!newModel) {
+      setFeatured([]);
+      return;
+    }
+    let alive = true;
+    const qs = new URLSearchParams();
+    if (cat !== 'todo-rd') qs.set('category', cat);
+    if (province !== 'todo-rd') qs.set('province', province);
+    api<RankingProfile[]>(`/rankings/featured?${qs}`)
+      .then((r) => {
+        if (alive) setFeatured(r);
+      })
+      .catch(() => setFeatured([]));
+    return () => {
+      alive = false;
+    };
+  }, [newModel, cat, province]);
 
   // Cualquier cambio de ruta (provincia, categoría, botón atrás) sale del modo cercano.
   useEffect(() => {
@@ -337,6 +360,35 @@ export default function RankingPage() {
             ? 'No pudimos cargar los negocios cercanos. '
             : 'Ningún negocio cercano tiene ubicación registrada todavía. '}
           Te mostramos el ranking de {zona}.
+        </div>
+      )}
+
+      {newModel && featured.length > 0 && !nearbyActive && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-bold text-white/85">Destacados en {zona}</h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {featured.map((p) => (
+              <Link
+                key={p.id}
+                to={`/p/${p.id}`}
+                className="glass flex items-center gap-2 border border-gold/30 p-2.5"
+              >
+                <img
+                  src={p.avatarUrl || avatarFallback(p.name)}
+                  alt={p.name}
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                />
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-bold">{p.name}</div>
+                  <span className="rounded-full bg-gold/15 px-1.5 py-0.5 text-[9px] font-bold text-gold">
+                    PATROCINADO
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

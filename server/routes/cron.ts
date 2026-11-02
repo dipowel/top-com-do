@@ -5,6 +5,7 @@ import { getRankings } from '../lib/rankings';
 import { expireStaleJobs } from '../lib/jobs';
 import { refreshFounderBids } from '../lib/founders';
 import { recomputeAllRankScores } from '../lib/rankingModel';
+import { processPlanExpirations } from '../lib/plans';
 import { audit } from '../lib/audit';
 import { HttpError } from '../middleware/errorHandler';
 
@@ -89,14 +90,17 @@ r.get(
     const indexing = await flushJobIndexing().catch(() => ({ sent: 0, failed: 0 }));
     const founders = await refreshFounderBids().catch((e) => ({ checked: 0, refreshed: 0, error: String(e) }));
     const rankScores = await recomputeAllRankScores().catch((e) => ({ processed: 0, skipped: true, error: String(e) }));
+    const plans = await processPlanExpirations().catch((e) => ({ warned: 0, expired: 0, error: String(e) }));
     await audit(null, 'jobs.maintenance.cron', 'job', null, {
       expired: (expired as { expired: string[] }).expired.length,
       runs: runs.length,
       indexingSent: indexing.sent,
       foundersRefreshed: founders.refreshed,
       rankScoresProcessed: rankScores.processed,
+      plansWarned: plans.warned,
+      plansExpired: plans.expired,
     });
-    res.json({ ok: true, expired, runs, indexing, founders, rankScores });
+    res.json({ ok: true, expired, runs, indexing, founders, rankScores, plans });
   }),
 );
 

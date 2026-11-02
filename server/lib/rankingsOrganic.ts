@@ -1,7 +1,7 @@
 import { and, desc, eq, gt, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { profiles, categories } from '../../shared/schema';
-import { isRealProvince, provinceName } from '../../shared/provinces';
+import { profiles, categories, featuredSlots } from '../../shared/schema';
+import { isRealProvince, provinceName, NATIONAL_SLUG } from '../../shared/provinces';
 import { profileAvatarUrl } from '../../shared/site';
 import { EARTH_RADIUS_KM } from '../../shared/nearby';
 import type { RankingEntry, NearbyRankingEntry } from '../../shared/types';
@@ -172,4 +172,67 @@ export async function getOrganicNearbyRankings(
       },
     };
   });
+}
+
+/**
+ * Negocios con un espacio "Destacado" activo en esta categoría × provincia — van ARRIBA del
+ * ranking, etiquetados "PATROCINADO", y nunca se mezclan con las posiciones numeradas (Ley
+ * 358-05: toda publicidad pagada debe marcarse como tal).
+ */
+export async function getFeaturedProfiles(
+  categorySlug?: string,
+  provinceSlug?: string,
+): Promise<RankingEntry['profile'][]> {
+  const scope = isRealProvince(provinceSlug) ? provinceSlug! : NATIONAL_SLUG;
+  const filterCategory = categorySlug && categorySlug !== 'todo-rd' ? eq(categories.slug, categorySlug) : undefined;
+
+  const rows = await db
+    .select({
+      id: profiles.id,
+      name: profiles.name,
+      handle: profiles.handle,
+      avatarUrl: profiles.avatarUrl,
+      bio: profiles.bio,
+      tagline: profiles.tagline,
+      subcategory: profiles.subcategory,
+      whatsapp: profiles.whatsapp,
+      instagramUrl: profiles.instagramUrl,
+      websiteUrl: profiles.websiteUrl,
+      province: profiles.province,
+      city: profiles.city,
+      address: profiles.address,
+      latitude: profiles.latitude,
+      longitude: profiles.longitude,
+      categorySlug: categories.slug,
+      categoryName: categories.name,
+      founderNumber: profiles.founderNumber,
+    })
+    .from(featuredSlots)
+    .innerJoin(profiles, eq(profiles.id, featuredSlots.profileId))
+    .innerJoin(categories, eq(categories.id, featuredSlots.categoryId))
+    .where(and(eq(featuredSlots.province, scope), gt(featuredSlots.endsAt, new Date()), eq(profiles.isActive, true), filterCategory))
+    .orderBy(desc(featuredSlots.startsAt))
+    .limit(3);
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    handle: r.handle,
+    avatarUrl: profileAvatarUrl(r.id, r.avatarUrl),
+    bio: r.bio,
+    tagline: r.tagline,
+    subcategory: r.subcategory,
+    whatsapp: r.whatsapp,
+    instagramUrl: r.instagramUrl,
+    websiteUrl: r.websiteUrl,
+    province: r.province,
+    provinceName: r.province ? provinceName(r.province) : null,
+    city: r.city,
+    address: r.address,
+    latitude: r.latitude != null ? Number(r.latitude) : null,
+    longitude: r.longitude != null ? Number(r.longitude) : null,
+    categorySlug: r.categorySlug,
+    categoryName: r.categoryName,
+    founderNumber: r.founderNumber,
+  }));
 }

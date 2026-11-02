@@ -25,6 +25,7 @@ export const reviewStatus = pgEnum('review_status', ['published', 'flagged', 'hi
 // Ranking v2 (orgánico): plan de suscripción del negocio. NUNCA entra en `rank_score`
 // (ver shared/rankScore.ts) — es monetización, no una señal de calidad.
 export const profilePlan = pgEnum('profile_plan', ['free', 'verificado', 'destacado']);
+export const planPaymentStatus = pgEnum('plan_payment_status', ['pending', 'approved', 'rejected']);
 // Tipo de cuenta: consumidor (usuario de a pie) vs comerciante (dueño de negocio) vs admin.
 // Ortogonal a `role` (que gobierna los permisos): distingue el flujo/UI del usuario.
 export const accountType = pgEnum('account_type', ['consumer', 'merchant', 'admin']);
@@ -121,6 +122,9 @@ export const profiles = pgTable(
     // Todas aditivas, conviven con las pujas detrás de NEW_MODEL_ENABLED (server/lib/rankingModel.ts).
     plan: profilePlan('plan').notNull().default('free'),
     planExpiresAt: timestamp('plan_expires_at', { withTimezone: true }),
+    // Evita mandar el aviso de "tu plan vence en 3 días" todos los días durante esos 3 días —
+    // se limpia cada vez que se aprueba un pago nuevo (ver server/lib/plans.ts).
+    planExpiryWarnedAt: timestamp('plan_expiry_warned_at', { withTimezone: true }),
     // Insignia de identidad verificada por un admin — señal DISTINTA del plan "Verificado"
     // (uno es pago, el otro es confianza). Ninguna de las dos entra en rank_score.
     isVerified: boolean('is_verified').notNull().default(false),
@@ -592,6 +596,74 @@ export const rankLeaderHistory = pgTable(
   (t) => ({
     byScope: index('rank_leader_history_scope_idx').on(t.scopeKey, t.endedAt),
     byProfile: index('rank_leader_history_profile_idx').on(t.profileId),
+  }),
+);
+
+// ---------------- Planes de pago (Fase 3 del ranking v2) ----------------
+
+/** Config editable desde el admin (precios, etc.) — nunca fijo en el código. */
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Cola de pagos de planes (Verificado/Destacado) por transferencia local — mismo patrón que
+ * los pagos manuales de siempre: el negocio sube el comprobante (data URI, igual que
+ * `profiles.avatar_url`) y un admin aprueba o rechaza a mano. AZUL/PayPal quedan fuera de esta
+ * fase (ver decisión con el dueño: sin RNC no se puede activar AZUL todavía).
+ */
+export const planPayments = pgTable(
+  'plan_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    requestedByUserId: uuid('requested_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    plan: profilePlan('plan').notNull(), // 'verificado' | 'destacado' — nunca 'free'
+    amountDop: numeric('amount_dop', { precision: 12, scale: 2 }).notNull(),
+    bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id, { onDelete: 'set null' }),
+    reference: text('reference'), // número de transferencia que escribió el negocio
+    proofDataUrl: text('proof_data_url'), // foto/PDF del comprobante
+    status: planPaymentStatus('status').notNull().default('pending'),
+    approvedByUserId: uuid('approved_by_user_id').references(() => users.id),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byProfile: index('plan_payments_profile_idx').on(t.profileId),
+    byStatus: index('plan_payments_status_idx').on(t.status),
+  }),
+);
+
+/**
+ * Espacio "Destacado" activo: máximo 3 por (categoría, provincia|'todo-rd'), aplicado con una
+ * transacción al aprobar el pago (`server/lib/plans.ts`). "Activo" = `endsAt > now()`, sin
+ * columna de estado que mantener sincronizada — igual que ya se evitó un estado redundante en
+ * el Programa Fundadores.
+ */
+export const featuredSlots = pgTable(
+  'featured_slots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id),
+    province: text('province').notNull(), // slug real, o 'todo-rd' para el ámbito nacional
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    planPaymentId: uuid('plan_payment_id').references(() => planPayments.id, { onDelete: 'set null' }),
+  },
+  (t) => ({
+    byScope: index('featured_slots_scope_idx').on(t.categoryId, t.province, t.endsAt),
   }),
 );
 

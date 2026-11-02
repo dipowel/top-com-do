@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ah } from '../lib/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
 import { getActiveRankings, getActiveNearbyRankings, isNewModelEnabled } from '../lib/rankingModel';
+import { getFeaturedProfiles } from '../lib/rankingsOrganic';
 import { isValidLatLon } from '../../shared/nearby';
 
 const r = Router();
@@ -45,6 +46,18 @@ r.get(
     const category = strParam(req.query.category);
     const province = strParam(req.query.province);
     const data = await getActiveNearbyRankings(lat, lon, category, province, clampLimit(req.query.limit));
+    res.json(data);
+  }),
+);
+
+/** Negocios "Destacado" de esta categoría × provincia — solo bajo el ranking v2. */
+r.get(
+  '/featured',
+  ah(async (req, res) => {
+    if (!isNewModelEnabled()) return res.json([]);
+    const category = strParam(req.query.category);
+    const province = strParam(req.query.province);
+    const data = await getFeaturedProfiles(category, province);
     res.json(data);
   }),
 );

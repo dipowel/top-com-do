@@ -30,6 +30,7 @@ import admin from './routes/admin';
 import cron from './routes/cron';
 import reviews from './routes/reviews';
 import jobs from './routes/jobs';
+import plans from './routes/plans';
 
 export function createApp() {
   const app = express();
@@ -211,6 +212,7 @@ export function createApp() {
   app.use('/api/me', me);
   app.use('/api/reviews', reviews);
   app.use('/api/jobs', jobs);
+  app.use('/api/plans', plans);
   app.use('/api/admin', admin);
   app.use('/api/cron', cron);
 

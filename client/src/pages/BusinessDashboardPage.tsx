@@ -83,9 +83,14 @@ export default function BusinessDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold text-white">El rendimiento de tu negocio en Top</h1>
-        <p className="text-sm text-white/55">Descubre cuántas personas están viendo e interactuando con tu negocio.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-extrabold text-white">El rendimiento de tu negocio en Top</h1>
+          <p className="text-sm text-white/55">Descubre cuántas personas están viendo e interactuando con tu negocio.</p>
+        </div>
+        <Link to={`/perfil/negocio/${id}/planes`} className="btn-gold shrink-0 !px-3 !py-2 text-xs">
+          Planes
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
