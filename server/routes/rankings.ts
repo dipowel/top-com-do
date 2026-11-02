@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { ah } from '../lib/asyncHandler';
 import { HttpError } from '../middleware/errorHandler';
-import { getRankings, getNearbyRankings } from '../lib/rankings';
+import { getActiveRankings, getActiveNearbyRankings } from '../lib/rankingModel';
 import { isValidLatLon } from '../../shared/nearby';
 
 const r = Router();
@@ -14,7 +14,7 @@ r.get(
   ah(async (req, res) => {
     const category = strParam(req.query.category);
     const province = strParam(req.query.province);
-    const data = await getRankings(category, province, clampLimit(req.query.limit));
+    const data = await getActiveRankings(category, province, clampLimit(req.query.limit));
     res.json(data);
   }),
 );
@@ -34,7 +34,7 @@ r.get(
     }
     const category = strParam(req.query.category);
     const province = strParam(req.query.province);
-    const data = await getNearbyRankings(lat, lon, category, province, clampLimit(req.query.limit));
+    const data = await getActiveNearbyRankings(lat, lon, category, province, clampLimit(req.query.limit));
     res.json(data);
   }),
 );

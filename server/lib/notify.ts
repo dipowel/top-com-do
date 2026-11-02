@@ -3,6 +3,7 @@ import { db } from '../db';
 import { notifications, users, profiles, categories, rankLeaders, rankLeaderHistory } from '../../shared/schema';
 import { getRankings } from './rankings';
 import { minNextBidForProfile } from './auction';
+import { isNewModelEnabled } from './rankingModel';
 import { sendEmail, dethroneEmailHtml } from './email';
 import { NATIONAL_SLUG, provinceName } from '../../shared/provinces';
 import { formatDOP } from '../../shared/fx';
@@ -58,6 +59,11 @@ export async function notifyAdmins(n: NewNotification): Promise<void> {
  * líder cambió, notifica al negocio destronado.
  */
 export async function checkDethronements(bidProfileId: string): Promise<void> {
+  // Ranking v2 (orgánico): este destronamiento es 100% del lenguaje de pujas ("te superaron,
+  // paga RD$X para recuperar el #1") — no tiene sentido bajo reseñas. Se rediseña en una fase
+  // posterior de UX; por ahora, no-op (no se borra, rollback instantáneo si se apaga el flag).
+  if (isNewModelEnabled()) return;
+
   const prof = (
     await db
       .select({

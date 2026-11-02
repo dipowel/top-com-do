@@ -19,6 +19,7 @@ import {
 import { toJobCard, toJobDetail, expireStaleJobs } from '../lib/jobs';
 import { pingIndexNow } from '../lib/indexnow';
 import { FOUNDER_REFERENCE } from '../lib/founders';
+import { recomputeProfileRankFields } from '../lib/rankingModel';
 import { alias } from 'drizzle-orm/pg-core';
 import { ah } from '../lib/asyncHandler';
 import { requireAdmin } from '../middleware/auth';
@@ -887,6 +888,7 @@ r.post(
       .where(eq(reviews.id, req.params.id))
       .returning();
     if (!updated[0]) throw new HttpError(404, 'Reseña no encontrada');
+    await recomputeProfileRankFields(updated[0].profileId);
     await audit(req.user!.id, `review.${status}`, 'review', req.params.id, {});
     res.json({ ok: true });
   }),

@@ -4,6 +4,7 @@ import { resetRound } from '../lib/rounds';
 import { getRankings } from '../lib/rankings';
 import { expireStaleJobs } from '../lib/jobs';
 import { refreshFounderBids } from '../lib/founders';
+import { recomputeAllRankScores } from '../lib/rankingModel';
 import { audit } from '../lib/audit';
 import { HttpError } from '../middleware/errorHandler';
 
@@ -87,13 +88,15 @@ r.get(
     const runs = await runDueSources().catch(() => []);
     const indexing = await flushJobIndexing().catch(() => ({ sent: 0, failed: 0 }));
     const founders = await refreshFounderBids().catch((e) => ({ checked: 0, refreshed: 0, error: String(e) }));
+    const rankScores = await recomputeAllRankScores().catch((e) => ({ processed: 0, skipped: true, error: String(e) }));
     await audit(null, 'jobs.maintenance.cron', 'job', null, {
       expired: (expired as { expired: string[] }).expired.length,
       runs: runs.length,
       indexingSent: indexing.sent,
       foundersRefreshed: founders.refreshed,
+      rankScoresProcessed: rankScores.processed,
     });
-    res.json({ ok: true, expired, runs, indexing, founders });
+    res.json({ ok: true, expired, runs, indexing, founders, rankScores });
   }),
 );
 

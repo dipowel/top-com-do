@@ -4,6 +4,7 @@ import { reviews, profiles } from '../../shared/schema';
 import { HttpError } from '../middleware/errorHandler';
 import { notifyAdmins, notifyUser } from './notify';
 import { audit } from './audit';
+import { recomputeProfileRankFields } from './rankingModel';
 import { summarize } from '../../shared/reviews';
 import type { ReviewSummary } from '../../shared/types';
 
@@ -72,6 +73,7 @@ export async function detectBombing(profileId: string): Promise<number> {
 
   const ids = recentBad.map((r) => r.id);
   await db.update(reviews).set({ status: 'flagged' }).where(inArray(reviews.id, ids));
+  await recomputeProfileRankFields(profileId);
 
   const prof = (
     await db.select({ name: profiles.name, ownerUserId: profiles.ownerUserId }).from(profiles).where(eq(profiles.id, profileId)).limit(1)

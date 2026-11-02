@@ -7,7 +7,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { profiles as P, categories as C } from '../../shared/schema';
-import { getRankings } from './rankings';
+import { getActiveRankings } from './rankingModel';
 import { reviewSummary } from './reviews';
 import {
   CATEGORY_SLUGS,
@@ -172,7 +172,7 @@ const ITEM_COLUMNS = {
 
 async function catItems(cat: string, prov: string | null): Promise<SsrItem[]> {
   try {
-    const r = await getRankings(cat, prov ?? undefined, 24);
+    const r = await getActiveRankings(cat, prov ?? undefined, 24);
     if (r.length)
       return r.map((e) => ({
         id: e.profile.id,

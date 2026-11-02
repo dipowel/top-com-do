@@ -5,6 +5,7 @@ import { getActiveRound } from './rounds';
 import { checkDethronements, notifyUser } from './notify';
 import { audit } from './audit';
 import { pingIndexNow } from './indexnow';
+import { isNewModelEnabled } from './rankingModel';
 
 /** Marca cualquier puja del Programa Fundadores — nunca se crea por otra vía. */
 export const FOUNDER_REFERENCE = 'FUNDADOR_BETA';
@@ -131,6 +132,11 @@ export async function grantFounderBid(
  * vida, sin importar si el Programa ya cerró para negocios nuevos.
  */
 export async function refreshFounderBids(): Promise<{ checked: number; refreshed: number }> {
+  // Ranking v2 (orgánico): con el modelo nuevo activo, la posición ya no depende de pujas
+  // vigentes dentro de la ventana de 7 días — no tiene sentido seguir refrescando esta puja.
+  // No se borra la función (rollback instantáneo si se apaga el flag).
+  if (isNewModelEnabled()) return { checked: 0, refreshed: 0 };
+
   const cutoff = new Date(Date.now() - REFRESH_AFTER_DAYS * 86_400_000);
   const rows = await db
     .select({ id: bids.id, founderNumber: profiles.founderNumber })

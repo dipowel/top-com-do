@@ -17,6 +17,7 @@ import { assertCanReview, detectBombing, reviewSummary } from '../lib/reviews';
 import { clientIpHash } from '../lib/ip';
 import { getRankings } from '../lib/rankings';
 import { isBetaOpen, currentFounderCount, grantFounderBid, FOUNDER_REFERENCE } from '../lib/founders';
+import { recomputeProfileRankFields, markReviewVerifiedIfEligible } from '../lib/rankingModel';
 import { REVIEW_COMMENT_MAX, isValidRating } from '../../shared/reviews';
 import type { ReviewDTO } from '../../shared/types';
 
@@ -220,6 +221,7 @@ r.post(
       .where(and(eq(users.id, req.user!.id), eq(users.accountType, 'consumer')));
 
     await audit(req.user!.id, 'profile.create', 'profile', inserted[0]!.id, { handle, name: body.name });
+    await recomputeProfileRankFields(inserted[0]!.id);
 
     // Programa Fundadores: si la Beta sigue abierta, asigna el siguiente número y regala la
     // puja (gratis, sin tarjeta). Nunca debe poder tumbar el registro del negocio si falla.
@@ -306,6 +308,7 @@ r.patch(
 
     const updated = await db.update(profiles).set(patch).where(eq(profiles.id, req.params.id)).returning();
     await audit(req.user!.id, 'profile.update', 'profile', req.params.id, Object.keys(patch));
+    await recomputeProfileRankFields(req.params.id);
     res.json({
       ...updated[0],
       latitude: numOrNull(updated[0]!.latitude),
@@ -414,7 +417,12 @@ r.post(
   requireAuth,
   ah(async (req, res) => {
     const body = z
-      .object({ rating: z.number(), comment: z.string().max(REVIEW_COMMENT_MAX).optional() })
+      .object({
+        rating: z.number(),
+        comment: z.string().max(REVIEW_COMMENT_MAX).optional(),
+        // "¿Te respondieron rápido?" — opcional (ranking v2, aún sin UI que la pregunte).
+        fastResponse: z.boolean().optional(),
+      })
       .parse(req.body);
     if (!isValidRating(body.rating)) throw new HttpError(400, 'La calificación debe ser de 1 a 5.');
 
@@ -442,16 +450,25 @@ r.post(
         userId: req.user!.id,
         rating: body.rating,
         comment: body.comment?.trim() || null,
+        fastResponse: body.fastResponse ?? null,
         ipHash,
         status: 'published',
       })
       .onConflictDoUpdate({
         target: [reviews.profileId, reviews.userId],
-        set: { rating: body.rating, comment: body.comment?.trim() || null, status: 'published', updatedAt: new Date() },
+        set: {
+          rating: body.rating,
+          comment: body.comment?.trim() || null,
+          fastResponse: body.fastResponse ?? null,
+          status: 'published',
+          updatedAt: new Date(),
+        },
       })
       .returning();
 
     if (!isAdmin && body.rating <= 2) await detectBombing(req.params.id);
+    await recomputeProfileRankFields(req.params.id);
+    await markReviewVerifiedIfEligible(saved[0]!.id, req.params.id, req.user!.id);
     await audit(req.user!.id, existing[0] ? 'review.update' : 'review.create', 'review', saved[0]!.id, {
       profileId: req.params.id,
       rating: body.rating,

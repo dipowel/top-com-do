@@ -206,6 +206,37 @@ const statements = [
    FROM ranked
    WHERE profiles.id = ranked.id
      AND ranked.rn + (SELECT coalesce(max(founder_number), 0) FROM profiles) <= 250`,
+
+  // --- Ranking v2 (orgánico, basado en reseñas) — Fase 1 de la migración fuera de pujas ---
+  `DO $$ BEGIN
+     CREATE TYPE profile_plan AS ENUM ('free','verificado','destacado');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan profile_plan NOT NULL DEFAULT 'free'`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan_expires_at timestamptz`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_verified boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_completeness integer NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rank_score numeric(6,2) NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rank_position integer`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rank_score_computed_at timestamptz`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS rating_avg numeric(3,2) NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS reviews_count integer NOT NULL DEFAULT 0`,
+  `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS fast_response_rate numeric(5,2) NOT NULL DEFAULT 0`,
+  `CREATE INDEX IF NOT EXISTS profiles_rank_score_idx ON profiles (category_id, province, rank_score)`,
+
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified_at timestamptz`,
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified_by_user_id uuid REFERENCES users(id) ON DELETE SET NULL`,
+  `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS fast_response boolean`,
+  `CREATE INDEX IF NOT EXISTS reviews_verified_idx ON reviews (profile_id, verified)`,
+
+  // Backfill idempotente de rating_avg/reviews_count a partir de las reseñas ya publicadas
+  // (profile_completeness y rank_score de los perfiles ya existentes se calculan aparte con
+  // `npx tsx scripts/recompute-rank-v2.ts`, que reutiliza la MISMA fórmula de TypeScript en vez
+  // de duplicarla en SQL).
+  `UPDATE profiles p SET
+     rating_avg = coalesce((SELECT round(avg(rating)::numeric, 2) FROM reviews WHERE profile_id = p.id AND status = 'published'), 0),
+     reviews_count = coalesce((SELECT count(*) FROM reviews WHERE profile_id = p.id AND status = 'published'), 0)`,
 ];
 
 for (const sql of statements) {

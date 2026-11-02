@@ -22,6 +22,9 @@ export const bidStatus = pgEnum('bid_status', ['pending', 'verified', 'rejected'
 export const currencyEnum = pgEnum('currency', ['DOP', 'USD']);
 export const referralStatus = pgEnum('referral_status', ['pending', 'eligible', 'approved', 'rejected']);
 export const reviewStatus = pgEnum('review_status', ['published', 'flagged', 'hidden']);
+// Ranking v2 (orgánico): plan de suscripción del negocio. NUNCA entra en `rank_score`
+// (ver shared/rankScore.ts) — es monetización, no una señal de calidad.
+export const profilePlan = pgEnum('profile_plan', ['free', 'verificado', 'destacado']);
 // Tipo de cuenta: consumidor (usuario de a pie) vs comerciante (dueño de negocio) vs admin.
 // Ortogonal a `role` (que gobierna los permisos): distingue el flujo/UI del usuario.
 export const accountType = pgEnum('account_type', ['consumer', 'merchant', 'admin']);
@@ -113,11 +116,27 @@ export const profiles = pgTable(
     // Programa Fundadores (Beta): orden de llegada entre los primeros 250 negocios. `null` =
     // no es Fundador. Nunca se reasigna ni se recalcula — una vez asignado, es permanente.
     founderNumber: integer('founder_number'),
+
+    // ---- Ranking v2 (orgánico, basado en reseñas) — Fase 1 de la migración ----
+    // Todas aditivas, conviven con las pujas detrás de NEW_MODEL_ENABLED (server/lib/rankingModel.ts).
+    plan: profilePlan('plan').notNull().default('free'),
+    planExpiresAt: timestamp('plan_expires_at', { withTimezone: true }),
+    // Insignia de identidad verificada por un admin — señal DISTINTA del plan "Verificado"
+    // (uno es pago, el otro es confianza). Ninguna de las dos entra en rank_score.
+    isVerified: boolean('is_verified').notNull().default(false),
+    profileCompleteness: integer('profile_completeness').notNull().default(0), // 0..100
+    rankScore: numeric('rank_score', { precision: 6, scale: 2 }).notNull().default('0'), // 0.00..100.00
+    rankPosition: integer('rank_position'), // caché aproximada para el dashboard, no la fuente de verdad pública
+    rankScoreComputedAt: timestamp('rank_score_computed_at', { withTimezone: true }), // cursor del barrido por lotes del cron
+    ratingAvg: numeric('rating_avg', { precision: 3, scale: 2 }).notNull().default('0'), // promedio crudo (no bayesiano) de reseñas publicadas
+    reviewsCount: integer('reviews_count').notNull().default(0),
+    fastResponseRate: numeric('fast_response_rate', { precision: 5, scale: 2 }).notNull().default('0'), // 0.00..100.00 (%)
   },
   (t) => ({
     byCategory: index('profiles_category_idx').on(t.categoryId),
     byProvince: index('profiles_province_idx').on(t.province),
     founderNumberUniq: uniqueIndex('profiles_founder_number_uniq').on(t.founderNumber),
+    byRankScore: index('profiles_rank_score_idx').on(t.categoryId, t.province, t.rankScore),
   }),
 );
 
@@ -306,11 +325,21 @@ export const reviews = pgTable(
     ipHash: text('ip_hash'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    // Ranking v2: ¿se puede ligar esta reseña a un contacto real (businessEvents) del mismo
+    // usuario con el negocio, de al menos 1 hora de antigüedad? O un admin la marcó a mano.
+    // NO entra en rank_score todavía — es gameable (ver server/lib/rankingModel.ts), solo
+    // informativo hasta que haya volumen para auditar abuso.
+    verified: boolean('verified').notNull().default(false),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    verifiedByUserId: uuid('verified_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    // "¿Te respondieron rápido?" — null = no contestó la pregunta (distinto de "no").
+    fastResponse: boolean('fast_response'),
   },
   (t) => ({
     uniqPerUser: uniqueIndex('reviews_profile_user_uniq').on(t.profileId, t.userId),
     byProfile: index('reviews_profile_idx').on(t.profileId, t.status),
     byIp: index('reviews_ip_idx').on(t.ipHash, t.createdAt),
+    byVerified: index('reviews_verified_idx').on(t.profileId, t.verified),
   }),
 );
 
