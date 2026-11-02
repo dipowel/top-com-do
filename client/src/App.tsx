@@ -15,6 +15,9 @@ const BusinessDashboardPage = lazy(() => import('./pages/BusinessDashboardPage')
 const PlanesPage = lazy(() => import('./pages/PlanesPage'));
 const ReviewLinkPage = lazy(() => import('./pages/ReviewLinkPage'));
 const PublicarPage = lazy(() => import('./pages/PublicarPage'));
+const PublicarComboPage = lazy(() => import('./pages/PublicarComboPage'));
+const GuiasIndexPage = lazy(() => import('./pages/GuiasIndexPage'));
+const GuiaDetailPage = lazy(() => import('./pages/GuiaDetailPage'));
 const RegisterBusinessPage = lazy(() => import('./pages/RegisterBusinessPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
@@ -47,6 +50,10 @@ export default function App() {
           <Route path="/explorar/:categoria/:sub/:provincia" element={<ExplorePage />} />
           <Route path="/directorio" element={<DirectoryHubPage />} />
           <Route path="/publicar" element={<PublicarPage />} />
+          <Route path="/publicar/:categoria" element={<PublicarComboPage />} />
+          <Route path="/publicar/:categoria/:provincia" element={<PublicarComboPage />} />
+          <Route path="/guias" element={<GuiasIndexPage />} />
+          <Route path="/guias/:slug" element={<GuiaDetailPage />} />
           <Route path="/registrar-negocio" element={<RegisterBusinessPage />} />
           <Route path="/mis-pujas" element={<MyBidsPage />} />
           <Route path="/favoritos" element={<FavoritesPage />} />

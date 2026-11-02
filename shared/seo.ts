@@ -10,6 +10,7 @@ import { NATIONAL_SLUG, provinceName } from './provinces';
 import { jobCategoryLabel } from './job-categories';
 import { SCHEMA_EMPLOYMENT_TYPE, formatSalary, type JobType, type SalaryPeriod } from './jobs';
 import { toE164 } from './phone';
+import { GUIA_SLUGS, getGuia } from './guias';
 import type { ReviewSummary } from './types';
 
 export const jobUrl = (slug: string) => `${SITE_URL}/empleo/${slug}`;
@@ -273,7 +274,77 @@ export function subcategoryProvinceSeo(opts: {
   };
 }
 
-/** Página de intención publicitaria: /publicar. */
+/** Página de intención publicitaria: /publicar — versión ranking v2 (orgánico, sin pujas). */
+export function publicarSeoOrganic(): SeoData {
+  const canonical = `${SITE_URL}/publicar`;
+  const faqs = [
+    {
+      q: '¿Cómo publico mi negocio en República Dominicana?',
+      a: 'Regístrate gratis en Top.com.do con tu ubicación, WhatsApp y redes. Tu ficha aparece al instante en el directorio — sin tarjeta, sin contratos.',
+    },
+    {
+      q: '¿Cuánto cuesta aparecer en Top?',
+      a: 'Registrar y aparecer en el ranking es gratis para siempre. Si quieres la insignia de identidad verificada, más fotos y estadísticas completas, el plan Verificado tiene un costo mensual fijo — nunca afecta tu posición en el ranking.',
+    },
+    {
+      q: '¿Cómo subo en el ranking?',
+      a: 'El ranking lo deciden tus clientes: reseñas reales verificadas, qué tan rápido respondes y qué tan completo está tu perfil. No se puede pagar para subir de posición.',
+    },
+    {
+      q: '¿Es publicidad pagada?',
+      a: 'El ranking es 100% orgánico y gratuito. Los únicos espacios pagados ("Destacado") se muestran aparte, etiquetados claramente como PATROCINADO, nunca mezclados con las posiciones reales.',
+    },
+    {
+      q: '¿En qué provincias funciona?',
+      a: 'En las 32 demarcaciones del país. Tu negocio aparece a la vez a nivel nacional ("Todo RD") y dentro de tu provincia.',
+    },
+  ];
+  return {
+    title: 'Publica tu negocio gratis en República Dominicana | Top.com.do',
+    description:
+      'Registra tu negocio gratis en Top.com.do: aparece en el ranking de tu categoría y provincia, recibe reseñas reales de tus clientes y contáctalos directo por WhatsApp. Sin pujas, sin tarjeta.',
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [
+      faqPageLd(faqs),
+      breadcrumbLd([
+        { name: 'Inicio', url: `${SITE_URL}/` },
+        { name: 'Publica tu negocio', url: canonical },
+      ]),
+    ],
+  };
+}
+
+/** Variante de `publicarSeoOrganic()` para `/publicar/:categoria` y `/publicar/:categoria/:provincia`. */
+export function publicarComboSeo(opts: {
+  categorySlug: string;
+  provinceSlug?: string | null;
+  businessCount: number;
+}): SeoData {
+  const cat = categoryLabel(opts.categorySlug) || opts.categorySlug;
+  const prov = opts.provinceSlug ? provinceName(opts.provinceSlug) : null;
+  const path = prov ? `/publicar/${opts.categorySlug}/${opts.provinceSlug}` : `/publicar/${opts.categorySlug}`;
+  const canonical = `${SITE_URL}${path}`;
+  const place = prov || RD;
+  return {
+    title: `Publica tu negocio de ${cat} gratis en ${place} | Top.com.do`,
+    description:
+      opts.businessCount > 0
+        ? `Ya hay ${opts.businessCount} negocio${opts.businessCount === 1 ? '' : 's'} de ${cat} en Top.com.do en ${place}. Regístrate gratis y aparece también en el ranking de tu zona.`
+        : `Sé el primero en registrar tu negocio de ${cat} en Top.com.do en ${place}. Gratis, sin tarjeta.`,
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [
+      breadcrumbLd([
+        { name: 'Inicio', url: `${SITE_URL}/` },
+        { name: 'Publica tu negocio', url: `${SITE_URL}/publicar` },
+        ...(prov ? [{ name: cat, url: `${SITE_URL}/publicar/${opts.categorySlug}` }, { name: prov, url: canonical }] : [{ name: cat, url: canonical }]),
+      ]),
+    ],
+  };
+}
+
+/** Página de intención publicitaria: /publicar — versión pujas (modelo histórico). */
 export function publicarSeo(): SeoData {
   const canonical = `${SITE_URL}/publicar`;
   const faqs = [
@@ -510,6 +581,55 @@ export function faqPageLd(qas: { q: string; a: string }[]): Record<string, unkno
       name: x.q,
       acceptedAnswer: { '@type': 'Answer', text: x.a },
     })),
+  };
+}
+
+/** Artículo de /guias — JSON-LD `Article` con autor y fecha reales del archivo fuente. */
+export function articleLd(opts: { title: string; description: string; url: string; updatedAt: string }): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: opts.title,
+    description: opts.description,
+    url: opts.url,
+    datePublished: opts.updatedAt,
+    dateModified: opts.updatedAt,
+    author: { '@type': 'Organization', name: 'Equipo Top' },
+    publisher: { '@type': 'Organization', name: 'Top.com.do', logo: { '@type': 'ImageObject', url: LOGO_URL } },
+  };
+}
+
+/** `/guias` — índice de artículos para dueños de negocio. */
+export function guiasIndexSeo(): SeoData {
+  const canonical = `${SITE_URL}/guias`;
+  return {
+    title: 'Guías para negocios en República Dominicana | Top.com.do',
+    description:
+      'Guías prácticas y honestas para dueños de negocio en RD: cómo publicar gratis, conseguir clientes por WhatsApp, reseñas y más.',
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [breadcrumbLd([{ name: 'Inicio', url: `${SITE_URL}/` }, { name: 'Guías', url: canonical }])],
+  };
+}
+
+/** `/guias/:slug` — un artículo. */
+export function guiaSeo(slug: string): SeoData | null {
+  const g = getGuia(slug);
+  if (!g) return null;
+  const canonical = `${SITE_URL}/guias/${slug}`;
+  return {
+    title: `${g.title} | Top.com.do`,
+    description: g.description,
+    canonical,
+    image: OG_IMAGE,
+    jsonLd: [
+      articleLd({ title: g.title, description: g.description, url: canonical, updatedAt: g.updatedAt }),
+      breadcrumbLd([
+        { name: 'Inicio', url: `${SITE_URL}/` },
+        { name: 'Guías', url: `${SITE_URL}/guias` },
+        { name: g.title, url: canonical },
+      ]),
+    ],
   };
 }
 
@@ -881,6 +1001,8 @@ export function sitemapUrls(
     { loc: `${SITE_URL}/seguridad-pagos`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/contacto`, changefreq: 'yearly', priority: 0.3 },
     { loc: `${SITE_URL}/empleos`, changefreq: 'daily', priority: 0.7 },
+    { loc: `${SITE_URL}/guias`, changefreq: 'monthly', priority: 0.6 },
+    ...GUIA_SLUGS.map((slug) => ({ loc: `${SITE_URL}/guias/${slug}`, changefreq: 'monthly' as const, priority: 0.5 })),
   ];
 
   for (const c of cats) {
@@ -903,12 +1025,24 @@ export function sitemapUrls(
     });
   }
 
+  const seenPublicarCat = new Set<string>();
   for (const combo of catProvinceCombos) {
     out.push({
       loc: `${SITE_URL}/rd/${combo.categorySlug}/${combo.provinceSlug}`,
       lastmod: combo.lastmod,
       changefreq: 'weekly',
       priority: 0.6,
+    });
+    // /publicar/:categoria(/:provincia) — mismas combinaciones reales, para atraer dueños.
+    if (combo.categorySlug && !seenPublicarCat.has(combo.categorySlug)) {
+      seenPublicarCat.add(combo.categorySlug);
+      out.push({ loc: `${SITE_URL}/publicar/${combo.categorySlug}`, changefreq: 'monthly', priority: 0.5 });
+    }
+    out.push({
+      loc: `${SITE_URL}/publicar/${combo.categorySlug}/${combo.provinceSlug}`,
+      lastmod: combo.lastmod,
+      changefreq: 'monthly',
+      priority: 0.45,
     });
   }
 

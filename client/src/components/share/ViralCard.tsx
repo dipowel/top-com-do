@@ -4,11 +4,14 @@ import type { RankingEntry } from '@shared/types';
 import { formatDOP } from '../../lib/format';
 import { shareImage, avatarFallback } from '../../lib/share';
 import { profileShareUrl } from '@shared/site';
+import { useNewModel } from '../../hooks/useNewModel';
+import { StarRating } from '../reviews/StarRating';
 import Modal from '../common/Modal';
 
 export default function ViralCard({ entry, onClose }: { entry: RankingEntry; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
+  const newModel = useNewModel();
   const p = entry.profile;
 
   async function generate() {
@@ -59,8 +62,17 @@ export default function ViralCard({ entry, onClose }: { entry: RankingEntry; onC
             </div>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wide text-white/40">Visibilidad</div>
-            <div className="text-xl font-extrabold">{formatDOP(entry.totalDop)}</div>
+            {newModel ? (
+              <>
+                <div className="text-[10px] uppercase tracking-wide text-white/40">Calificación</div>
+                <StarRating value={entry.ratingAvg ?? 0} />
+              </>
+            ) : (
+              <>
+                <div className="text-[10px] uppercase tracking-wide text-white/40">Visibilidad</div>
+                <div className="text-xl font-extrabold">{formatDOP(entry.totalDop)}</div>
+              </>
+            )}
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between text-[11px] text-white/40">
