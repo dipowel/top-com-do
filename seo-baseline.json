@@ -1,0 +1,415 @@
+{
+  "capturedAt": "2026-11-02T15:27:16.417Z",
+  "site": "https://www.top.com.do",
+  "pages": [
+    {
+      "url": "https://www.top.com.do/",
+      "status": 200,
+      "title": "Top.com.do — Encuentra negocios y empleos en República Dominicana",
+      "description": "Encuentra ofertas de empleo o posiciona tu negocio en el puesto #1 de tu categoría con llamadas directas a tu WhatsApp. ¡Regístrate gratis hoy en la plataforma líder de RD!",
+      "canonical": "https://www.top.com.do/",
+      "robotsMeta": null,
+      "h1": "Encuentra negocios y empleos en República Dominicana gratis.",
+      "jsonLdTypes": [
+        null
+      ]
+    },
+    {
+      "url": "https://www.top.com.do/rd/gastronomia/santo-domingo",
+      "status": 200,
+      "title": "Mejores restaurantes en Santo Domingo · Top.com.do",
+      "description": "Ranking verificado de restaurantes en Santo Domingo, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/gastronomia/santo-domingo",
+      "robotsMeta": null,
+      "h1": "Los mejores restaurantes en Santo Domingo",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/salud/distrito-nacional",
+      "status": 200,
+      "title": "Mejores centros de salud en Distrito Nacional · Top.com.do",
+      "description": "Ranking verificado de centros de salud en Distrito Nacional, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/salud/distrito-nacional",
+      "robotsMeta": null,
+      "h1": "Los mejores centros de salud en Distrito Nacional",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/moda-belleza/santo-domingo",
+      "status": 200,
+      "title": "Mejores salones de belleza en Santo Domingo · Top.com.do",
+      "description": "Ranking verificado de salones de belleza en Santo Domingo, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/moda-belleza/santo-domingo",
+      "robotsMeta": null,
+      "h1": "Los mejores salones de belleza en Santo Domingo",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/gastronomia/distrito-nacional",
+      "status": 200,
+      "title": "Mejores restaurantes en Distrito Nacional · Top.com.do",
+      "description": "Ranking verificado de restaurantes en Distrito Nacional, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/gastronomia/distrito-nacional",
+      "robotsMeta": null,
+      "h1": "Los mejores restaurantes en Distrito Nacional",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/ocio/distrito-nacional",
+      "status": 200,
+      "title": "Mejores discotecas y bares en Distrito Nacional · Top.com.do",
+      "description": "Ranking verificado de discotecas y bares en Distrito Nacional, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/ocio/distrito-nacional",
+      "robotsMeta": null,
+      "h1": "Los mejores discotecas y bares en Distrito Nacional",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/automotriz/santo-domingo",
+      "status": 200,
+      "title": "Mejores talleres en Santo Domingo · Top.com.do",
+      "description": "Ranking verificado de talleres en Santo Domingo, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/automotriz/santo-domingo",
+      "robotsMeta": null,
+      "h1": "Los mejores talleres en Santo Domingo",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/gastronomia/santiago",
+      "status": 200,
+      "title": "Mejores restaurantes en Santiago · Top.com.do",
+      "description": "Ranking verificado de restaurantes en Santiago, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/gastronomia/santiago",
+      "robotsMeta": null,
+      "h1": "Los mejores restaurantes en Santiago",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/automotriz/santiago",
+      "status": 200,
+      "title": "Mejores talleres en Santiago · Top.com.do",
+      "description": "Ranking verificado de talleres en Santiago, República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/automotriz/santiago",
+      "robotsMeta": null,
+      "h1": "Los mejores talleres en Santiago",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/gastronomia",
+      "status": 200,
+      "title": "Mejores restaurantes en República Dominicana · Top.com.do",
+      "description": "Ranking verificado de restaurantes en República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/gastronomia",
+      "robotsMeta": null,
+      "h1": "Los mejores restaurantes en República Dominicana",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/automotriz",
+      "status": 200,
+      "title": "Mejores talleres en República Dominicana · Top.com.do",
+      "description": "Ranking verificado de talleres en República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/automotriz",
+      "robotsMeta": null,
+      "h1": "Los mejores talleres en República Dominicana",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/tecnologia",
+      "status": 200,
+      "title": "Mejores tiendas de tecnología en República Dominicana · Top.com.do",
+      "description": "Ranking verificado de tiendas de tecnología en República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/tecnologia",
+      "robotsMeta": null,
+      "h1": "Los mejores tiendas de tecnología en República Dominicana",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/hogar",
+      "status": 200,
+      "title": "Mejores ferreterías en República Dominicana · Top.com.do",
+      "description": "Ranking verificado de ferreterías en República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/hogar",
+      "robotsMeta": "noindex,follow",
+      "h1": "Los mejores ferreterías en República Dominicana",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/rd/moda-belleza",
+      "status": 200,
+      "title": "Mejores salones de belleza en República Dominicana · Top.com.do",
+      "description": "Ranking verificado de salones de belleza en República Dominicana. Compara por reputación, reseñas reales y cercanía, encuentra el #1 y contáctalo directo por WhatsApp. Actualizado en vivo en Top.com.do.",
+      "canonical": "https://www.top.com.do/rd/moda-belleza",
+      "robotsMeta": null,
+      "h1": "Los mejores salones de belleza en República Dominicana",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/5e015c87-22d0-4f56-a16e-0be6a6e3561d",
+      "status": 200,
+      "title": "Dipowel Rent car — Rent a Car en Santo domingo este aeropuerto internacional de las americas · Top.com.do",
+      "description": "La mejor Rent car de la República Dominicana Dipowel Rent car — Rent a Car en Santo domingo este aeropuerto internacional de las americas, Santo Domingo, República Dominicana. Reputación verificada (5★ · 2 reseñas), ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/5e015c87-22d0-4f56-a16e-0be6a6e3561d",
+      "robotsMeta": null,
+      "h1": "Dipowel Rent car",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/6c73ef72-c3f5-4ea0-a01c-dbce637e64bb",
+      "status": 200,
+      "title": "Punto Parrillada 2 — Gastronomía y Comida en Santo domingo este carretera mella a esq. calle 5w lucerna · Top.com.do",
+      "description": "Reserva u ordena en linea y acumula PUNTOS que puedes canjea Punto Parrillada 2 — Gastronomía y Comida en Santo domingo este carretera mella a esq. calle 5w lucerna, Santiago, República Dominicana. Reputación verificada (5★ · 1 reseñas), ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/6c73ef72-c3f5-4ea0-a01c-dbce637e64bb",
+      "robotsMeta": null,
+      "h1": "Punto Parrillada 2",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/5c988f9d-39a6-4986-947b-95ca997f914a",
+      "status": 200,
+      "title": "«Antojos Estefany Fast Food» — Comida Rápida / Delivery en Santo domingo este Cristo salvador · Top.com.do",
+      "description": "Las mejores yaroa y chimi «Antojos Estefany Fast Food» — Comida Rápida / Delivery en Santo domingo este Cristo salvador, República Dominicana. Reputación verificada, ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/5c988f9d-39a6-4986-947b-95ca997f914a",
+      "robotsMeta": null,
+      "h1": "«Antojos Estefany Fast Food»",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/e681b2bd-dd81-4919-aa02-8057636da86d",
+      "status": 200,
+      "title": "Gold Room Vip Club — Discotecas y Lounge en Ens Isabelista · Top.com.do",
+      "description": "El Mejor Ambiente Y mejores Precios De La Av España Gold Room Vip Club — Discotecas y Lounge en Ens Isabelista, Santo Domingo, República Dominicana. Reputación verificada (2★ · 1 reseñas), ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/e681b2bd-dd81-4919-aa02-8057636da86d",
+      "robotsMeta": null,
+      "h1": "Gold Room Vip Club",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/935b718c-b3c4-4a05-93e4-9d41f9ce48f4",
+      "status": 200,
+      "title": "D’Alexitocarniceria — Comida Criolla en San Isidro el Bonito · Top.com.do",
+      "description": "D,AlexitoCarniceria D’Alexitocarniceria — Comida Criolla en San Isidro el Bonito, Distrito Nacional, República Dominicana. Reputación verificada, ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/935b718c-b3c4-4a05-93e4-9d41f9ce48f4",
+      "robotsMeta": null,
+      "h1": "D’Alexitocarniceria",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/47f7bec1-68a0-4dec-8c66-25008e1c0ba8",
+      "status": 200,
+      "title": "Dilosant Restaurante de comida rápida — Comida Rápida / Delivery en Santo Domingo Este cristo salvador · Top.com.do",
+      "description": "Dilosant Restaurante el mejor ambiente para comer en familia Dilosant Restaurante de comida rápida — Comida Rápida / Delivery en Santo Domingo Este cristo salvador, Santo Domingo, República Dominicana. Reputación verificada (2★ · 1 reseñas), ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/47f7bec1-68a0-4dec-8c66-25008e1c0ba8",
+      "robotsMeta": null,
+      "h1": "Dilosant Restaurante de comida rápida",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/3d30e977-7c85-4cd5-a7ed-0024d915b2ee",
+      "status": 200,
+      "title": "Ñoño rent car — Rent a Car en Santo Domingo este el bonito · Top.com.do",
+      "description": "Calidad ,seguridad,y servicios a los más altos estándares Ñoño rent car — Rent a Car en Santo Domingo este el bonito, Santo Domingo, República Dominicana. Reputación verificada (5★ · 2 reseñas), ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/3d30e977-7c85-4cd5-a7ed-0024d915b2ee",
+      "robotsMeta": null,
+      "h1": "Ñoño rent car",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/b2b3a995-46b8-4670-8d56-1f09e0c7a8a5",
+      "status": 200,
+      "title": "Gabriel. Auto Venta — Dealers de Vehículos en República Dominicana · Top.com.do",
+      "description": "Gabriel Auto Venta Gabriel. Auto Venta — Dealers de Vehículos en República Dominicana, República Dominicana. Reputación verificada, ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/b2b3a995-46b8-4670-8d56-1f09e0c7a8a5",
+      "robotsMeta": null,
+      "h1": "Gabriel. Auto Venta",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/b09e2c56-a7b9-4ace-8be4-08fe82254fe4",
+      "status": 200,
+      "title": "Barbie hookah — Hookah Lounges y Terrazas en San Isidro · Top.com.do",
+      "description": "El humo perfecto sí existe. ✨ Pide la tuya hoy y dale otro n Barbie hookah — Hookah Lounges y Terrazas en San Isidro, Distrito Nacional, República Dominicana. Reputación verificada, ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/b09e2c56-a7b9-4ace-8be4-08fe82254fe4",
+      "robotsMeta": null,
+      "h1": "Barbie hookah",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/p/11bd5792-6095-4f09-aeef-f53dfcd4f13f",
+      "status": 200,
+      "title": "Elitexsolutions — Informática y Gadgets en República Dominicana · Top.com.do",
+      "description": "Creador de pagina web profesional Elitexsolutions — Informática y Gadgets en República Dominicana, República Dominicana. Reputación verificada, ubicación y contacto directo en Top.com.do.",
+      "canonical": "https://www.top.com.do/p/11bd5792-6095-4f09-aeef-f53dfcd4f13f",
+      "robotsMeta": null,
+      "h1": "Elitexsolutions",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/gerente-de-negocios-moca-santiago",
+      "status": 200,
+      "title": "Gerente de Negocios ( Moca) en Santiago | Top.com.do",
+      "description": "ACERH RD busca Gerente de Negocios ( Moca) en Santiago. &amp;nbsp;...de créditos, seguimiento de la cartera y cumplimiento de los objetivos establecidos. Requisitos: Licenciatura en &lt;b&gt;Administración de Empresa",
+      "canonical": "https://www.top.com.do/empleo/gerente-de-negocios-moca-santiago",
+      "robotsMeta": null,
+      "h1": "Gerente de Negocios ( Moca)",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/oficial-de-negocios-azua",
+      "status": 200,
+      "title": "Oficial de Negocios en Azua | Top.com.do",
+      "description": "Banco Ademi busca Oficial de Negocios en Azua. &amp;nbsp;...financieros, incluyendo cuentas de ahorro, préstamos, tarjetas de crédito, entre otros. Requisitos: - Licenciatura en &lt;b&gt;Administración de Em",
+      "canonical": "https://www.top.com.do/empleo/oficial-de-negocios-azua",
+      "robotsMeta": null,
+      "h1": "Oficial de Negocios",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/auxiliar-administrativo-a-servicio-al-cliente-distrito-nacional",
+      "status": 200,
+      "title": "Auxiliar Administrativo (a) / Servicio Al Cliente en Distrito Nacional | Top.com.do",
+      "description": "Index Elemec busca Auxiliar Administrativo (a) / Servicio Al Cliente en Distrito Nacional. En Index EleMec SRL / Index Condo buscamos un/a Auxiliar &lt;b&gt;Administrativo(&lt;/b&gt;a) - Servicio al Cliente para integrarse a nuestro equipo de Operacione",
+      "canonical": "https://www.top.com.do/empleo/auxiliar-administrativo-a-servicio-al-cliente-distrito-nacional",
+      "robotsMeta": null,
+      "h1": "Auxiliar Administrativo (a) / Servicio Al Cliente",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/manager-trade-finanace-foreign-trade-business-manager-santo-domingo",
+      "status": 200,
+      "title": "Manager Trade Finanace /Foreign Trade Business Manager en Santo Domingo | Top.com.do",
+      "description": "Scotiabank busca Manager Trade Finanace /Foreign Trade Business Manager en Santo Domingo. &amp;nbsp;...contribuyendo a una cultura de gestión prudente del riesgo y excelencia comercial. Requisitos •Licenciatura en &lt;b&gt;Administración de Empresas,",
+      "canonical": "https://www.top.com.do/empleo/manager-trade-finanace-foreign-trade-business-manager-santo-domingo",
+      "robotsMeta": null,
+      "h1": "Manager Trade Finanace /Foreign Trade Business Manager",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/analista-de-orientacion-al-colaborador-santo-domingo",
+      "status": 200,
+      "title": "ANALISTA DE ORIENTACIÓN AL COLABORADOR en Santo Domingo | Top.com.do",
+      "description": "DISTRIBUIDORA CORRIPIO busca ANALISTA DE ORIENTACIÓN AL COLABORADOR en Santo Domingo. &amp;nbsp;...fortalezcan el clima laboral, la convivencia y la retención del talento. Requisitos: Profesional de Psicología Industrial, &lt;b&gt;Administración ",
+      "canonical": "https://www.top.com.do/empleo/analista-de-orientacion-al-colaborador-santo-domingo",
+      "robotsMeta": null,
+      "h1": "ANALISTA DE ORIENTACIÓN AL COLABORADOR",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/encargado-control-de-inventarios-la-altagracia",
+      "status": 200,
+      "title": "ENCARGADO CONTROL DE INVENTARIOS en La Altagracia | Top.com.do",
+      "description": "GRUPO RICA busca ENCARGADO CONTROL DE INVENTARIOS en La Altagracia. &amp;nbsp;...de Inventarios en Consorcio Cítricos Dominicanos una de las &lt;b&gt;empresas &lt;/b&gt;del GRUPO RICA en Villa Altagracia. Buscamos un Encargado Control",
+      "canonical": "https://www.top.com.do/empleo/encargado-control-de-inventarios-la-altagracia",
+      "robotsMeta": null,
+      "h1": "ENCARGADO CONTROL DE INVENTARIOS",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/vacante-coordinador-de-recursos-humanos-espaillat",
+      "status": 200,
+      "title": "Vacante: COORDINADOR DE RECURSOS HUMANOS en Espaillat | Top.com.do",
+      "description": "Empleos Tripalis busca Vacante: COORDINADOR DE RECURSOS HUMANOS en Espaillat. &amp;nbsp;...seguimiento a vacaciones. Preparar novedades para nómina. &lt;b&gt;Administrar &lt;/b&gt;y dar seguimiento a políticas internas, incluyendo control de...",
+      "canonical": "https://www.top.com.do/empleo/vacante-coordinador-de-recursos-humanos-espaillat",
+      "robotsMeta": null,
+      "h1": "Vacante: COORDINADOR DE RECURSOS HUMANOS",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleo/business-data-specialist-santo-domingo",
+      "status": 200,
+      "title": "Business &amp; Data Specialist en Santo Domingo | Top.com.do",
+      "description": "PedidosYa busca Business &amp; Data Specialist en Santo Domingo. Descripción de la &lt;b&gt;empresa &lt;/b&gt; PedidosYa forma parte de Delivery Hero, empresa líder mundial en servicios de delivery con presencia...&amp;nbsp;&amp;nbsp;.",
+      "canonical": "https://www.top.com.do/empleo/business-data-specialist-santo-domingo",
+      "robotsMeta": null,
+      "h1": "Business &amp; Data Specialist",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleos",
+      "status": 200,
+      "title": "Empleos en República Dominicana · Top.com.do",
+      "description": "Bolsa de trabajo en República Dominicana: miles de vacantes y ofertas de empleo en Santo Domingo y toda la RD. Aplica directo y publica tu vacante gratis.",
+      "canonical": "https://www.top.com.do/empleos",
+      "robotsMeta": null,
+      "h1": "Empleos en República Dominicana",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleos/todas/santo-domingo",
+      "status": 200,
+      "title": "Empleos en Santo Domingo · Top.com.do",
+      "description": "Ofertas de trabajo en Santo Domingo: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.",
+      "canonical": "https://www.top.com.do/empleos/santo-domingo",
+      "robotsMeta": null,
+      "h1": "Empleos en Santo Domingo",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleos/todas/santiago",
+      "status": 200,
+      "title": "Empleos en Santiago · Top.com.do",
+      "description": "Ofertas de trabajo en Santiago: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.",
+      "canonical": "https://www.top.com.do/empleos/santiago",
+      "robotsMeta": null,
+      "h1": "Empleos en Santiago",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleos/todas/la-altagracia",
+      "status": 200,
+      "title": "Empleos en La Altagracia · Top.com.do",
+      "description": "Ofertas de trabajo en La Altagracia: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.",
+      "canonical": "https://www.top.com.do/empleos/la-altagracia",
+      "robotsMeta": null,
+      "h1": "Empleos en La Altagracia",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleos/todas/distrito-nacional",
+      "status": 200,
+      "title": "Empleos en Distrito Nacional · Top.com.do",
+      "description": "Ofertas de trabajo en Distrito Nacional: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.",
+      "canonical": "https://www.top.com.do/empleos/distrito-nacional",
+      "robotsMeta": null,
+      "h1": "Empleos en Distrito Nacional",
+      "jsonLdTypes": []
+    },
+    {
+      "url": "https://www.top.com.do/empleos/todas/la-romana",
+      "status": 200,
+      "title": "Empleos en La Romana · Top.com.do",
+      "description": "Ofertas de trabajo en La Romana: filtra por modalidad, tipo y salario, y aplica directo. Publica tu vacante gratis en Top.com.do.",
+      "canonical": "https://www.top.com.do/empleos/la-romana",
+      "robotsMeta": "noindex,follow",
+      "h1": "Empleos en La Romana",
+      "jsonLdTypes": []
+    }
+  ],
+  "lighthouse": [
+    {
+      "url": "https://www.top.com.do/",
+      "performance": 0.86,
+      "seo": 1,
+      "lcp": "0.7 s",
+      "cls": "0.281",
+      "tbt": "0 ms"
+    },
+    {
+      "url": "https://www.top.com.do/empleos",
+      "performance": 0.87,
+      "seo": 1,
+      "lcp": "0.6 s",
+      "cls": "0.255",
+      "tbt": "10 ms"
+    },
+    {
+      "url": "https://www.top.com.do/empleo/gerente-de-negocios-moca-santiago",
+      "performance": 0.86,
+      "seo": 1,
+      "lcp": "0.7 s",
+      "cls": "0.268",
+      "tbt": "10 ms"
+    }
+  ],
+  "sitemapUrlCount": 246
+}
